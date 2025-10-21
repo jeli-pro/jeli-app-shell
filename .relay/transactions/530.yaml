@@ -1,0 +1,590 @@
+uuid: b90044fa-2e40-4564-8395-5800539c3e46
+projectId: jeli-app-shell
+createdAt: '2025-10-21T07:59:05.828Z'
+gitCommitMsg: >-
+  fix(typing): Resolve TypeScript errors post-refactor
+
+  Corrects several TypeScript errors that appeared after the DynamicView
+  refactoring:
+
+  - In `useRightPaneContent.hook.tsx`, the `DynamicViewProvider` was
+    instantiated with a `data` prop instead of `items` and was missing
+    other required context props. This is now corrected by providing all
+    necessary props with default values to satisfy the component's contract.
+
+  - In `DataDemo/index.tsx`, removed unused imports (`useMemo`, `ReactNode`)
+    and a duplicate variable declaration (`setActiveGroupTab`) from the
+    `useAppViewManager` hook destructuring.
+promptSummary: >-
+  The user provided a list of TypeScript errors that occurred after a
+  refactoring. The errors included an incorrect prop being passed to a
+  component, unused imports, and a redeclared variable. I needed to fix these
+  errors.
+reasoning:
+  - >-
+    I've identified and fixed the TypeScript errors that arose from the previous
+    refactoring. Here are the necessary changes:
+  - >-
+    1.  **`useRightPaneContent.hook.tsx`**: The `DynamicViewProvider` was being
+    used to wrap the `DetailPanel` but was missing many required props that its
+    child components (like `FieldRenderer`) expect from the context. I've
+    updated the provider call to include all necessary props with sensible
+    default/dummy values, resolving the type mismatch. I also corrected the use
+    of the `data` prop to `items`, as expected by the provider.
+  - '2.  **`DataDemo/index.tsx`**: This file had a few minor issues:'
+  - '*   Unused imports (`useMemo`, `ReactNode`) have been removed.'
+  - >-
+    *   The `setActiveGroupTab` function was destructured twice from the
+    `useAppViewManager` hook, causing a redeclaration error. The duplicate has
+    been removed.
+  - These fixes address all the reported compilation errors.
+operations:
+  - type: write
+    path: src/hooks/useRightPaneContent.hook.tsx
+    content: >+
+      --- src/hooks/useRightPaneContent.hook.tsx
+
+      +++ src/hooks/useRightPaneContent.hook.tsx
+
+      @@ -93,7 +93,26 @@
+             return {
+               meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+               content: (
+      -          <DynamicViewProvider viewConfig={dataDemoViewConfig}
+      data={mockDataItems}>
+
+      +          <DynamicViewProvider
+
+      +            viewConfig={dataDemoViewConfig}
+
+      +            items={mockDataItems}
+
+      +            isLoading={false}
+
+      +            isInitialLoading={false}
+
+      +            totalItemCount={0}
+
+      +            hasMore={false}
+
+      +            viewMode="list"
+
+      +            filters={{ searchTerm: "" }}
+
+      +            sortConfig={null}
+
+      +            groupBy="none"
+
+      +            activeGroupTab=""
+
+      +            page={1}
+
+      +            onViewModeChange={() => {}}
+
+      +            onFiltersChange={() => {}}
+
+      +            onSortChange={() => {}}
+
+      +            onGroupByChange={() => {}}
+
+      +            onActiveGroupTabChange={() => {}}
+
+      +            onPageChange={() => {}}
+
+      +            onItemSelect={() => {}}
+
+      +          >
+                   <div className="h-full flex flex-col">
+                     <div className="flex-1 overflow-y-auto">
+                       <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -1,4 +1,4 @@
+
+      -import { useRef, useEffect, useCallback, useMemo, type ReactNode } from
+      'react'
+
+      +import { useRef, useEffect, useCallback } from 'react'
+       import {
+         Layers, 
+         AlertTriangle, 
+      @@ -53,9 +53,7 @@
+           viewMode,
+           groupBy,
+           activeGroupTab,
+      -    setActiveGroupTab,
+           setGroupBy,
+           setSort,
+           setActiveGroupTab,
+           page,
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useRightPaneContent.hook.tsx: >-
+    import { useMemo } from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      Database,
+      MessageSquare,
+      ExternalLink,
+      Share,
+    } from 'lucide-react';
+
+
+    import { DynamicViewProvider } from
+    '@/features/dynamic-view/DynamicViewContext';
+
+    import { Button } from '@/components/ui/button';
+
+    import { DashboardContent } from "@/pages/Dashboard";
+
+    import { SettingsContent } from "@/features/settings/SettingsContent";
+
+    import { ToasterDemo } from "@/pages/ToasterDemo";
+
+    import { NotificationsPage } from "@/pages/Notifications";
+
+    import DataDemoPage from "@/pages/DataDemo/index";
+
+    import { DetailPanel } from
+    '@/features/dynamic-view/components/shared/DetailPanel';
+
+    import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+
+    import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+    import { MessagingContent } from
+    "@/pages/Messaging/components/MessagingContent";
+
+    import type { AppShellState } from '@/store/appShell.store';
+
+
+    export function useRightPaneContent(sidePaneContent:
+    AppShellState['sidePaneContent']) {
+      const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+      const staticContentMap = useMemo(() => ({
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: <div className="p-6"><SettingsContent /></div>,
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      }), []);
+
+      const contentMap = useMemo(() => ({
+        ...staticContentMap,
+        messaging: {
+          title: "Conversation",
+          icon: MessageSquare,
+          page: "messaging",
+          content: <MessagingContent conversationId={conversationId} />,
+        },
+      }), [conversationId, staticContentMap]);
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null;
+        return mockDataItems.find(item => item.id === itemId) ?? null;
+      }, [itemId]);
+
+      const { meta, content } = useMemo(() => {
+        if (sidePaneContent === 'dataItem' && selectedItem) {
+          return {
+            meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+            content: (
+              <DynamicViewProvider viewConfig={dataDemoViewConfig} data={mockDataItems}>
+                <div className="h-full flex flex-col">
+                  <div className="flex-1 overflow-y-auto">
+                    <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
+                  </div>
+                  {/* Application-specific actions can be composed here */}
+                  <div className="p-6 border-t border-border/50 bg-card/30">
+                    <div className="flex gap-3">
+                      <Button className="flex-1" size="sm">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Open Project
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Share className="w-4 h-4 mr-2" />
+                        Share
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </DynamicViewProvider>
+            ),
+          };
+        }
+        const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+        return {
+          meta: mappedContent,
+          content: mappedContent.content,
+        };
+      }, [sidePaneContent, selectedItem, contentMap, itemId]);
+
+      return { meta, content };
+    }
+  src/pages/DataDemo/index.tsx: >-
+    import { useRef, useEffect, useCallback, useMemo, type ReactNode } from
+    'react'
+
+    import {
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      Loader2,
+      TrendingUp,
+      CheckCircle,
+      Clock,
+      Archive,
+      PlusCircle,
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { DynamicView } from '@/features/dynamic-view/DynamicView'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+
+    import { ScrollToBottomButton } from
+    '@/components/shared/ScrollToBottomButton';
+
+    import { StatCard } from '@/components/shared/StatCard'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { GenericItem } from '@/features/dynamic-view/types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+
+    import { useDataDemoStore } from './store/dataDemo.store'
+
+    import { 
+
+    } from './store/dataDemo.store'
+
+    import { AddDataItemCta } from
+    '@/features/dynamic-view/components/shared/AddDataItemCta'
+
+
+    import { dataDemoViewConfig } from './DataDemo.config';
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    export default function DataDemoPage() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setActiveGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+        setFilters,
+        setViewMode,
+        onItemSelect,
+      } = useAppViewManager();
+
+      const { items: allItems, hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+        items: state.items,
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+      }));
+
+      const statsRef = useRef<HTMLDivElement>(null)
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
+      // Our store uses `GenericItem` so no cast is needed.
+      // Auto-hide stats container on scroll down
+      useAutoAnimateStats(scrollRef, statsRef);
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78],
+        },
+        {
+          title: "Completion Rate",
+          value: "88%",
+          icon: <CheckCircle className="w-5 h-5" />,
+          change: "+1.5% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [80, 82, 81, 84, 85, 87, 88],
+        },
+        {
+          title: "Overdue Items",
+          value: "8",
+          icon: <Clock className="w-5 h-5" />,
+          change: "-3 this week",
+          trend: "down" as const,
+        },
+        {
+          title: "New This Week",
+          value: "12",
+          icon: <PlusCircle className="w-5 h-5" />,
+          change: "+2 from last week",
+          trend: "up" as const,
+        },
+        {
+          title: "Archived Projects",
+          value: "153",
+          icon: <Archive className="w-5 h-5" />,
+          change: "+20 this month",
+          trend: "up" as const,
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.08,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading]);
+
+      useEffect(() => {
+        loadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === 'calendar' || viewMode === 'kanban',
+        });
+      }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+      
+      useEffect(() => {
+        // Auto-group by status when switching to kanban view for the first time
+        if (viewMode === 'kanban' && groupBy === 'none') {
+          setGroupBy('status');
+          setSort(null); // Kanban is manually sorted, so disable programmatic sort
+        }
+        // For calendar view, we don't want grouping.
+        else if (viewMode === 'calendar' && groupBy !== 'none') {
+          setGroupBy('none');
+        }
+      }, [viewMode, groupBy, setGroupBy, setSort]);
+
+      return (
+        <PageLayout
+          scrollRef={scrollRef}
+          onScroll={handleScroll}
+        >
+          <DynamicView
+            viewConfig={dataDemoViewConfig}
+            items={allItems as GenericItem[]}
+            isLoading={isLoading}
+            isInitialLoading={isInitialLoading}
+            totalItemCount={totalItemCount}
+            hasMore={hasMore}
+            // Controlled state
+            viewMode={viewMode}
+            filters={filters}
+            sortConfig={sortConfig}
+            groupBy={groupBy}
+            activeGroupTab={activeGroupTab}
+            page={page}
+            // Callbacks
+            onViewModeChange={setViewMode}
+            onFiltersChange={setFilters}
+            onSortChange={setSort}
+            onGroupByChange={setGroupBy}
+            onActiveGroupTabChange={setActiveGroupTab}
+            onPageChange={setPage}
+            onItemSelect={onItemSelect}
+            // Custom Renderers
+            renderCta={(viewMode, ctaProps) => (
+              <AddDataItemCta viewMode={viewMode} colSpan={ctaProps.colSpan} />
+            )}
+            renderStats={() => (
+              <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+                {stats.map((stat) => (
+                  <StatCard
+                    className="w-64 md:w-72 flex-shrink-0"
+                    key={stat.title}
+                    title={stat.title}
+                    value={stat.value}
+                    change={stat.change}
+                    trend={stat.trend}
+                    icon={stat.icon}
+                    chartData={stat.type === 'chart' ? stat.chartData : undefined}
+                  />
+                ))}
+              </div>
+            )}
+          />
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && allItems.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+        </PageLayout>
+      );
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 530

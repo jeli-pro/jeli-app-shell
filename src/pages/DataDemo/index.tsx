@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import {
   Layers, 
   AlertTriangle, 
@@ -8,32 +8,22 @@ import {
   CheckCircle,
   Clock,
   Archive,
-  PlusCircle
+  PlusCircle,
 } from 'lucide-react'
 import { gsap } from 'gsap'
-import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext'
+import { DynamicView } from '@/features/dynamic-view/DynamicView'
 import { PageLayout } from '@/components/shared/PageLayout'
 import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
 import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
-import { ListView } from '@/features/dynamic-view/components/views/ListView'
-import { CardView } from '@/features/dynamic-view/components/views/CardView'
-import { TableView } from '@/features/dynamic-view/components/views/TableView'
-import { KanbanView } from '@/features/dynamic-view/components/views/KanbanView'
-import { CalendarView } from '@/features/dynamic-view/components/views/CalendarView'
-import { ViewModeSelector } from '@/features/dynamic-view/components/controls/ViewModeSelector'
-import { AnimatedTabs } from '@/components/ui/animated-tabs'
 import { StatCard } from '@/components/shared/StatCard'
-import { AnimatedLoadingSkeleton } from '@/features/dynamic-view/components/shared/AnimatedLoadingSkeleton'
-import { ViewControls } from '@/features/dynamic-view/components/controls/ViewControls'
 import { mockDataItems } from './data/mockData'
-import type { GroupableField, GenericItem } from '@/features/dynamic-view/types'
+import type { GenericItem } from '@/features/dynamic-view/types'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
 import { useDataDemoStore } from './store/dataDemo.store'
-import { capitalize, cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { 
 } from './store/dataDemo.store'
+import { AddDataItemCta } from '@/features/dynamic-view/components/shared/AddDataItemCta'
 
 import { dataDemoViewConfig } from './DataDemo.config';
 
@@ -70,6 +60,9 @@ export default function DataDemoPage() {
     filters,
     sortConfig,
     setPage,
+    setFilters,
+    setViewMode,
+    onItemSelect,
   } = useAppViewManager();
 
   const { items: allItems, hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
@@ -81,66 +74,11 @@ export default function DataDemoPage() {
     loadData: state.loadData,
   }));
 
-  // --- Start of logic moved from store selectors ---
-  const groupTabs = useMemo(() => {
-    if (groupBy === 'none' || !allItems.length) return [];
-    
-    const groupCounts = allItems.reduce((acc, item) => {
-        const groupKey = String(item[groupBy as GroupableField]);
-        acc[groupKey] = (acc[groupKey] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
-
-    const sortedGroups = Object.keys(groupCounts).sort((a, b) => a.localeCompare(b));
-
-    const createLabel = (text: string, count: number, isActive: boolean): ReactNode => (
-        <>
-            {text}
-            <Badge variant={isActive ? 'default' : 'secondary'} className={cn('transition-colors duration-300 text-xs font-semibold', !isActive && 'group-hover:bg-accent group-hover:text-accent-foreground')}>
-                {count}
-            </Badge>
-        </>
-    );
-    
-    const totalCount = allItems.length;
-
-    return [
-        { id: 'all', label: createLabel('All', totalCount, activeGroupTab === 'all') },
-        ...sortedGroups.map((g) => ({
-            id: g,
-            label: createLabel(capitalize(g), groupCounts[g], activeGroupTab === g),
-        })),
-    ];
-  }, [allItems, groupBy, activeGroupTab]);
-
-  const groupedData = useMemo(() => {
-    if (groupBy === 'none') {
-        return null;
-    }
-    return allItems.reduce((acc, item) => {
-        const groupKey = String(item[groupBy as GroupableField]) || 'N/A';
-        if (!acc[groupKey]) {
-            acc[groupKey] = [] as GenericItem[];
-        }
-        acc[groupKey].push(item);
-        return acc;
-    }, {} as Record<string, GenericItem[]>);
-  }, [allItems, groupBy]);
-  const dataToRender = useMemo(() => {
-    if (groupBy === 'none' || activeGroupTab === 'all' || !groupedData) {
-      return allItems;
-    }
-    return groupedData[activeGroupTab] || [];
-  }, [groupBy, activeGroupTab, allItems, groupedData]);
-  // --- End of logic moved from store selectors ---
-
-
   const statsRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
   // Our store uses `GenericItem` so no cast is needed.
-  const genericItems: GenericItem[] = allItems;
   // Auto-hide stats container on scroll down
   useAutoAnimateStats(scrollRef, statsRef);
 
@@ -265,113 +203,66 @@ export default function DataDemoPage() {
     [isLoading, hasMore, page, setPage],
   );
   
-  // Auto-group by status when switching to kanban view for the first time
   useEffect(() => {
+    // Auto-group by status when switching to kanban view for the first time
     if (viewMode === 'kanban' && groupBy === 'none') {
       setGroupBy('status');
       setSort(null); // Kanban is manually sorted, so disable programmatic sort
     }
     // For calendar view, we don't want grouping.
-    if (viewMode === 'calendar' && groupBy !== 'none') {
+    else if (viewMode === 'calendar' && groupBy !== 'none') {
       setGroupBy('none');
     }
   }, [viewMode, groupBy, setGroupBy, setSort]);
 
-  const renderViewForData = useCallback((data: GenericItem[]) => {
-    const items = data as GenericItem[];
-    switch (viewMode) {
-        case 'table': return <TableView data={items} />;
-        case 'cards': return <CardView data={items} />;
-        case 'calendar': return null; // Calendar has its own render path below
-        case 'kanban': return null; // Kanban has its own render path below
-        case 'grid': return <CardView data={items} isGrid />;
-        case 'list': default: return <ListView data={items} />;
-    }
-  }, [viewMode]);
-
-  const isGroupedView = useMemo(() => 
-    groupBy !== 'none' && groupTabs.length > 1 && groupedData,
-  [groupBy, groupTabs.length, groupedData]);
-
-
   return (
-    <DynamicViewProvider viewConfig={dataDemoViewConfig} data={genericItems}>
-      <PageLayout
-        scrollRef={scrollRef}
-        onScroll={handleScroll}
-      >
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="space-y-4">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
-                <p className="text-muted-foreground">
-                  {isInitialLoading 
-                    ? "Loading projects..." 
-                    : `Showing ${dataToRender.length} of ${totalItemCount} item(s)`}
-                </p>
-              </div>
-              <ViewModeSelector />
-            </div>
-            <ViewControls />
+    <PageLayout
+      scrollRef={scrollRef}
+      onScroll={handleScroll}
+    >
+      <DynamicView
+        viewConfig={dataDemoViewConfig}
+        items={allItems as GenericItem[]}
+        isLoading={isLoading}
+        isInitialLoading={isInitialLoading}
+        totalItemCount={totalItemCount}
+        hasMore={hasMore}
+        // Controlled state
+        viewMode={viewMode}
+        filters={filters}
+        sortConfig={sortConfig}
+        groupBy={groupBy}
+        activeGroupTab={activeGroupTab}
+        page={page}
+        // Callbacks
+        onViewModeChange={setViewMode}
+        onFiltersChange={setFilters}
+        onSortChange={setSort}
+        onGroupByChange={setGroupBy}
+        onActiveGroupTabChange={setActiveGroupTab}
+        onPageChange={setPage}
+        onItemSelect={onItemSelect}
+        // Custom Renderers
+        renderCta={(viewMode, ctaProps) => (
+          <AddDataItemCta viewMode={viewMode} colSpan={ctaProps.colSpan} />
+        )}
+        renderStats={() => (
+          <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+            {stats.map((stat) => (
+              <StatCard
+                className="w-64 md:w-72 flex-shrink-0"
+                key={stat.title}
+                title={stat.title}
+                value={stat.value}
+                change={stat.change}
+                trend={stat.trend}
+                icon={stat.icon}
+                chartData={stat.type === 'chart' ? stat.chartData : undefined}
+              />
+            ))}
           </div>
-
-          {/* Stats Section */}
-          {!isInitialLoading && (
-            <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
-              {stats.map((stat) => (
-                <StatCard
-                  className="w-64 md:w-72 flex-shrink-0"
-                  key={stat.title}
-                  title={stat.title}
-                  value={stat.value}
-                  change={stat.change}
-                  trend={stat.trend}
-                  icon={stat.icon}
-                  chartData={stat.type === 'chart' ? stat.chartData : undefined}
-                />
-              ))}
-            </div>
-          )}
-
-        <div className="min-h-[500px]">
-          {isInitialLoading ? (
-            <AnimatedLoadingSkeleton viewMode={viewMode} />
-          ) : viewMode === 'calendar' ? (
-            <CalendarView data={genericItems} />
-          ) : viewMode === 'kanban' ? (
-            isGroupedView ? (
-              <KanbanView data={groupedData as Record<string, GenericItem[]>} />
-            ) : (
-              <div className="flex items-center justify-center h-96 text-muted-foreground">
-                Group data by a metric to use the Kanban view.
-              </div>
-            )
-          ) : !isGroupedView ? (
-            renderViewForData(allItems)
-          ) : (
-            // Grouped view with AnimatedTabs
-            <div className="relative">
-              <AnimatedTabs
-                tabs={groupTabs}
-                activeTab={activeGroupTab}
-                onTabChange={setActiveGroupTab}
-                wrapperClassName="flex flex-col"
-                className="border-b"
-                contentClassName="pt-6 flex-grow"
-              >
-                {groupTabs.map(tab => (
-                  <div key={tab.id} className="min-h-[440px]">
-                    {renderViewForData(
-                      tab.id === 'all' ? allItems : groupedData?.[tab.id] || []
-                    )}
-                  </div>
-                ))}
-              </AnimatedTabs>
-            </div>
-          )}
-        </div>
+        )}
+      />
 
         {/* Loader for infinite scroll */}
         <div ref={loaderRef} className="flex justify-center items-center py-6">
@@ -381,13 +272,11 @@ export default function DataDemoPage() {
               <span>Loading more...</span>
             </div>
           )}
-          {!isLoading && !hasMore && dataToRender.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+          {!isLoading && !hasMore && allItems.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
             <p className="text-muted-foreground">You've reached the end.</p>
           )}
         </div>
-      </div>
-        <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
-      </PageLayout>
-    </DynamicViewProvider>
+      <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+    </PageLayout>
   );
 }

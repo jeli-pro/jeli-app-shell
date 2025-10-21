@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays } from 'lucide-react'
-import type { ViewMode } from '../../types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+import type { ViewMode } from '../../types';
+import { useDynamicView } from '../../DynamicViewContext';
 
 const viewModes = [
   { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
@@ -15,7 +15,7 @@ const viewModes = [
 ]
 
 export function ViewModeSelector() {
-  const { viewMode, setViewMode } = useAppViewManager();
+  const { viewMode, onViewModeChange } = useDynamicView();
   const indicatorRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -111,7 +111,7 @@ export function ViewModeSelector() {
           <button
             key={mode.id}
             data-mode={mode.id}
-            onClick={() => setViewMode(mode.id)}
+            onClick={() => onViewModeChange(mode.id)}
             className={cn(
               "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
               "hover:bg-accent/20 active:scale-95",

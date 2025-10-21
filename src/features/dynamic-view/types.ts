@@ -160,5 +160,5 @@ export interface SortConfig {
 export type GroupableField = 'status' | 'priority' | 'category';
 
 export type CalendarDateProp = 'dueDate' | 'createdAt' | 'updatedAt';
-export type CalendarDisplayProp = 'priority' | 'assignee' | 'status';
+export type CalendarDisplayProp = 'priority' | 'assignee' | 'tags' | 'status';
 export type CalendarColorProp = 'priority' | 'status' | 'category' | 'none';

@@ -7,9 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { GenericItem } from '../../types';
 import type { CalendarDateProp, CalendarColorProp, Status, Priority } from '../../types';
-import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
-import { useSelectedItem, useDataDemoStore } from "../../../../pages/DataDemo/store/dataDemo.store";
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
@@ -81,8 +79,7 @@ function CalendarEvent({ item, isSelected, isDragging, onDragStart, colorProp }:
     onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
     colorProp: CalendarColorProp;
 }) {
-  const { onItemSelect } = useAppViewManager();
-  const { config } = useDynamicView();
+  const { config, onItemSelect } = useDynamicView();
   const { calendarView: viewConfig } = config;
 
     const colorClass = useMemo(() => {
@@ -142,14 +139,13 @@ const datePropLabels: Record<CalendarDateProp, string> = {
 
 export function CalendarView({ data }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const { 
-    itemId,
-    calendarDateProp,
-    calendarItemLimit,
-    calendarColorProp,
-  } = useAppViewManager();
-  const selectedItem = useSelectedItem(itemId);
-  const updateItem = useDataDemoStore((s: any) => s.updateItem);
+  const {
+    selectedItemId,
+    onItemUpdate,
+    calendarDateProp = 'dueDate', // Provide default
+    calendarItemLimit = 3, // Provide default
+    calendarColorProp = 'none', // Provide default
+  } = useDynamicView();
   
   // Drag & Drop State
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
@@ -227,7 +223,7 @@ export function CalendarView({ data }: CalendarViewProps) {
             // Preserve the time, only change the date part
             const newDueDate = new Date(day);
             newDueDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), originalDate.getMilliseconds());
-            updateItem(itemIdToUpdate, { [calendarDateProp]: newDueDate.toISOString() });
+            onItemUpdate?.(itemIdToUpdate, { [calendarDateProp]: newDueDate.toISOString() });
         }
     }
     handleDragEnd(); // Reset state
@@ -321,7 +317,7 @@ export function CalendarView({ data }: CalendarViewProps) {
                         <CalendarEvent
                           key={item.id} 
                           item={item} 
-                          isSelected={selectedItem?.id === item.id}
+                          isSelected={selectedItemId === item.id}
                           isDragging={draggedItemId === item.id}
                           onDragStart={handleDragStart}
                           colorProp={calendarColorProp}

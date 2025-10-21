@@ -1,8 +1,10 @@
 import { Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+import type { ViewMode } from '../../types'
+
 interface AddDataItemCtaProps {
-  viewMode: 'list' | 'cards' | 'grid' | 'table'
+  viewMode: ViewMode
   colSpan?: number
 }
 

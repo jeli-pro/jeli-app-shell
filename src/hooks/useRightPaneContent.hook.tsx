@@ -93,7 +93,27 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
       return {
         meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
         content: (
-          <DynamicViewProvider viewConfig={dataDemoViewConfig} data={mockDataItems}>
+          <DynamicViewProvider
+            viewConfig={dataDemoViewConfig}
+            items={mockDataItems}
+            isLoading={false}
+            isInitialLoading={false}
+            totalItemCount={0}
+            hasMore={false}
+            viewMode="list"
+            filters={{ searchTerm: "" }}
+            sortConfig={null}
+            groupBy="none"
+            activeGroupTab=""
+            page={1}
+            onViewModeChange={() => {}}
+            onFiltersChange={() => {}}
+            onSortChange={() => {}}
+            onGroupByChange={() => {}}
+            onActiveGroupTabChange={() => {}}
+            onPageChange={() => {}}
+            onItemSelect={() => {}}
+          >
             <div className="h-full flex flex-col">
               <div className="flex-1 overflow-y-auto">
                 <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />

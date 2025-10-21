@@ -1,21 +1,14 @@
-import { useRef } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { ArrowUpRight } from 'lucide-react'
 import type { GenericItem } from '../../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from '../shared/EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import {
-  useSelectedItem,
-} from '../../../../pages/DataDemo/store/dataDemo.store'
-import { AddDataItemCta } from '../shared/AddDataItemCta'
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
-export function CardView({ data, isGrid = false }: { data: GenericItem[]; isGrid?: boolean }) {
-  const { onItemSelect, itemId } = useAppViewManager();
-  const selectedItem = useSelectedItem(itemId);
-  const { config } = useDynamicView();
+export function CardView({ data, isGrid = false, ctaElement }: { data: GenericItem[]; isGrid?: boolean, ctaElement?: ReactNode }) {
+  const { config, onItemSelect, selectedItemId } = useDynamicView();
   const { cardView: viewConfig } = config;
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -38,7 +31,7 @@ export function CardView({ data, isGrid = false }: { data: GenericItem[]; isGrid
       )}
     >
       {items.map((item: GenericItem) => {
-        const isSelected = selectedItem?.id === item.id
+        const isSelected = selectedItemId === item.id
         
         return (
           <div
@@ -107,7 +100,7 @@ export function CardView({ data, isGrid = false }: { data: GenericItem[]; isGrid
           </div>
         )
       })}
-      <AddDataItemCta viewMode={isGrid ? 'grid' : 'cards'} />
+      {ctaElement}
     </div>
   )
 }

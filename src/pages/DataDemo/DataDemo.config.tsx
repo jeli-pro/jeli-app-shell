@@ -35,7 +35,7 @@ export const dataDemoViewConfig: ViewConfig = {
         high: "bg-orange-500",
         medium: "bg-blue-500",
         low: "bg-green-500",
-      }
+      },
     },
     { id: "assignee", label: "Assignee", type: "avatar" },
     { id: "tags", label: "Tags", type: "tags" },

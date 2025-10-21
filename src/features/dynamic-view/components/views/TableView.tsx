@@ -1,4 +1,4 @@
-import { useRef, useLayoutEffect, useMemo } from 'react'
+import { useRef, useLayoutEffect, useMemo, type ReactNode } from 'react'
 import { gsap } from 'gsap'
 import { cn } from '@/lib/utils'
 import { 
@@ -9,26 +9,13 @@ import {
 } from 'lucide-react'
 import type { GenericItem } from '../../types'
 import { EmptyState } from '../shared/EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import {
-  useSelectedItem,
-} from '../../../../pages/DataDemo/store/dataDemo.store'
 import { capitalize } from '@/lib/utils'
-import { AddDataItemCta } from '../shared/AddDataItemCta'
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
-export function TableView({ data }: { data: GenericItem[] }) {
-  const {
-    sortConfig,
-    setTableSort,
-    groupBy,
-    onItemSelect,
-    itemId,
-  } = useAppViewManager();
-  const { config } = useDynamicView();
+export function TableView({ data, ctaElement }: { data: GenericItem[], ctaElement?: ReactNode }) {
+  const { config, sortConfig, onSortChange, groupBy, onItemSelect, selectedItemId } = useDynamicView();
   const { tableView: viewConfig } = config;
-  const selectedItem = useSelectedItem(itemId);
 
   const tableRef = useRef<HTMLTableElement>(null)
   const animatedItemsCount = useRef(0)
@@ -68,7 +55,8 @@ export function TableView({ data }: { data: GenericItem[] }) {
   }
 
   const handleSortClick = (field: string) => {
-    setTableSort(field)
+    const newDirection = (sortConfig?.key === field && sortConfig.direction === 'desc') ? 'asc' : 'desc';
+    onSortChange({ key: field, direction: newDirection });
   }
 
   const groupedData = useMemo(() => {
@@ -122,11 +110,11 @@ export function TableView({ data }: { data: GenericItem[] }) {
                       </div>
                     </td>
                   </tr>,
-                  ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                  ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItemId === item.id} onItemSelect={onItemSelect} />)
                 ])
-              : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+              : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItemId === item.id} onItemSelect={onItemSelect} />)
             }
-            <AddDataItemCta viewMode='table' colSpan={viewConfig.columns.length + 1} />
+            {ctaElement}
           </tbody>
         </table>
       </div>

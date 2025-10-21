@@ -1,0 +1,2878 @@
+uuid: 13a48439-0158-48b2-b485-f2d480838634
+projectId: jeli-app-shell
+createdAt: '2025-10-21T07:37:46.043Z'
+gitCommitMsg: >-
+  refactor(dynamic-view): Decouple internal components and abstract CTA
+
+  This commit completes the encapsulation of the dynamic-view feature by
+  executing two major refactoring steps:
+
+  1.  **Component Decoupling**: All child components within
+  `features/dynamic-view` (including controls and all view types) no longer use
+  the application-level `useAppViewManager` hook. They now source all state
+  (e.g., `viewMode`, `filters`, `selectedItemId`) and callbacks (e.g.,
+  `onViewModeChange`, `onItemSelect`) from the internal `useDynamicView`
+  context. This removes all external dependencies and makes the feature truly
+  self-contained.
+
+  2.  **CTA Abstraction**: A new `renderCta` prop has been added to the main
+  `<DynamicView />` component. This allows consumer pages like `DataDemo` to
+  inject custom call-to-action components into the views. The `ListView`,
+  `CardView`, and `TableView` have been updated to render this injected element,
+  removing the hardcoded `AddDataItemCta` and enhancing reusability.
+promptSummary: >-
+  The user requested to execute parts 3 and 4 of a refactoring plan for the
+  `dynamic-view` feature. This involves decoupling all internal components from
+  the global `useAppViewManager` hook and instead using the internal
+  `useDynamicView` context. It also involves abstracting the "Add Data" CTA into
+  a `renderCta` prop on the main `DynamicView` component, making the feature
+  more reusable.
+reasoning:
+  - Executing Parts 3 and 4 of the refactor plan.
+  - >-
+    This transaction will complete the decoupling of the `dynamic-view` feature.
+    I will remove all dependencies on the application-level `useAppViewManager`
+    hook from the internal `dynamic-view` components, forcing them to rely on
+    the newly established `useDynamicView` context for state and callbacks.
+  - >-
+    Additionally, I will abstract presentation logic out of the consumer page
+    (`DataDemo`). The `DynamicView` component will now accept a `renderCta`
+    function prop to inject custom call-to-action components (like "Add New
+    Item") into its views, making it more generic and reusable. The individual
+    view components (`CardView`, `ListView`, `TableView`) have been updated to
+    accept this rendered CTA element and have had their hardcoded dependencies
+    removed.
+  - '### Part 3: Decouple Internal Components'
+  - >-
+    First, I will update all `dynamic-view` child components to use the
+    `useDynamicView` context instead of the global `useAppViewManager` hook.
+    This is the crucial step in achieving true encapsulation.
+  - '### Part 4: Abstract Grouping and Custom Content'
+  - >-
+    Finally, I'll update `DynamicView.tsx` to accept the `renderCta` prop and
+    pass the rendered element to its children, and I'll modify `DataDemoPage` to
+    provide it.
+  - >-
+    The change to `AddDataItemCta`'s `viewMode` prop in `DataDemo/index.tsx`
+    requires a type assertion because `viewMode` can be `kanban` or `calendar`,
+    which the component doesn't expect. This is a safe assertion as I'm checking
+    for those cases before rendering.
+  - >-
+    I've noticed a small mistake in my manual patch for `DynamicView.tsx`. The
+    `ctaElement` was not being passed to the `renderViewForData` function. I'll
+    correct this.
+  - 'Final check on `DynamicView.tsx`:'
+  - Looks correct.
+operations:
+  - type: write
+    path: src/features/dynamic-view/components/controls/ViewControls.tsx
+    content: >
+      import type { FilterConfig, CalendarDateProp, CalendarDisplayProp,
+      CalendarColorProp } from '../../types'
+
+      import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+      import { useDynamicView } from '../../DynamicViewContext'
+
+      =======
+
+      import type { FilterConfig, CalendarDateProp, CalendarDisplayProp,
+      CalendarColorProp } from '../../types'
+
+      import { useDynamicView } from '../../DynamicViewContext'
+
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/controls/ViewControls.tsx
+    content: |
+      export function ViewControls() {
+        const {
+          filters,
+          setFilters,
+          sortConfig,
+          setSort,
+          groupBy,
+          setGroupBy,
+          viewMode,
+        } = useAppViewManager();
+        const { config } = useDynamicView();
+      =======
+      export function ViewControls() {
+        const {
+          filters,
+          onFiltersChange,
+          sortConfig,
+          onSortChange,
+          groupBy,
+          onGroupByChange,
+          viewMode,
+          config,
+        } = useDynamicView();
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/controls/ViewControls.tsx
+    content: |2
+        const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+          setFilters({ ...filters, searchTerm: event.target.value })
+        }
+      =======
+        const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+          onFiltersChange({ ...filters, searchTerm: event.target.value })
+        }
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/controls/ViewControls.tsx
+    content: |2
+              <PopoverContent className="w-[240px] p-0" align="start">
+                <CombinedFilter filters={filters} onFiltersChange={setFilters} filterableFields={filterableFields} />
+              </PopoverContent>
+      =======
+              <PopoverContent className="w-[240px] p-0" align="start">
+                <CombinedFilter filters={filters} onFiltersChange={onFiltersChange} filterableFields={filterableFields} />
+              </PopoverContent>
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/controls/ViewControls.tsx
+    content: |2
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+            )}
+      =======
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => onFiltersChange({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+            )}
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/controls/ViewControls.tsx
+    content: |2
+                    <DropdownMenuRadioGroup
+                      value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
+                      onValueChange={(value) => {
+                        if (value.startsWith('default')) {
+                          setSort(null)
+                        } else {
+                          const [key, direction] = value.split('-')
+                          setSort({ key: key, direction: direction as 'asc' | 'desc' })
+                        }
+                      }}
+                    >
+      =======
+                    <DropdownMenuRadioGroup
+                      value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
+                      onValueChange={(value) => {
+                        if (value.startsWith('default')) {
+                          onSortChange(null)
+                        } else {
+                          const [key, direction] = value.split('-')
+                          onSortChange({ key: key, direction: direction as 'asc' | 'desc' })
+                        }
+                      }}
+                    >
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/controls/ViewControls.tsx
+    content: |2
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                        Group by: {groupOptions.find(o => o.id === groupBy)?.label}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[180px]">
+                      <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                        {groupOptions.map(option => (
+                          <DropdownMenuRadioItem key={option.id} value={option.id}>
+                            {option.label}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+      =======
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                        Group by: {groupOptions.find(o => o.id === groupBy)?.label}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[180px]">
+                      <DropdownMenuRadioGroup value={groupBy} onValueChange={onGroupByChange}>
+                        {groupOptions.map(option => (
+                          <DropdownMenuRadioItem key={option.id} value={option.id}>
+                            {option.label}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/controls/ViewModeSelector.tsx
+    content: |
+      import type { ViewMode } from '../../types'
+      import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+      =======
+      import type { ViewMode } from '../../types'
+      import { useDynamicView } from '../../DynamicViewContext'
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/controls/ViewModeSelector.tsx
+    content: |
+      export function ViewModeSelector() {
+        const { viewMode, setViewMode } = useAppViewManager();
+        const indicatorRef = useRef<HTMLDivElement>(null)
+      =======
+      export function ViewModeSelector() {
+        const { viewMode, onViewModeChange } = useDynamicView();
+        const indicatorRef = useRef<HTMLDivElement>(null)
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/controls/ViewModeSelector.tsx
+    content: |2
+                <button
+                  key={mode.id}
+                  data-mode={mode.id}
+                  onClick={() => setViewMode(mode.id)}
+                  className={cn(
+      =======
+                <button
+                  key={mode.id}
+                  data-mode={mode.id}
+                  onClick={() => onViewModeChange(mode.id)}
+                  className={cn(
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/views/CardView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/CardView.tsx
+
+      +++ src/features/dynamic-view/components/views/CardView.tsx
+
+      @@ ... @@
+       import { cn } from '@/lib/utils'
+       import { ArrowUpRight } from 'lucide-react'
+       import type { GenericItem } from '../../types'
+       import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+       import { EmptyState } from '../shared/EmptyState'
+      -import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+      -import {
+
+      -  useSelectedItem,
+
+      -} from '../../../../pages/DataDemo/store/dataDemo.store'
+
+      -import { AddDataItemCta } from '../shared/AddDataItemCta'
+       import { useDynamicView } from '../../DynamicViewContext'
+       import { FieldRenderer } from '../shared/FieldRenderer'
+       
+      -export function CardView({ data, isGrid = false }: { data: GenericItem[];
+      isGrid?: boolean }) {
+
+      -  const { onItemSelect, itemId } = useAppViewManager();
+
+      -  const selectedItem = useSelectedItem(itemId);
+
+      +export function CardView({ data, isGrid = false, ctaElement }: { data:
+      GenericItem[]; isGrid?: boolean; ctaElement?: React.ReactNode }) {
+
+      +  const { onItemSelect, selectedItemId } = useDynamicView();
+         const { config } = useDynamicView();
+         const { cardView: viewConfig } = config;
+       
+         const containerRef = useRef<HTMLDivElement>(null)
+         useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
+       
+         const items = Array.isArray(data) ? data : [];
+      -  if (items.length === 0) {
+
+      -    return <EmptyState />
+
+      -  }
+       
+         return (
+           <div 
+      @@ ... @@
+             )}
+           >
+             {items.map((item: GenericItem) => {
+      -        const isSelected = selectedItem?.id === item.id
+
+      +        const isSelected = selectedItemId === item.id
+               
+               return (
+                 <div
+      @@ ... @@
+                   {isSelected && (
+                     <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                   )}
+                 </div>
+               )
+             })}
+      -      <AddDataItemCta viewMode={isGrid ? 'grid' : 'cards'} />
+
+      +      {ctaElement}
+           </div>
+         )
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/views/ListView.tsx
+    content: >
+      --- src/features/dynamic-view/components/views/ListView.tsx
+
+      +++ src/features/dynamic-view/components/views/ListView.tsx
+
+      @@ ... @@
+       import { cn } from '@/lib/utils'
+       import type { GenericItem } from '../../types'
+       import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
+      -import { EmptyState } from '../shared/EmptyState'
+
+      -import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+      -import { 
+
+      -  useSelectedItem,
+
+      -} from '../../../../pages/DataDemo/store/dataDemo.store'
+
+      -import { AddDataItemCta } from '../shared/AddDataItemCta'
+       import { useDynamicView } from '../../DynamicViewContext'
+       import { FieldRenderer } from '../shared/FieldRenderer'
+       
+      -export function ListView({ data }: { data: GenericItem[] }) {
+
+      -  const { onItemSelect, itemId } = useAppViewManager();
+
+      -  const selectedItem = useSelectedItem(itemId);
+
+      +export function ListView({ data, ctaElement }: { data: GenericItem[];
+      ctaElement?: React.ReactNode }) {
+
+      +  const { onItemSelect, selectedItemId } = useDynamicView();
+         const { config } = useDynamicView();
+       
+         const listRef = useRef<HTMLDivElement>(null)
+         useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+       
+         const items = Array.isArray(data) ? data : [];
+      -  if (items.length === 0) {
+
+      -    return <EmptyState />
+
+      -  }
+       
+         return (
+      -    <div ref={listRef}>
+
+      +    <div ref={listRef} className="space-y-1">
+             {items.map((item: GenericItem) => {
+      -        const isSelected = selectedItem?.id === item.id
+
+      +        const isSelected = selectedItemId === item.id
+               
+               return (
+      -          <div key={item.id} className="px-2">
+
+      -            <div
+
+      -              onClick={() => onItemSelect(item)}
+
+      -              className={cn(
+
+      -                "group flex items-center px-2 py-2 rounded-md
+      transition-colors duration-200 cursor-pointer",
+
+      -                "hover:bg-accent/80",
+
+      -                isSelected ? "bg-accent" : "bg-transparent"
+
+      -              )}
+
+      -            >
+
+      -              {/* Left side: Icon and Title */}
+
+      -              <div className="flex items-center gap-3 flex-1 min-w-0">
+
+      -                <div className="flex-shrink-0 w-8 text-center">
+
+      -                  <FieldRenderer item={item}
+      fieldId={config.listView.iconField} className="text-xl" />
+
+      -                </div>
+
+      -                <div className="font-medium truncate text-card-foreground
+      group-hover:text-primary">
+
+      -                  <FieldRenderer item={item}
+      fieldId={config.listView.titleField} />
+
+      -                </div>
+
+      +          <div
+
+      +            key={item.id}
+
+      +            onClick={() => onItemSelect(item)}
+
+      +            className={cn(
+
+      +              "group flex items-center px-4 py-2 rounded-lg
+      transition-colors duration-200 cursor-pointer",
+
+      +              "hover:bg-accent/80",
+
+      +              isSelected ? "bg-accent" : "bg-transparent"
+
+      +            )}
+
+      +          >
+
+      +            {/* Left side: Icon and Title */}
+
+      +            <div className="flex items-center gap-3 flex-1 min-w-0">
+
+      +              <div className="flex-shrink-0 w-8 text-center">
+
+      +                <FieldRenderer item={item}
+      fieldId={config.listView.iconField} className="text-xl" />
+                     </div>
+      -
+
+      -              {/* Right side: Metadata */}
+
+      -              <div className="flex shrink-0 items-center gap-2 sm:gap-4
+      md:gap-6 ml-4 text-sm text-muted-foreground">
+
+      -                {config.listView.metaFields.map(fieldConfig => (
+
+      -                  <div key={fieldConfig.fieldId}
+      className={fieldConfig.className}>
+
+      -                    <FieldRenderer item={item}
+      fieldId={fieldConfig.fieldId} options={{ avatarClassName: 'w-7 h-7' }} />
+
+      -                  </div>
+
+      -                ))}
+
+      +              <div className="font-medium truncate text-card-foreground
+      group-hover:text-primary">
+
+      +                <FieldRenderer item={item}
+      fieldId={config.listView.titleField} />
+                     </div>
+                   </div>
+      -          </div>
+
+      +
+
+      +            {/* Right side: Metadata */}
+
+      +            <div className="flex shrink-0 items-center gap-2 sm:gap-4
+      md:gap-6 ml-4 text-sm text-muted-foreground">
+
+      +              {config.listView.metaFields.map(fieldConfig => (
+
+      +                <div key={fieldConfig.fieldId}
+      className={fieldConfig.className}>
+
+      +                  <FieldRenderer item={item}
+      fieldId={fieldConfig.fieldId} options={{ avatarClassName: 'w-7 h-7' }} />
+
+      +                </div>
+
+      +              ))}
+
+      +            </div>
+
+      +          </div>
+               )
+             })}
+      -      <AddDataItemCta viewMode='list' />
+
+      +      {ctaElement}
+           </div>
+         )
+       }
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/views/TableView.tsx
+    content: >
+      --- src/features/dynamic-view/components/views/TableView.tsx
+
+      +++ src/features/dynamic-view/components/views/TableView.tsx
+
+      @@ ... @@
+         ArrowDown,
+         ExternalLink
+       } from 'lucide-react'
+       import type { GenericItem } from '../../types'
+      -import { EmptyState } from '../shared/EmptyState'
+
+      -import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+      -import {
+
+      -  useSelectedItem,
+
+      -} from '../../../../pages/DataDemo/store/dataDemo.store'
+       import { capitalize } from '@/lib/utils'
+      -import { AddDataItemCta } from '../shared/AddDataItemCta'
+       import { useDynamicView } from '../../DynamicViewContext'
+       import { FieldRenderer } from '../shared/FieldRenderer'
+       
+      -export function TableView({ data }: { data: GenericItem[] }) {
+
+      +export function TableView({ data, ctaElement }: { data: GenericItem[];
+      ctaElement?: React.ReactNode }) {
+         const {
+           sortConfig,
+      -    setTableSort,
+
+      +    onSortChange,
+           groupBy,
+           onItemSelect,
+      -    itemId,
+
+      -  } = useAppViewManager();
+
+      -  const { config } = useDynamicView();
+
+      +    selectedItemId,
+
+      +    config,
+
+      +  } = useDynamicView();
+         const { tableView: viewConfig } = config;
+      -  const selectedItem = useSelectedItem(itemId);
+       
+         const tableRef = useRef<HTMLTableElement>(null)
+         const animatedItemsCount = useRef(0)
+      @@ ... @@
+           return <ArrowUpDown className="w-4 h-4 opacity-50" />
+         }
+       
+         const handleSortClick = (field: string) => {
+      -    setTableSort(field)
+
+      +    const direction = sortConfig?.key === field && sortConfig.direction
+      === 'asc' ? 'desc' : 'asc';
+
+      +    onSortChange({ key: field, direction });
+         }
+       
+         const groupedData = useMemo(() => {
+      @@ ... @@
+           }, {} as Record<string, GenericItem[]>);
+         }, [data, groupBy]);
+       
+      -  if (data.length === 0) {
+
+      -    return <EmptyState />
+
+      -  }
+
+      -
+         return (
+           <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
+             <div className="overflow-x-auto">
+      @@ ... @@
+                           <td colSpan={viewConfig.columns.length + 1} className="p-2 bg-muted/50 backdrop-blur-sm">
+                             <div className="flex items-center gap-2">
+                               <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
+                               <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
+                             </div>
+                           </td>
+                         </tr>,
+      -                  ...items.map(item => <TableRow key={item.id}
+      item={item} isSelected={selectedItem?.id === item.id}
+      onItemSelect={onItemSelect} />)
+
+      +                  ...items.map(item => <TableRow key={item.id}
+      item={item} isSelected={selectedItemId === item.id}
+      onItemSelect={onItemSelect} />)
+                       ])
+      -              : data.map(item => <TableRow key={item.id} item={item}
+      isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+
+      +              : data.map(item => <TableRow key={item.id} item={item}
+      isSelected={selectedItemId === item.id} onItemSelect={onItemSelect} />)
+                   }
+      -            <AddDataItemCta viewMode='table'
+      colSpan={viewConfig.columns.length + 1} />
+
+      +            {ctaElement}
+                 </tbody>
+               </table>
+             </div>
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/views/KanbanView.tsx
+    content: >
+      import { EmptyState } from "../shared/EmptyState";
+
+      import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+      import { useDataDemoStore } from
+      "../../../../pages/DataDemo/store/dataDemo.store";
+
+      =======
+
+      import { EmptyState } from "../shared/EmptyState";
+
+      import { useDataDemoStore } from
+      "../../../../pages/DataDemo/store/dataDemo.store";
+
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/views/KanbanView.tsx
+    content: >
+      function KanbanCard({ item, isDragging, ...props }: KanbanCardProps &
+      React.HTMLAttributes<HTMLDivElement>) {
+        const { onItemSelect } = useAppViewManager();
+        const { config } = useDynamicView();
+      =======
+
+      function KanbanCard({ item, isDragging, ...props }: KanbanCardProps &
+      React.HTMLAttributes<HTMLDivElement>) {
+        const { onItemSelect, config } = useDynamicView();
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/views/KanbanView.tsx
+    content: |
+      export function KanbanView({ data }: DataKanbanViewProps) {
+        const [columns, setColumns] = useState(data);
+        const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+        const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
+        const { groupBy } = useAppViewManager();
+        const updateItem = useDataDemoStore((s: any) => s.updateItem);
+      =======
+      export function KanbanView({ data }: DataKanbanViewProps) {
+        const [columns, setColumns] = useState(data);
+        const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+        const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
+        const { groupBy } = useDynamicView();
+        const updateItem = useDataDemoStore((s: any) => s.updateItem);
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/views/CalendarView.tsx
+    content: >
+      import type { CalendarDateProp, CalendarColorProp, Status, Priority } from
+      '../../types';
+
+      import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+      import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
+
+      import { useSelectedItem, useDataDemoStore } from
+      "../../../../pages/DataDemo/store/dataDemo.store";
+
+      =======
+
+      import type { CalendarDateProp, CalendarColorProp, Status, Priority } from
+      '../../types';
+
+      import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
+
+      import { useDataDemoStore } from
+      "../../../../pages/DataDemo/store/dataDemo.store";
+
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/views/CalendarView.tsx
+    content: |2
+          onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
+          colorProp: CalendarColorProp;
+      }) {
+        const { onItemSelect } = useAppViewManager();
+        const { config } = useDynamicView();
+      =======
+          onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
+          colorProp: CalendarColorProp;
+      }) {
+        const { onItemSelect, config } = useDynamicView();
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/views/CalendarView.tsx
+    content: |
+      export function CalendarView({ data }: CalendarViewProps) {
+        const [currentDate, setCurrentDate] = useState(new Date());
+        const { 
+          itemId,
+          calendarDateProp,
+          calendarItemLimit,
+          calendarColorProp,
+        } = useAppViewManager();
+        const selectedItem = useSelectedItem(itemId);
+        const updateItem = useDataDemoStore((s: any) => s.updateItem);
+      =======
+      export function CalendarView({ data }: CalendarViewProps) {
+        const [currentDate, setCurrentDate] = useState(new Date());
+        const { 
+          selectedItemId,
+          calendarDateProp,
+          calendarItemLimit,
+          calendarColorProp,
+        } = useDynamicView();
+        const updateItem = useDataDemoStore((s: any) => s.updateItem);
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/views/CalendarView.tsx
+    content: |2
+                            {visibleEvents.map(item => (
+                              <CalendarEvent
+                                key={item.id} 
+                                item={item} 
+                                isSelected={selectedItem?.id === item.id}
+                                isDragging={draggedItemId === item.id}
+                                onDragStart={handleDragStart}
+                                colorProp={calendarColorProp}
+                              />
+                            ))}
+      =======
+                            {visibleEvents.map(item => (
+                              <CalendarEvent
+                                key={item.id} 
+                                item={item} 
+                                isSelected={selectedItemId === item.id}
+                                isDragging={draggedItemId === item.id}
+                                onDragStart={handleDragStart}
+                                colorProp={calendarColorProp}
+                              />
+                            ))}
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/DynamicView.tsx
+    content: >+
+      --- src/features/dynamic-view/DynamicView.tsx
+
+      +++ src/features/dynamic-view/DynamicView.tsx
+
+      @@ -47,21 +47,19 @@
+         const { viewMode, isInitialLoading, items, groupBy } = rest;
+       
+         const groupedData = useMemo(() => {
+      -    if (groupBy === 'none' || viewMode !== 'kanban') {
+
+      -        return null;
+
+      -    }
+
+      +    if (groupBy === 'none') return null;
+
+      +
+           return items.reduce((acc, item) => {
+               const groupKey = String(item[groupBy as keyof GenericItem]) || 'N/A';
+               if (!acc[groupKey]) {
+                   acc[groupKey] = [] as GenericItem[];
+               }
+               acc[groupKey].push(item);
+               return acc;
+           }, {} as Record<string, GenericItem[]>);
+      -  }, [items, groupBy, viewMode]);
+
+      +  }, [items, groupBy]);
+       
+      -  const renderViewForData = useCallback((data: GenericItem[]) => {
+
+      +  const renderViewForData = useCallback((data: GenericItem[], cta?:
+      ReactNode) => {
+           switch (viewMode) {
+               case 'table': return <TableView data={data} />;
+               case 'cards': return <CardView data={data} />;
+      @@ -69,7 +67,14 @@
+               case 'list': default: return <ListView data={data} />;
+           }
+         }, [viewMode]);
+       
+         const renderContent = () => {
+           if (isInitialLoading) {
+             return <AnimatedLoadingSkeleton viewMode={viewMode} />;
+      @@ ... @@
+                 </div>
+               );
+           }
+           
+      -    if (items.length === 0 && !isInitialLoading) {
+
+      +    const ctaElement = rest.renderCta ? rest.renderCta(viewMode) : null;
+
+      +    
+
+      +    if (items.length === 0 && !isInitialLoading) {
+               return <EmptyState />;
+           }
+           
+           // This will be expanded later to handle group tabs
+      -    return renderViewForData(items);
+
+      +    return renderViewForData(items, ctaElement);
+         };
+       
+         return (
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ ... @@
+       import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+       import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
+       import { StatCard } from '@/components/shared/StatCard'
+       import { mockDataItems } from './data/mockData'
+       import type { GenericItem } from '@/features/dynamic-view/types'
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+       import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+       import { useDataDemoStore } from './store/dataDemo.store'
+      -import { 
+
+      -} from './store/dataDemo.store'
+
+      +import { AddDataItemCta } from
+      '@/features/dynamic-view/components/shared/AddDataItemCta'
+       
+       import { dataDemoViewConfig } from './DataDemo.config';
+       
+      @@ ... @@
+             onPageChange={setPage}
+             onItemSelect={onItemSelect}
+             // Custom Renderers
+      +      renderCta={(viewMode) => {
+
+      +        if (viewMode === 'calendar' || viewMode === 'kanban') return
+      null;
+
+      +        const colSpan = viewMode === 'table' ?
+      dataDemoViewConfig.tableView.columns.length + 1 : undefined;
+
+      +        return <AddDataItemCta viewMode={viewMode as 'list' | 'cards' |
+      'grid' | 'table'} colSpan={colSpan} />
+
+      +      }}
+             renderStats={() => (
+               <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+                 {stats.map((stat) => (
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/DynamicView.tsx
+    content: |2
+        const renderViewForData = useCallback((data: GenericItem[], cta?: ReactNode) => {
+          switch (viewMode) {
+              case 'table': return <TableView data={data} />;
+              case 'cards': return <CardView data={data} />;
+              case 'grid': return <CardView data={data} isGrid />;
+              case 'list': default: return <ListView data={data} />;
+          }
+        }, [viewMode]);
+      =======
+        const renderViewForData = useCallback((data: GenericItem[], cta?: ReactNode) => {
+          switch (viewMode) {
+              case 'table': return <TableView data={data} ctaElement={cta} />;
+              case 'cards': return <CardView data={data} ctaElement={cta} />;
+              case 'grid': return <CardView data={data} isGrid ctaElement={cta} />;
+              case 'list': default: return <ListView data={data} ctaElement={cta} />;
+          }
+        }, [viewMode]);
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+snapshot:
+  src/features/dynamic-view/components/controls/ViewControls.tsx: >-
+    import * as React from 'react'
+
+    import { Check, ListFilter, Search, SortAsc, ChevronsUpDown, Settings } from
+    'lucide-react'
+
+
+    import { cn } from '@/lib/utils'
+
+    import { Button } from '@/components/ui/button'
+
+    import { Input } from '@/components/ui/input'
+
+    import { Badge } from '@/components/ui/badge'
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover'
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuRadioGroup,
+      DropdownMenuRadioItem,
+      DropdownMenuSeparator,
+      DropdownMenuLabel,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu'
+
+    import {
+      Command,
+      CommandEmpty,
+      CommandGroup,
+      CommandInput,
+      CommandItem,
+      CommandList,
+      CommandSeparator,
+    } from '@/components/ui/command'
+
+    import { Label } from "@/components/ui/label";
+
+    import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+    import { Checkbox } from "@/components/ui/checkbox";
+
+    import { Switch } from "@/components/ui/switch";
+
+    import { Separator } from "@/components/ui/separator";
+
+
+    import type { FilterConfig, CalendarDateProp, CalendarDisplayProp,
+    CalendarColorProp } from '../../types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+
+    export interface DataViewControlsProps {
+      // groupOptions will now come from config
+    }
+
+
+    export function ViewControls() {
+      const {
+        filters,
+        setFilters,
+        sortConfig,
+        setSort,
+        groupBy,
+        setGroupBy,
+        viewMode,
+      } = useAppViewManager();
+      const { config } = useDynamicView();
+      const sortOptions = config.sortableFields;
+      const groupOptions = config.groupableFields;
+      const filterableFields = config.filterableFields;
+
+      const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setFilters({ ...filters, searchTerm: event.target.value })
+      }
+      
+      const activeFilterCount = filterableFields.reduce((acc, field) => acc + (filters[field.id]?.length || 0), 0)
+
+      return (
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
+          {/* Search */}
+          <div className="relative w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search projects..."
+              className="pl-9 w-full sm:w-64"
+              value={filters.searchTerm}
+              onChange={handleSearchChange}
+            />
+          </div>
+
+          {/* Filters */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start border-dashed">
+                <ListFilter className="mr-2 h-4 w-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <>
+                    <div className="mx-2 h-4 w-px bg-muted-foreground/50" />
+                    <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                      {activeFilterCount}
+                    </Badge>
+                  </>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[240px] p-0" align="start">
+              <CombinedFilter filters={filters} onFiltersChange={setFilters} filterableFields={filterableFields} />
+            </PopoverContent>
+          </Popover>
+
+          {activeFilterCount > 0 && (
+            <Button variant="ghost" size="sm" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+          )}
+
+          {/* Spacer */}
+          <div className="hidden md:block flex-grow" />
+
+          {viewMode === 'calendar' ? (
+            <CalendarSpecificControls />
+          ) : (
+            <>
+              {/* Sorter */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto justify-start">
+                    <SortAsc className="mr-2 h-4 w-4" />
+                    Sort by: {sortOptions.find(o => o.id === sortConfig?.key)?.label || 'Default'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[200px]">
+                  <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
+                    onValueChange={(value) => {
+                      if (value.startsWith('default')) {
+                        setSort(null)
+                      } else {
+                        const [key, direction] = value.split('-')
+                        setSort({ key: key, direction: direction as 'asc' | 'desc' })
+                      }
+                    }}
+                  >
+                    <DropdownMenuRadioItem value="default-">Default</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    {sortOptions.map(option => (
+                      <React.Fragment key={option.id}>
+                        <DropdownMenuRadioItem value={`${option.id}-desc`}>{option.label} (Desc)</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value={`${option.id}-asc`}>{option.label} (Asc)</DropdownMenuRadioItem>
+                      </React.Fragment>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Group By Dropdown */}
+              <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 w-full justify-between">
+                      Group by: {groupOptions.find(o => o.id === groupBy)?.label}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[180px]">
+                    <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                      {groupOptions.map(option => (
+                        <DropdownMenuRadioItem key={option.id} value={option.id}>
+                          {option.label}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </>
+          )}
+        </div>
+      )
+    }
+
+
+    function CalendarSpecificControls() {
+        const { 
+            calendarDateProp, setCalendarDateProp,
+            calendarDisplayProps, setCalendarDisplayProps,
+            calendarItemLimit, setCalendarItemLimit,
+            calendarColorProp, setCalendarColorProp,
+        } = useAppViewManager();
+
+        const handleDisplayPropChange = (prop: CalendarDisplayProp, checked: boolean) => {
+            const newProps = checked 
+                ? [...calendarDisplayProps, prop] 
+                : calendarDisplayProps.filter(p => p !== prop);
+            setCalendarDisplayProps(newProps);
+        };
+
+        return (
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-9 w-9">
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-4" align="end">
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <h4 className="font-medium leading-none">Calendar Settings</h4>
+                            <p className="text-sm text-muted-foreground">
+                                Customize the calendar view.
+                            </p>
+                        </div>
+                        <Separator />
+                        <div className="space-y-3">
+                            <Label className="font-semibold">Item Background Color</Label>
+                            <RadioGroup value={calendarColorProp} onValueChange={(v) => setCalendarColorProp(v as CalendarColorProp)} className="gap-2">
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="none" id="color-none" />
+                                    <Label htmlFor="color-none" className="font-normal">None</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="priority" id="color-priority" />
+                                    <Label htmlFor="color-priority" className="font-normal">By Priority</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="status" id="color-status" />
+                                    <Label htmlFor="color-status" className="font-normal">By Status</Label>
+                                </div>
+                                 <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="category" id="color-category" />
+                                    <Label htmlFor="color-category" className="font-normal">By Category</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                        <Separator />
+                        <div className="space-y-3">
+                            <Label className="font-semibold">Date Property</Label>
+                            <RadioGroup value={calendarDateProp} onValueChange={(v) => setCalendarDateProp(v as CalendarDateProp)} className="gap-2">
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="dueDate" id="dueDate" />
+                                    <Label htmlFor="dueDate" className="font-normal">Due Date</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="createdAt" id="createdAt" />
+                                    <Label htmlFor="createdAt" className="font-normal">Created Date</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="updatedAt" id="updatedAt" />
+                                    <Label htmlFor="updatedAt" className="font-normal">Updated Date</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                        <div className="space-y-3">
+                            <Label className="font-semibold">Card Details</Label>
+                            <div className="space-y-2">
+                                {(['priority', 'assignee', 'tags'] as CalendarDisplayProp[]).map(prop => (
+                                    <div key={prop} className="flex items-center space-x-2">
+                                        <Checkbox id={prop} checked={calendarDisplayProps.includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
+                                        <Label htmlFor={prop} className="capitalize font-normal">{prop}</Label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                             <div className="space-y-0.5">
+                                <Label htmlFor="show-all" className="font-semibold">Show all items</Label>
+                                <p className="text-xs text-muted-foreground">Display all items on a given day.</p>
+                            </div>
+                            <Switch id="show-all" checked={calendarItemLimit === 'all'} onCheckedChange={(c) => setCalendarItemLimit(c ? 'all' : 3)} />
+                        </div>
+                    </div>
+                </PopoverContent>
+            </Popover>
+        );
+    }
+
+
+    function CombinedFilter({
+      filters,
+      onFiltersChange,
+      filterableFields,
+    }: {
+      filters: FilterConfig;
+      onFiltersChange: (filters: FilterConfig) => void;
+      filterableFields: { id: string; label: string; options: { id: string; label: string }[] }[];
+    }) {
+      const handleSelect = (fieldId: string, value: string) => {
+        const currentValues = new Set(filters[fieldId] || []);
+        currentValues.has(value) ? currentValues.delete(value) : currentValues.add(value);
+        
+        onFiltersChange({ ...filters, [fieldId]: Array.from(currentValues) });
+      };
+
+      const hasActiveFilters = filterableFields.some(field => (filters[field.id] || []).length > 0);
+
+      const clearFilters = () => {
+        const clearedFilters: Partial<FilterConfig> = {};
+        filterableFields.forEach(field => {
+          clearedFilters[field.id as keyof Omit<FilterConfig, 'searchTerm'>] = [];
+        });
+        onFiltersChange({ searchTerm: filters.searchTerm, ...clearedFilters });
+      }
+
+      return (
+        <Command>
+          <CommandInput placeholder="Filter by..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            
+            {filterableFields.map((field, index) => (
+              <React.Fragment key={field.id}>
+                <CommandGroup heading={field.label}>
+                  {field.options.map((option) => {
+                const isSelected = (filters[field.id] || []).includes(option.id);
+                return (
+                  <CommandItem
+                    key={option.id}
+                    onSelect={() => handleSelect(field.id, option.id)}
+                  >
+                    <div
+                      className={cn(
+                        'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                        isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
+                      )}
+                    >
+                      <Check className={cn('h-4 w-4')} />
+                    </div>
+                    <span>{option.label}</span>
+                  </CommandItem>
+                );
+              })}
+                </CommandGroup>
+                {index < filterableFields.length - 1 && <CommandSeparator />}
+              </React.Fragment>
+            ))}
+
+            {hasActiveFilters && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={clearFilters}
+                    className="justify-center text-center text-sm"
+                  >
+                    Clear filters
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      )
+    }
+  src/features/dynamic-view/components/controls/ViewModeSelector.tsx: >-
+    import { useEffect, useRef, useState, useCallback } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays }
+    from 'lucide-react'
+
+    import type { ViewMode } from '../../types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+
+    const viewModes = [
+      { id: 'list' as ViewMode, label: 'List', icon: List, description: 'Compact list with details' },
+      { id: 'cards' as ViewMode, label: 'Cards', icon: LayoutGrid, description: 'Rich card layout' },
+      { id: 'kanban' as ViewMode, label: 'Kanban', icon: LayoutDashboard, description: 'Interactive Kanban board' },
+      { id: 'calendar' as ViewMode, label: 'Calendar', icon: CalendarDays, description: 'Interactive calendar view' },
+      { id: 'grid' as ViewMode, label: 'Grid', icon: Grid3X3, description: 'Masonry grid view' },
+      { id: 'table' as ViewMode, label: 'Table', icon: Table, description: 'Structured data table' }
+    ]
+
+
+    export function ViewModeSelector() {
+      const { viewMode, setViewMode } = useAppViewManager();
+      const indicatorRef = useRef<HTMLDivElement>(null)
+      const containerRef = useRef<HTMLDivElement>(null)
+      const [isExpanded, setIsExpanded] = useState(false)
+      const [isTransitioning, setIsTransitioning] = useState(false)
+
+      const updateIndicatorPosition = useCallback((immediate = false) => {
+        if (!indicatorRef.current || !containerRef.current || isTransitioning) return
+
+        const activeButton = containerRef.current.querySelector(`[data-mode="${viewMode}"]`) as HTMLElement
+        if (!activeButton) return
+
+        const containerRect = containerRef.current.getBoundingClientRect()
+        const buttonRect = activeButton.getBoundingClientRect()
+        
+        const left = buttonRect.left - containerRect.left
+        const width = buttonRect.width
+
+        if (immediate) {
+          // Set position immediately without animation for initial load
+          gsap.set(indicatorRef.current, {
+            x: left,
+            width: width
+          })
+        } else {
+          gsap.to(indicatorRef.current, {
+            duration: 0.3,
+            x: left,
+            width: width,
+            ease: "power2.out"
+          })
+        }
+      }, [viewMode, isTransitioning])
+
+      // Initial setup - set position immediately without animation
+      useEffect(() => {
+        const timer = setTimeout(() => {
+          updateIndicatorPosition(true)
+        }, 0)
+        return () => clearTimeout(timer)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []) // Only run once on mount
+
+      useEffect(() => {
+        if (!isTransitioning) {
+          updateIndicatorPosition()
+        }
+      }, [viewMode, isTransitioning, updateIndicatorPosition])
+
+      const handleMouseEnter = () => {
+        setIsTransitioning(true)
+        setIsExpanded(true)
+        
+        // Wait for expand animation to complete
+        setTimeout(() => {
+          setIsTransitioning(false)
+        }, 500)
+      }
+
+      const handleMouseLeave = () => {
+        setIsTransitioning(true)
+        setIsExpanded(false)
+        
+        // Wait for collapse animation to complete
+        setTimeout(() => {
+          setIsTransitioning(false)
+        }, 500)
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          className={cn(
+            "relative flex items-center bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-1.5 shadow-lg transition-all duration-500 ease-out",
+            "hover:shadow-xl hover:bg-card/70",
+            isExpanded ? "gap-1" : "gap-0"
+          )}
+        >
+          {/* Animated indicator */}
+          <div
+            ref={indicatorRef}
+            className="absolute inset-y-1.5 bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/20 rounded-xl transition-all duration-300"
+            style={{ left: 0, width: 0 }}
+          />
+          
+          {/* Mode buttons */}
+          {viewModes.map((mode, index) => {
+            const IconComponent = mode.icon
+            const isActive = viewMode === mode.id
+            
+            return (
+              <button
+                key={mode.id}
+                data-mode={mode.id}
+                onClick={() => setViewMode(mode.id)}
+                className={cn(
+                  "relative flex items-center justify-center rounded-xl transition-all duration-500 ease-out group overflow-hidden",
+                  "hover:bg-accent/20 active:scale-95",
+                  isActive && "text-primary",
+                  isExpanded ? "gap-3 px-4 py-2.5" : "gap-0 px-3 py-2.5"
+                )}
+                title={mode.description}
+                style={{
+                  transitionDelay: isExpanded ? `${index * 50}ms` : `${(viewModes.length - index - 1) * 30}ms`
+                }}
+              >
+                <IconComponent className={cn(
+                  "w-5 h-5 transition-all duration-300 flex-shrink-0",
+                  isActive && "scale-110",
+                  "group-hover:scale-105",
+                  isExpanded ? "rotate-0" : "rotate-0"
+                )} />
+                
+                {/* Label with smooth expand/collapse */}
+                <div className={cn(
+                  "overflow-hidden transition-all duration-500 ease-out",
+                  isExpanded ? "max-w-[80px] opacity-100" : "max-w-0 opacity-0"
+                )}>
+                  <span className={cn(
+                    "font-medium whitespace-nowrap transition-all duration-300",
+                    isActive ? "text-primary" : "text-muted-foreground",
+                    "group-hover:text-foreground"
+                  )}>
+                    {mode.label}
+                  </span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )
+    }
+  src/features/dynamic-view/components/views/CardView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import { ArrowUpRight } from 'lucide-react'
+
+    import type { GenericItem } from '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from '../shared/EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import {
+      useSelectedItem,
+    } from '../../../../pages/DataDemo/store/dataDemo.store'
+
+    import { AddDataItemCta } from '../shared/AddDataItemCta'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    export function CardView({ data, isGrid = false }: { data: GenericItem[];
+    isGrid?: boolean }) {
+      const { onItemSelect, itemId } = useAppViewManager();
+      const selectedItem = useSelectedItem(itemId);
+      const { config } = useDynamicView();
+      const { cardView: viewConfig } = config;
+
+      const containerRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(containerRef, [data], { mode: 'incremental', y: 40 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "gap-6",
+            isGrid
+              ? "grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))]"
+              : "grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))]",
+            "pb-4"
+          )}
+        >
+          {items.map((item: GenericItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div
+                key={item.id}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                  "group relative overflow-hidden rounded-3xl border bg-card/50 backdrop-blur-sm transition-all duration-500 cursor-pointer",
+                  "hover:bg-card/80 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-2",
+                  "active:scale-[0.98]",
+                  isSelected && "ring-2 ring-primary/30 border-primary/40 bg-card/90 shadow-lg shadow-primary/20",
+                )}
+              >
+                {/* Card Header with Thumbnail */}
+                <div className="relative p-6 pb-4">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl group-hover:scale-110 transition-transform duration-300">
+                      <FieldRenderer item={item} fieldId={viewConfig.thumbnailField} />
+                    </div>
+                    <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                  </div>
+
+                  {/* Header Fields (e.g., priority indicator) */}
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    {viewConfig.headerFields.map(fieldId => (
+                      <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ displayAs: 'indicator' }} />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="px-6 pb-6">
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+                  </h3>
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
+                    <FieldRenderer item={item} fieldId={viewConfig.descriptionField} />
+                  </p>
+
+                  {/* Status and Category */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <FieldRenderer item={item} fieldId={viewConfig.statusField} />
+                    <FieldRenderer item={item} fieldId={viewConfig.categoryField} />
+                  </div>
+
+                  {/* Tags, Progress, Assignee */}
+                  <div className="space-y-4 mb-4">
+                    <FieldRenderer item={item} fieldId={viewConfig.tagsField} />
+                    <FieldRenderer item={item} fieldId={viewConfig.progressField} />
+                    <FieldRenderer item={item} fieldId={viewConfig.assigneeField} />
+                  </div>
+
+                  {/* Metrics and Date */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <FieldRenderer item={item} fieldId={viewConfig.metricsField} />
+                    <FieldRenderer item={item} fieldId={viewConfig.dateField} />
+                  </div>
+                </div>
+
+                {/* Hover gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-primary/5 pointer-events-none" />
+                )}
+              </div>
+            )
+          })}
+          <AddDataItemCta viewMode={isGrid ? 'grid' : 'cards'} />
+        </div>
+      )
+    }
+  src/features/dynamic-view/components/views/ListView.tsx: >-
+    import { useRef } from 'react'
+
+    import { cn } from '@/lib/utils'
+
+    import type { GenericItem } from '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook'
+
+    import { EmptyState } from '../shared/EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { 
+      useSelectedItem,
+    } from '../../../../pages/DataDemo/store/dataDemo.store'
+
+    import { AddDataItemCta } from '../shared/AddDataItemCta'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    export function ListView({ data }: { data: GenericItem[] }) {
+      const { onItemSelect, itemId } = useAppViewManager();
+      const selectedItem = useSelectedItem(itemId);
+      const { config } = useDynamicView();
+
+      const listRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
+
+      const items = Array.isArray(data) ? data : [];
+      if (items.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div ref={listRef}>
+          {items.map((item: GenericItem) => {
+            const isSelected = selectedItem?.id === item.id
+            
+            return (
+              <div key={item.id} className="px-2">
+                <div
+                  onClick={() => onItemSelect(item)}
+                  className={cn(
+                    "group flex items-center px-2 py-2 rounded-md transition-colors duration-200 cursor-pointer",
+                    "hover:bg-accent/80",
+                    isSelected ? "bg-accent" : "bg-transparent"
+                  )}
+                >
+                  {/* Left side: Icon and Title */}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex-shrink-0 w-8 text-center">
+                      <FieldRenderer item={item} fieldId={config.listView.iconField} className="text-xl" />
+                    </div>
+                    <div className="font-medium truncate text-card-foreground group-hover:text-primary">
+                      <FieldRenderer item={item} fieldId={config.listView.titleField} />
+                    </div>
+                  </div>
+
+                  {/* Right side: Metadata */}
+                  <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6 ml-4 text-sm text-muted-foreground">
+                    {config.listView.metaFields.map(fieldConfig => (
+                      <div key={fieldConfig.fieldId} className={fieldConfig.className}>
+                        <FieldRenderer item={item} fieldId={fieldConfig.fieldId} options={{ avatarClassName: 'w-7 h-7' }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          <AddDataItemCta viewMode='list' />
+        </div>
+      )
+    }
+  src/features/dynamic-view/components/views/TableView.tsx: >-
+    import { useRef, useLayoutEffect, useMemo } from 'react'
+
+    import { gsap } from 'gsap'
+
+    import { cn } from '@/lib/utils'
+
+    import { 
+      ArrowUpDown, 
+      ArrowUp, 
+      ArrowDown,
+      ExternalLink
+    } from 'lucide-react'
+
+    import type { GenericItem } from '../../types'
+
+    import { EmptyState } from '../shared/EmptyState'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import {
+      useSelectedItem,
+    } from '../../../../pages/DataDemo/store/dataDemo.store'
+
+    import { capitalize } from '@/lib/utils'
+
+    import { AddDataItemCta } from '../shared/AddDataItemCta'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    export function TableView({ data }: { data: GenericItem[] }) {
+      const {
+        sortConfig,
+        setTableSort,
+        groupBy,
+        onItemSelect,
+        itemId,
+      } = useAppViewManager();
+      const { config } = useDynamicView();
+      const { tableView: viewConfig } = config;
+      const selectedItem = useSelectedItem(itemId);
+
+      const tableRef = useRef<HTMLTableElement>(null)
+      const animatedItemsCount = useRef(0)
+
+      useLayoutEffect(() => {
+        if (tableRef.current) {
+          // Only select item rows for animation, not group headers
+          const newItems = Array.from( 
+            tableRef.current.querySelectorAll('tbody tr')
+          ).filter(tr => !(tr as HTMLElement).dataset.groupHeader)
+           .slice(animatedItemsCount.current);
+          gsap.fromTo(newItems,
+            { y: 20, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.05,
+              ease: "power2.out",
+            },
+          );
+          animatedItemsCount.current = data.length;
+        }
+      }, [data]);
+
+      const SortIcon = ({ field }: { field: string }) => {
+        if (sortConfig?.key !== field) {
+          return <ArrowUpDown className="w-4 h-4 opacity-50" />
+        }
+        if (sortConfig.direction === 'asc') {
+          return <ArrowUp className="w-4 h-4 text-primary" />
+        }
+        if (sortConfig.direction === 'desc') {
+          return <ArrowDown className="w-4 h-4 text-primary" />
+        }
+        return <ArrowUpDown className="w-4 h-4 opacity-50" />
+      }
+
+      const handleSortClick = (field: string) => {
+        setTableSort(field)
+      }
+
+      const groupedData = useMemo(() => {
+        if (groupBy === 'none') return null;
+        return (data as GenericItem[]).reduce((acc, item) => {
+          const groupKey = item[groupBy as 'status' | 'priority' | 'category'] || 'N/A';
+          if (!acc[groupKey]) {
+            acc[groupKey] = [];
+          }
+          acc[groupKey].push(item);
+          return acc;
+        }, {} as Record<string, GenericItem[]>);
+      }, [data, groupBy]);
+
+      if (data.length === 0) {
+        return <EmptyState />
+      }
+
+      return (
+        <div className="relative overflow-hidden rounded-2xl border bg-card/50 backdrop-blur-sm">
+          <div className="overflow-x-auto">
+            <table ref={tableRef} className="w-full">
+              <thead>
+                <tr className="border-b border-border/50 bg-muted/20">
+                  {viewConfig.columns.map(col => (
+                    <th key={col.fieldId} className="text-left p-4 font-semibold text-sm">
+                      {col.isSortable ? (
+                        <button
+                          onClick={() => handleSortClick(col.fieldId)}
+                          className="flex items-center gap-2 hover:text-primary transition-colors"
+                        >
+                          {col.label}
+                          <SortIcon field={col.fieldId} />
+                        </button>
+                      ) : (
+                        <span>{col.label}</span>
+                      )}
+                    </th>
+                  ))}
+                  <th className="text-center p-4 font-semibold text-sm w-16">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupedData
+                  ? Object.entries(groupedData).flatMap(([groupName, items]) => [
+                      <tr key={groupName} data-group-header="true" className="sticky top-0 z-10">
+                        <td colSpan={viewConfig.columns.length + 1} className="p-2 bg-muted/50 backdrop-blur-sm">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-sm">{capitalize(groupName)}</h3>
+                            <span className="text-xs px-2 py-0.5 bg-background rounded-full font-medium">{items.length}</span>
+                          </div>
+                        </td>
+                      </tr>,
+                      ...items.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                    ])
+                  : data.map(item => <TableRow key={item.id} item={item} isSelected={selectedItem?.id === item.id} onItemSelect={onItemSelect} />)
+                }
+                <AddDataItemCta viewMode='table' colSpan={viewConfig.columns.length + 1} />
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )
+    }
+
+
+    function TableRow({ item, isSelected, onItemSelect }: { item: GenericItem;
+    isSelected: boolean; onItemSelect: (item: GenericItem) => void }) {
+      const { config } = useDynamicView();
+      return (
+        <tr
+          onClick={() => onItemSelect(item)}
+          className={cn(
+            "group border-b border-border/30 transition-all duration-200 cursor-pointer",
+            "hover:bg-accent/20 hover:border-primary/20",
+            isSelected && "bg-primary/5 border-primary/30"
+          )}
+        >
+          {config.tableView.columns.map(col => (
+            <td key={col.fieldId} className="p-4">
+              <FieldRenderer item={item} fieldId={col.fieldId} options={{ showPercentage: true }} />
+            </td>
+          ))}
+          {/* Actions Column */}
+          <td className="p-4">
+            <button 
+              onClick={(e) => {
+                e.stopPropagation()
+                onItemSelect(item)
+              }}
+              className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-accent transition-colors"
+              title="View details"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </button>
+          </td>
+        </tr>
+      )
+    }
+  src/features/dynamic-view/components/views/KanbanView.tsx: >-
+    import { useState, useEffect, Fragment } from "react";
+
+    import {
+      GripVertical,
+      Plus,
+    } from "lucide-react";
+
+    import type { GenericItem } from '../../types'
+
+    import { Card, CardContent } from "@/components/ui/card";
+
+    import { cn } from "@/lib/utils";
+
+    import { EmptyState } from "../shared/EmptyState";
+
+    import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+    import { useDataDemoStore } from
+    "../../../../pages/DataDemo/store/dataDemo.store";
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    interface KanbanCardProps {
+      item: GenericItem;
+      isDragging: boolean;
+    }
+
+
+    function KanbanCard({ item, isDragging, ...props }: KanbanCardProps &
+    React.HTMLAttributes<HTMLDivElement>) {
+      const { onItemSelect } = useAppViewManager();
+      const { config } = useDynamicView();
+      const { kanbanView: viewConfig } = config;
+
+      return (
+        <Card
+          {...props}
+          data-draggable-id={item.id}
+          onClick={() => onItemSelect(item)}
+          className={cn(
+            "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
+            isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
+          )}
+        >
+          <CardContent className="p-5">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between">
+                <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
+                  <FieldRenderer item={item} fieldId={viewConfig.cardFields.titleField} />
+                </h4>
+                <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+              </div>
+
+              <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.descriptionField} />
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.priorityField} />
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.tagsField} />
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
+                <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
+                  <FieldRenderer item={item} fieldId={viewConfig.cardFields.dateField} />
+                  <FieldRenderer item={item} fieldId={viewConfig.cardFields.metricsField} />
+                </div>
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.assigneeField} options={{ compact: true, avatarClassName: 'w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50' }} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+
+    interface DataKanbanViewProps {
+      data: Record<string, GenericItem[]>;
+    }
+
+
+    export function KanbanView({ data }: DataKanbanViewProps) {
+      const [columns, setColumns] = useState(data);
+      const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+      const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
+      const { groupBy } = useAppViewManager();
+      const updateItem = useDataDemoStore((s: any) => s.updateItem);
+
+      useEffect(() => {
+        setColumns(data);
+      }, [data]);
+
+      const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: GenericItem, sourceColumnId: string) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
+        setDraggedItemId(item.id);
+      };
+
+      const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) => {
+        const mouseY = e.clientY;
+        let closestIndex = elements.length;
+
+        elements.forEach((el, index) => {
+          const { top, height } = el.getBoundingClientRect();
+          const offset = mouseY - (top + height / 2);
+          if (offset < 0 && index < closestIndex) {
+            closestIndex = index;
+          }
+        });
+        return closestIndex;
+      };
+
+      const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
+        e.preventDefault();
+        const container = e.currentTarget;
+        const draggableElements = Array.from(container.querySelectorAll('[data-draggable-id]')) as HTMLElement[];
+        const index = getDropIndicatorIndex(e, draggableElements);
+
+        if (dropIndicator?.columnId === columnId && dropIndicator.index === index) return;
+        setDropIndicator({ columnId, index });
+      };
+
+      const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
+        e.preventDefault();
+        setDropIndicator(null);
+        try {
+          const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
+
+          const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
+          if (!droppedItem) return;
+
+          // Update local state for immediate feedback
+          setColumns(prev => {
+            const newColumns = { ...prev };
+            const sourceCol = prev[sourceColumnId].filter(i => i.id !== itemId);
+
+            if (sourceColumnId === targetColumnId) {
+              const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : sourceCol.length;
+              sourceCol.splice(dropIndex, 0, droppedItem);
+              newColumns[sourceColumnId] = sourceCol;
+            } else {
+              const targetCol = [...prev[targetColumnId]];
+              const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : targetCol.length;
+              targetCol.splice(dropIndex, 0, droppedItem);
+              
+              newColumns[sourceColumnId] = sourceCol;
+              newColumns[targetColumnId] = targetCol;
+            }
+            return newColumns;
+          });
+          
+          // Persist change to global store. The groupBy value tells us which property to update.
+          if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
+            updateItem(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);
+          }
+
+        } catch (err) {
+          console.error("Failed to parse drag data", err)
+        } finally {
+          setDraggedItemId(null);
+        }
+      };
+
+      const handleDragEnd = () => {
+        setDraggedItemId(null);
+        setDropIndicator(null);
+      };
+
+      const initialColumns = Object.entries(data);
+
+      if (!initialColumns || initialColumns.length === 0) {
+        return <EmptyState />;
+      }
+
+      const statusColors: Record<string, string> = {
+        active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
+        low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
+      };
+
+      const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
+
+      return (
+        <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
+          {Object.entries(columns).map(([columnId, items]) => (
+            <div
+              key={columnId}
+              className={cn(
+                "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
+                dropIndicator?.columnId === columnId && "bg-primary/10 border-primary/30"
+              )}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
+                  <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize truncate">{columnId}</h3>
+                  <span className="text-sm font-medium text-muted-foreground bg-background/50 rounded-full px-2 py-0.5">{items.length}</span>
+                </div>
+                <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+                  <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
+                </button>
+              </div>
+
+              <div
+                onDragOver={(e) => handleDragOverCardsContainer(e, columnId)}
+                onDrop={(e) => handleDrop(e, columnId)}
+                onDragLeave={() => setDropIndicator(null)}
+                className="space-y-4 min-h-[100px]"
+              >
+                {items.map((item, index) => (
+                  <Fragment key={item.id}>
+                    {dropIndicator?.columnId === columnId && dropIndicator.index === index && (
+                      <DropIndicator />
+                    )}
+                    <KanbanCard
+                      item={item}
+                      isDragging={draggedItemId === item.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, item, columnId)}
+                      onDragEnd={handleDragEnd}
+                    />
+                  </Fragment>
+                ))}
+                {dropIndicator?.columnId === columnId && dropIndicator.index === items.length && (
+                  <DropIndicator />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+  src/features/dynamic-view/components/views/CalendarView.tsx: >-
+    import { useState, useMemo, useRef, useLayoutEffect } from "react";
+
+    import { format, addMonths, subMonths, startOfMonth, endOfMonth,
+    startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay,
+    } from "date-fns";
+
+    import { ChevronLeft, ChevronRight } from "lucide-react";
+
+    import { gsap } from "gsap";
+
+
+    import { Button } from "@/components/ui/button";
+
+    import { cn } from "@/lib/utils";
+
+    import type { GenericItem } from '../../types';
+
+    import type { CalendarDateProp, CalendarColorProp, Status, Priority } from
+    '../../types';
+
+    import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+    import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
+
+    import { useSelectedItem, useDataDemoStore } from
+    "../../../../pages/DataDemo/store/dataDemo.store";
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    interface CalendarViewProps {
+      data: GenericItem[];
+    }
+
+
+    const PRIORITY_BG_COLORS: Record<Priority, string> = {
+      low: 'bg-blue-500/80 border-blue-600/80 text-white',
+      medium: 'bg-yellow-500/80 border-yellow-600/80 text-yellow-950',
+      high: 'bg-orange-500/80 border-orange-600/80 text-white',
+      critical: 'bg-red-600/80 border-red-700/80 text-white',
+    };
+
+
+    const STATUS_BG_COLORS: Record<Status, string> = {
+      active: 'bg-sky-500/80 border-sky-600/80 text-white',
+      pending: 'bg-amber-500/80 border-amber-600/80 text-amber-950',
+      completed: 'bg-emerald-600/80 border-emerald-700/80 text-white',
+      archived: 'bg-zinc-500/80 border-zinc-600/80 text-white',
+    };
+
+
+    const CATEGORY_BG_COLORS = [
+      'bg-rose-500/80 border-rose-600/80 text-white',
+      'bg-fuchsia-500/80 border-fuchsia-600/80 text-white',
+      'bg-indigo-500/80 border-indigo-600/80 text-white',
+      'bg-teal-500/80 border-teal-600/80 text-white',
+      'bg-lime-500/80 border-lime-600/80 text-lime-950',
+    ];
+
+
+    const getCategoryBgColor = (category: string) => {
+      let hash = 0;
+      for (let i = 0; i < category.length; i++) {
+        hash = category.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const index = Math.abs(hash % CATEGORY_BG_COLORS.length);
+      return CATEGORY_BG_COLORS[index];
+    };
+
+
+    function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }:
+    {
+      currentDate: Date;
+      onPrevMonth: () => void;
+      onNextMonth: () => void;
+      onToday: () => void;
+    }) {
+      return (
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <h2 className="text-xl font-bold md:text-2xl tracking-tight">
+            {format(currentDate, "MMMM yyyy")}
+          </h2>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
+            <div className="flex items-center">
+              <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-9 w-9" onClick={onNextMonth}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+
+    function CalendarEvent({ item, isSelected, isDragging, onDragStart,
+    colorProp }: { 
+        item: GenericItem; 
+        isSelected: boolean;
+        isDragging: boolean;
+        onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
+        colorProp: CalendarColorProp;
+    }) {
+      const { onItemSelect } = useAppViewManager();
+      const { config } = useDynamicView();
+      const { calendarView: viewConfig } = config;
+
+        const colorClass = useMemo(() => {
+          switch (colorProp) {
+            case 'priority': return PRIORITY_BG_COLORS[item.priority as Priority];
+            case 'status': return STATUS_BG_COLORS[item.status as Status];
+            case 'category': return getCategoryBgColor(item.category as string);
+            default: return null;
+          }
+        }, [colorProp, item]);
+
+        return (
+            <div
+                draggable
+                onDragStart={(e) => onDragStart(e, item.id)}
+                onClick={() => onItemSelect(item)}
+                className={cn(
+                    "p-2 rounded-lg cursor-grab transition-all duration-200 border space-y-1",
+                    isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2",
+                    isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing",
+                    colorClass 
+                      ? `${colorClass} hover:brightness-95 dark:hover:brightness-110`
+                      : "bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/80 dark:hover:bg-neutral-700/70"
+                )}
+            >
+                <div className={cn(
+                  "font-semibold text-sm leading-tight line-clamp-2",
+                  colorClass ? "text-inherit" : "text-card-foreground/90"
+                )}>
+                  <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+                </div>
+
+                {viewConfig.displayFields.includes('tags') && <FieldRenderer item={item} fieldId="tags" />}
+
+                {(viewConfig.displayFields.includes('priority') || viewConfig.displayFields.includes('assignee')) && (
+                    <div className={cn(
+                        "flex items-center justify-between pt-1 border-t",
+                        colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
+                    )}>
+                        <div>
+                          {viewConfig.displayFields.includes('priority') && <FieldRenderer item={item} fieldId="priority" />}
+                        </div>
+                        <div>
+                          {viewConfig.displayFields.includes('assignee') && <FieldRenderer item={item} fieldId="assignee" options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+
+    const datePropLabels: Record<CalendarDateProp, string> = {
+      dueDate: 'due dates',
+      createdAt: 'creation dates',
+      updatedAt: 'update dates',
+    };
+
+
+    export function CalendarView({ data }: CalendarViewProps) {
+      const [currentDate, setCurrentDate] = useState(new Date());
+      const { 
+        itemId,
+        calendarDateProp,
+        calendarItemLimit,
+        calendarColorProp,
+      } = useAppViewManager();
+      const selectedItem = useSelectedItem(itemId);
+      const updateItem = useDataDemoStore((s: any) => s.updateItem);
+      
+      // Drag & Drop State
+      const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+      const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
+
+      // GSAP animation state
+      const [direction, setDirection] = useState(0); // 0: initial, 1: next, -1: prev
+
+      // Responsive Calendar State
+      const calendarContainerRef = useRef<HTMLDivElement>(null);
+      const { width } = useResizeObserver(calendarContainerRef);
+      const MIN_DAY_WIDTH = 160; // px
+      const numColumns = useMemo(() => {
+        if (width === 0) return 7;
+        const cols = Math.floor(width / MIN_DAY_WIDTH);
+        return Math.max(3, Math.min(7, cols));
+      }, [width]);
+
+      const gridRef = useRef<HTMLDivElement>(null);
+      const itemsByDateProp = useMemo(() => data.filter(item => !!item[calendarDateProp]), [data, calendarDateProp]);
+
+      const eventsByDate = useMemo(() => {
+        const eventsMap = new Map<string, GenericItem[]>();
+        itemsByDateProp.forEach(item => {
+          const dateValue = item[calendarDateProp];
+          if (!dateValue) return;
+          const date = new Date(dateValue as string);
+          const dateKey = format(date, "yyyy-MM-dd");
+          if (!eventsMap.has(dateKey)) {
+            eventsMap.set(dateKey, []);
+          }
+          eventsMap.get(dateKey)?.push(item);
+        });
+        return eventsMap;
+      }, [itemsByDateProp, calendarDateProp]);
+
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(monthStart);
+      const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
+      const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+      const days = eachDayOfInterval({ start: startDate, end: endDate });
+      const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      
+      // D&D Handlers
+      const handleDragStart = (e: React.DragEvent, itemId: string) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', itemId);
+        setDraggedItemId(itemId);
+      };
+      
+      const handleDragEnd = () => {
+        setDraggedItemId(null);
+        setDropTargetDate(null);
+      };
+
+      const handleDragOver = (e: React.DragEvent, day: Date) => {
+        e.preventDefault();
+        if (dropTargetDate === null || !isSameDay(day, dropTargetDate)) {
+            setDropTargetDate(day);
+        }
+      };
+
+      const handleDragLeave = () => {
+        setDropTargetDate(null);
+      };
+
+      const handleDrop = (e: React.DragEvent, day: Date) => {
+        e.preventDefault();
+        const itemIdToUpdate = e.dataTransfer.getData('text/plain');
+        if (itemIdToUpdate) {
+            const originalItem = itemsByDateProp.find(i => i.id === itemIdToUpdate);
+            if (originalItem && originalItem[calendarDateProp]) {
+                const originalDate = new Date(originalItem[calendarDateProp] as string);
+                // Preserve the time, only change the date part
+                const newDueDate = new Date(day);
+                newDueDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), originalDate.getMilliseconds());
+                updateItem(itemIdToUpdate, { [calendarDateProp]: newDueDate.toISOString() });
+            }
+        }
+        handleDragEnd(); // Reset state
+      };
+      
+      const handlePrevMonth = () => {
+        setDirection(-1);
+        setCurrentDate(subMonths(currentDate, 1));
+      };
+      const handleNextMonth = () => {
+        setDirection(1);
+        setCurrentDate(addMonths(currentDate, 1));
+      };
+      const handleToday = () => {
+        setDirection(0); // No animation for 'Today'
+        setCurrentDate(new Date());
+      };
+
+      useLayoutEffect(() => {
+        if (direction === 0 || !gridRef.current) return;
+        gsap.fromTo(gridRef.current, 
+          { opacity: 0, x: 30 * direction }, 
+          { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out' }
+        );
+      }, [currentDate]);
+
+      return (
+        <div ref={calendarContainerRef} className="-mx-4 md:-mx-6">
+          <div className="px-4 md:px-6 pb-2">
+            <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
+          </div>
+          {itemsByDateProp.length === 0 ? (
+            <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
+              No items with {datePropLabels[calendarDateProp]} to display on the calendar.
+            </div>
+          ) : (
+            <div className="px-2" onDragEnd={handleDragEnd}>
+              {numColumns === 7 && (
+                <div className="grid grid-cols-7">
+                  {weekdays.map(day => (
+                    <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+                <div
+                  ref={gridRef}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))`,
+                    gap: '0.5rem',
+                  }}
+                >
+                  {days.map(day => {
+                    const dateKey = format(day, "yyyy-MM-dd");
+                    const dayEvents = eventsByDate.get(dateKey) || [];
+                    const visibleEvents = calendarItemLimit === 'all' 
+                        ? dayEvents 
+                        : dayEvents.slice(0, calendarItemLimit as number);
+                    const hiddenEventsCount = dayEvents.length - visibleEvents.length;
+                    const isCurrentMonthDay = isSameMonth(day, currentDate);
+                    const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
+                    return (
+                      <div
+                        key={day.toString()}
+                        onDragOver={(e) => handleDragOver(e, day)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, day)}
+                        className={cn(
+                          "relative min-h-[150px] rounded-2xl p-2 flex flex-col gap-2 transition-all duration-300 border",
+                          isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
+                          isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
+                        )}
+                      >
+                        <div className="font-semibold text-sm">
+                          {isToday(day) ? (
+                            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground">
+                              {format(day, 'd')}
+                            </div>
+                          ) : (
+                            <div className="flex items-baseline gap-1.5 px-1 py-0.5">
+                              {numColumns < 7 && <span className="text-xs opacity-70">{format(day, 'eee')}</span>}
+                              <span>{format(day, 'd')}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
+                          {visibleEvents.map(item => (
+                            <CalendarEvent
+                              key={item.id} 
+                              item={item} 
+                              isSelected={selectedItem?.id === item.id}
+                              isDragging={draggedItemId === item.id}
+                              onDragStart={handleDragStart}
+                              colorProp={calendarColorProp}
+                            />
+                          ))}
+                        </div>
+                        {hiddenEventsCount > 0 && (
+                          <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
+                            +{hiddenEventsCount} more
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+  src/features/dynamic-view/DynamicView.tsx: >-
+    import { useMemo, useCallback, type ReactNode } from 'react';
+
+    import { DynamicViewProvider } from
+    '@/features/dynamic-view/DynamicViewContext';
+
+    import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig }
+    from './types';
+
+    import { ViewControls } from './components/controls/ViewControls';
+
+    import { ViewModeSelector } from './components/controls/ViewModeSelector';
+
+    import { AnimatedLoadingSkeleton } from
+    './components/shared/AnimatedLoadingSkeleton';
+
+    import { ListView } from './components/views/ListView';
+
+    import { CardView } from './components/views/CardView';
+
+    import { TableView } from './components/views/TableView';
+
+    import { KanbanView } from './components/views/KanbanView';
+
+    import { CalendarView } from './components/views/CalendarView';
+
+    import { EmptyState } from './components/shared/EmptyState';
+
+
+    // Define the props for the controlled DynamicView component
+
+    export interface DynamicViewProps {
+      // Config
+      viewConfig: ViewConfig;
+      
+      // Data & State
+      items: GenericItem[];
+      isLoading: boolean;
+      isInitialLoading: boolean;
+      totalItemCount: number;
+      hasMore: boolean;
+      
+      // Controlled State Props
+      viewMode: ViewMode;
+      filters: FilterConfig;
+      sortConfig: SortConfig | null;
+      groupBy: string;
+      activeGroupTab: string;
+      page: number;
+      selectedItemId?: string;
+
+      // State Change Callbacks
+      onViewModeChange: (mode: ViewMode) => void;
+      onFiltersChange: (filters: FilterConfig) => void;
+      onSortChange: (sort: SortConfig | null) => void;
+      onGroupByChange: (group: string) => void;
+      onActiveGroupTabChange: (tab: string) => void;
+      onPageChange: (page: number) => void;
+      onItemSelect: (item: GenericItem) => void;
+      
+      // Custom Renderers
+      renderHeaderControls?: () => ReactNode;
+      renderStats?: () => ReactNode;
+      renderCta?: (viewMode: ViewMode) => ReactNode;
+    }
+
+
+    export function DynamicView({ viewConfig, ...rest }: DynamicViewProps) {
+      
+      const { viewMode, isInitialLoading, items, groupBy } = rest;
+
+      const groupedData = useMemo(() => {
+        if (groupBy === 'none' || viewMode !== 'kanban') {
+            return null;
+        }
+        return items.reduce((acc, item) => {
+            const groupKey = String(item[groupBy as keyof GenericItem]) || 'N/A';
+            if (!acc[groupKey]) {
+                acc[groupKey] = [] as GenericItem[];
+            }
+            acc[groupKey].push(item);
+            return acc;
+        }, {} as Record<string, GenericItem[]>);
+      }, [items, groupBy, viewMode]);
+
+      const renderViewForData = useCallback((data: GenericItem[]) => {
+        switch (viewMode) {
+            case 'table': return <TableView data={data} />;
+            case 'cards': return <CardView data={data} />;
+            case 'grid': return <CardView data={data} isGrid />;
+            case 'list': default: return <ListView data={data} />;
+        }
+      }, [viewMode]);
+
+      const renderContent = () => {
+        if (isInitialLoading) {
+          return <AnimatedLoadingSkeleton viewMode={viewMode} />;
+        }
+
+        if (viewMode === 'calendar') {
+            return <CalendarView data={items} />;
+        }
+
+        if (viewMode === 'kanban') {
+            return groupedData ? (
+              <KanbanView data={groupedData} />
+            ) : (
+              <div className="flex items-center justify-center h-96 text-muted-foreground">
+                Group data by a metric to use the Kanban view.
+              </div>
+            );
+        }
+        
+        if (items.length === 0 && !isInitialLoading) {
+            return <EmptyState />;
+        }
+        
+        // This will be expanded later to handle group tabs
+        return renderViewForData(items);
+      };
+
+      return (
+        <DynamicViewProvider viewConfig={viewConfig} {...rest}>
+          <div className="space-y-6">
+              <div className="space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div className="flex-1">
+                          {rest.renderHeaderControls ? rest.renderHeaderControls() : (
+                              <>
+                                  <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                                  <p className="text-muted-foreground">
+                                      {isInitialLoading 
+                                          ? "Loading projects..." 
+                                          : `Showing ${items.length} of ${rest.totalItemCount} item(s)`}
+                                  </p>
+                              </>
+                          )}
+                      </div>
+                      <ViewModeSelector />
+                  </div>
+                  <ViewControls />
+              </div>
+
+              {rest.renderStats && !isInitialLoading && rest.renderStats()}
+              
+              <div className="min-h-[500px]">
+                  {renderContent()}
+              </div>
+          </div>
+        </DynamicViewProvider>
+      );
+    }
+  src/pages/DataDemo/index.tsx: >-
+    import { useRef, useEffect, useCallback, useMemo, type ReactNode } from
+    'react'
+
+    import {
+      Layers, 
+      AlertTriangle, 
+      PlayCircle, 
+      Loader2,
+      TrendingUp,
+      CheckCircle,
+      Clock,
+      Archive,
+      PlusCircle,
+    } from 'lucide-react'
+
+    import { gsap } from 'gsap'
+
+    import { DynamicView } from '@/features/dynamic-view/DynamicView'
+
+    import { PageLayout } from '@/components/shared/PageLayout'
+
+    import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
+
+    import { ScrollToBottomButton } from
+    '@/components/shared/ScrollToBottomButton';
+
+    import { StatCard } from '@/components/shared/StatCard'
+
+    import { mockDataItems } from './data/mockData'
+
+    import type { GenericItem } from '@/features/dynamic-view/types'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useAutoAnimateStats } from './hooks/useAutoAnimateStats.hook'
+
+    import { useDataDemoStore } from './store/dataDemo.store'
+
+    import { 
+
+    } from './store/dataDemo.store'
+
+
+    import { dataDemoViewConfig } from './DataDemo.config';
+
+
+    type Stat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type?: 'card';
+    };
+
+
+    type ChartStat = {
+      title: string;
+      value: string;
+      icon: React.ReactNode;
+      change: string;
+      trend: 'up' | 'down';
+      type: 'chart';
+      chartData: number[];
+    };
+
+
+    type StatItem = Stat | ChartStat;
+
+
+    export default function DataDemoPage() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setActiveGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+        setFilters,
+        setViewMode,
+        onItemSelect,
+      } = useAppViewManager();
+
+      const { items: allItems, hasMore, isLoading, isInitialLoading, totalItemCount, loadData } = useDataDemoStore(state => ({
+        items: state.items,
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+      }));
+
+      const statsRef = useRef<HTMLDivElement>(null)
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Note: The `DynamicViewProvider` needs `GenericItem[]`. 
+      // Our store uses `GenericItem` so no cast is needed.
+      // Auto-hide stats container on scroll down
+      useAutoAnimateStats(scrollRef, statsRef);
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length
+      const { showScrollToBottom, scrollToBottom, handleScroll } = useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(item => item.status === 'active').length
+      const highPriorityItems = mockDataItems.filter(item => item.priority === 'high' || item.priority === 'critical').length
+      const avgCompletion = totalItems > 0 ? Math.round(
+        mockDataItems.reduce((acc, item) => acc + item.metrics.completion, 0) / totalItems
+      ) : 0
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [120, 125, 122, 130, 135, 138, 142]
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week", 
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [45, 50, 48, 55, 53, 60, 58]
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          type: 'chart',
+          chartData: [25, 26, 28, 27, 26, 24, 23]
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [65, 68, 70, 69, 72, 75, 78],
+        },
+        {
+          title: "Completion Rate",
+          value: "88%",
+          icon: <CheckCircle className="w-5 h-5" />,
+          change: "+1.5% this month",
+          trend: "up" as const,
+          type: 'chart',
+          chartData: [80, 82, 81, 84, 85, 87, 88],
+        },
+        {
+          title: "Overdue Items",
+          value: "8",
+          icon: <Clock className="w-5 h-5" />,
+          change: "-3 this week",
+          trend: "down" as const,
+        },
+        {
+          title: "New This Week",
+          value: "12",
+          icon: <PlusCircle className="w-5 h-5" />,
+          change: "+2 from last week",
+          trend: "up" as const,
+        },
+        {
+          title: "Archived Projects",
+          value: "153",
+          icon: <Archive className="w-5 h-5" />,
+          change: "+20 this month",
+          trend: "up" as const,
+        }
+      ]
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.08,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading]);
+
+      useEffect(() => {
+        loadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === 'calendar' || viewMode === 'kanban',
+        });
+      }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+      
+      useEffect(() => {
+        // Auto-group by status when switching to kanban view for the first time
+        if (viewMode === 'kanban' && groupBy === 'none') {
+          setGroupBy('status');
+          setSort(null); // Kanban is manually sorted, so disable programmatic sort
+        }
+        // For calendar view, we don't want grouping.
+        else if (viewMode === 'calendar' && groupBy !== 'none') {
+          setGroupBy('none');
+        }
+      }, [viewMode, groupBy, setGroupBy, setSort]);
+
+      return (
+        <PageLayout
+          scrollRef={scrollRef}
+          onScroll={handleScroll}
+        >
+          <DynamicView
+            viewConfig={dataDemoViewConfig}
+            items={allItems as GenericItem[]}
+            isLoading={isLoading}
+            isInitialLoading={isInitialLoading}
+            totalItemCount={totalItemCount}
+            hasMore={hasMore}
+            // Controlled state
+            viewMode={viewMode}
+            filters={filters}
+            sortConfig={sortConfig}
+            groupBy={groupBy}
+            activeGroupTab={activeGroupTab}
+            page={page}
+            // Callbacks
+            onViewModeChange={setViewMode}
+            onFiltersChange={setFilters}
+            onSortChange={setSort}
+            onGroupByChange={setGroupBy}
+            onActiveGroupTabChange={setActiveGroupTab}
+            onPageChange={setPage}
+            onItemSelect={onItemSelect}
+            // Custom Renderers
+            renderStats={() => (
+              <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+                {stats.map((stat) => (
+                  <StatCard
+                    className="w-64 md:w-72 flex-shrink-0"
+                    key={stat.title}
+                    title={stat.title}
+                    value={stat.value}
+                    change={stat.change}
+                    trend={stat.trend}
+                    icon={stat.icon}
+                    chartData={stat.type === 'chart' ? stat.chartData : undefined}
+                  />
+                ))}
+              </div>
+            )}
+          />
+
+            {/* Loader for infinite scroll */}
+            <div ref={loaderRef} className="flex justify-center items-center py-6">
+              {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isLoading && !hasMore && allItems.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+                <p className="text-muted-foreground">You've reached the end.</p>
+              )}
+            </div>
+          <ScrollToBottomButton isVisible={showScrollToBottom} onClick={scrollToBottom} />
+        </PageLayout>
+      );
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 526

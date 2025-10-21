@@ -31,8 +31,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 
 import type { FilterConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp } from '../../types'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { useDynamicView } from '../../DynamicViewContext'
+import { useDynamicView } from '../../DynamicViewContext';
 
 export interface DataViewControlsProps {
   // groupOptions will now come from config
@@ -40,21 +39,21 @@ export interface DataViewControlsProps {
 
 export function ViewControls() {
   const {
+    config,
     filters,
-    setFilters,
+    onFiltersChange,
     sortConfig,
-    setSort,
+    onSortChange,
     groupBy,
-    setGroupBy,
+    onGroupByChange,
     viewMode,
-  } = useAppViewManager();
-  const { config } = useDynamicView();
+  } = useDynamicView();
   const sortOptions = config.sortableFields;
   const groupOptions = config.groupableFields;
   const filterableFields = config.filterableFields;
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setFilters({ ...filters, searchTerm: event.target.value })
+    onFiltersChange({ ...filters, searchTerm: event.target.value });
   }
   
   const activeFilterCount = filterableFields.reduce((acc, field) => acc + (filters[field.id]?.length || 0), 0)
@@ -89,12 +88,12 @@ export function ViewControls() {
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[240px] p-0" align="start">
-          <CombinedFilter filters={filters} onFiltersChange={setFilters} filterableFields={filterableFields} />
+          <CombinedFilter filters={filters} onFiltersChange={onFiltersChange} filterableFields={filterableFields} />
         </PopoverContent>
       </Popover>
 
       {activeFilterCount > 0 && (
-        <Button variant="ghost" size="sm" onClick={() => setFilters({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
+        <Button variant="ghost" size="sm" onClick={() => onFiltersChange({ searchTerm: filters.searchTerm, status: [], priority: [] })}>Reset</Button>
       )}
 
       {/* Spacer */}
@@ -118,10 +117,10 @@ export function ViewControls() {
                 value={`${sortConfig?.key || 'default'}-${sortConfig?.direction || ''}`}
                 onValueChange={(value) => {
                   if (value.startsWith('default')) {
-                    setSort(null)
+                    onSortChange(null);
                   } else {
                     const [key, direction] = value.split('-')
-                    setSort({ key: key, direction: direction as 'asc' | 'desc' })
+                    onSortChange({ key: key, direction: direction as 'asc' | 'desc' });
                   }
                 }}
               >
@@ -147,7 +146,7 @@ export function ViewControls() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[180px]">
-                <DropdownMenuRadioGroup value={groupBy} onValueChange={setGroupBy}>
+                <DropdownMenuRadioGroup value={groupBy} onValueChange={onGroupByChange}>
                   {groupOptions.map(option => (
                     <DropdownMenuRadioItem key={option.id} value={option.id}>
                       {option.label}
@@ -164,18 +163,18 @@ export function ViewControls() {
 }
 
 function CalendarSpecificControls() {
-    const { 
-        calendarDateProp, setCalendarDateProp,
-        calendarDisplayProps, setCalendarDisplayProps,
-        calendarItemLimit, setCalendarItemLimit,
-        calendarColorProp, setCalendarColorProp,
-    } = useAppViewManager();
+    const {
+        calendarDateProp, onCalendarDatePropChange,
+        calendarDisplayProps, onCalendarDisplayPropsChange,
+        calendarItemLimit, onCalendarItemLimitChange,
+        calendarColorProp, onCalendarColorPropChange,
+    } = useDynamicView();
 
     const handleDisplayPropChange = (prop: CalendarDisplayProp, checked: boolean) => {
         const newProps = checked 
-            ? [...calendarDisplayProps, prop] 
-            : calendarDisplayProps.filter(p => p !== prop);
-        setCalendarDisplayProps(newProps);
+            ? [...(calendarDisplayProps || []), prop] 
+            : (calendarDisplayProps || []).filter(p => p !== prop);
+        onCalendarDisplayPropsChange?.(newProps);
     };
 
     return (
@@ -196,7 +195,7 @@ function CalendarSpecificControls() {
                     <Separator />
                     <div className="space-y-3">
                         <Label className="font-semibold">Item Background Color</Label>
-                        <RadioGroup value={calendarColorProp} onValueChange={(v) => setCalendarColorProp(v as CalendarColorProp)} className="gap-2">
+                        <RadioGroup value={calendarColorProp} onValueChange={(v) => onCalendarColorPropChange?.(v as CalendarColorProp)} className="gap-2">
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="none" id="color-none" />
                                 <Label htmlFor="color-none" className="font-normal">None</Label>
@@ -218,7 +217,7 @@ function CalendarSpecificControls() {
                     <Separator />
                     <div className="space-y-3">
                         <Label className="font-semibold">Date Property</Label>
-                        <RadioGroup value={calendarDateProp} onValueChange={(v) => setCalendarDateProp(v as CalendarDateProp)} className="gap-2">
+                        <RadioGroup value={calendarDateProp} onValueChange={(v) => onCalendarDatePropChange?.(v as CalendarDateProp)} className="gap-2">
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="dueDate" id="dueDate" />
                                 <Label htmlFor="dueDate" className="font-normal">Due Date</Label>
@@ -238,7 +237,7 @@ function CalendarSpecificControls() {
                         <div className="space-y-2">
                             {(['priority', 'assignee', 'tags'] as CalendarDisplayProp[]).map(prop => (
                                 <div key={prop} className="flex items-center space-x-2">
-                                    <Checkbox id={prop} checked={calendarDisplayProps.includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
+                                    <Checkbox id={prop} checked={(calendarDisplayProps || []).includes(prop)} onCheckedChange={(c) => handleDisplayPropChange(prop, !!c)} />
                                     <Label htmlFor={prop} className="capitalize font-normal">{prop}</Label>
                                 </div>
                             ))}
@@ -250,7 +249,7 @@ function CalendarSpecificControls() {
                             <Label htmlFor="show-all" className="font-semibold">Show all items</Label>
                             <p className="text-xs text-muted-foreground">Display all items on a given day.</p>
                         </div>
-                        <Switch id="show-all" checked={calendarItemLimit === 'all'} onCheckedChange={(c) => setCalendarItemLimit(c ? 'all' : 3)} />
+                        <Switch id="show-all" checked={calendarItemLimit === 'all'} onCheckedChange={(c) => onCalendarItemLimitChange?.(c ? 'all' : 3)} />
                     </div>
                 </div>
             </PopoverContent>

@@ -7,8 +7,6 @@ import type { GenericItem } from '../../types'
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "../shared/EmptyState";
-import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import { useDataDemoStore } from "../../../../pages/DataDemo/store/dataDemo.store";
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
@@ -18,8 +16,7 @@ interface KanbanCardProps {
 }
 
 function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTMLAttributes<HTMLDivElement>) {
-  const { onItemSelect } = useAppViewManager();
-  const { config } = useDynamicView();
+  const { config, onItemSelect } = useDynamicView();
   const { kanbanView: viewConfig } = config;
 
   return (
@@ -71,8 +68,7 @@ export function KanbanView({ data }: DataKanbanViewProps) {
   const [columns, setColumns] = useState(data);
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
-  const { groupBy } = useAppViewManager();
-  const updateItem = useDataDemoStore((s: any) => s.updateItem);
+  const { groupBy, onItemUpdate } = useDynamicView();
 
   useEffect(() => {
     setColumns(data);
@@ -139,7 +135,7 @@ export function KanbanView({ data }: DataKanbanViewProps) {
       
       // Persist change to global store. The groupBy value tells us which property to update.
       if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
-        updateItem(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);
+        onItemUpdate?.(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);
       }
 
     } catch (err) {

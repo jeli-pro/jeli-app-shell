@@ -1,20 +1,13 @@
-import { useRef } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import type { GenericItem } from '../../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
 import { EmptyState } from '../shared/EmptyState'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { 
-  useSelectedItem,
-} from '../../../../pages/DataDemo/store/dataDemo.store'
-import { AddDataItemCta } from '../shared/AddDataItemCta'
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
 
-export function ListView({ data }: { data: GenericItem[] }) {
-  const { onItemSelect, itemId } = useAppViewManager();
-  const selectedItem = useSelectedItem(itemId);
-  const { config } = useDynamicView();
+export function ListView({ data, ctaElement }: { data: GenericItem[], ctaElement?: ReactNode }) {
+  const { config, onItemSelect, selectedItemId } = useDynamicView();
 
   const listRef = useRef<HTMLDivElement>(null)
   useStaggeredAnimation(listRef, [data], { mode: 'incremental', scale: 1, y: 20, stagger: 0.05, duration: 0.4 });
@@ -27,7 +20,7 @@ export function ListView({ data }: { data: GenericItem[] }) {
   return (
     <div ref={listRef}>
       {items.map((item: GenericItem) => {
-        const isSelected = selectedItem?.id === item.id
+        const isSelected = selectedItemId === item.id
         
         return (
           <div key={item.id} className="px-2">
@@ -61,7 +54,7 @@ export function ListView({ data }: { data: GenericItem[] }) {
           </div>
         )
       })}
-      <AddDataItemCta viewMode='list' />
+      {ctaElement}
     </div>
   )
 }
