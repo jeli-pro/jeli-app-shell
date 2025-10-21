@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard,
   Settings,
@@ -11,23 +11,20 @@ import {
   ExternalLink,
   Share,
 } from 'lucide-react';
-
-import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext';
-import { Button } from '@/components/ui/button';
 import { DashboardContent } from "@/pages/Dashboard";
 import { SettingsContent } from "@/features/settings/SettingsContent";
 import { ToasterDemo } from "@/pages/ToasterDemo";
 import { NotificationsPage } from "@/pages/Notifications";
 import DataDemoPage from "@/pages/DataDemo/index";
-import { DetailPanel } from '@/features/dynamic-view/components/shared/DetailPanel';
-import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
-import { mockDataItems } from "@/pages/DataDemo/data/mockData";
-import type { DataDemoItem } from '@/pages/DataDemo/data/DataDemoItem';
 import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
 import type { AppShellState } from '@/store/appShell.store';
+import { useSelectedItem } from '@/pages/DataDemo/store/dataDemo.store';
+import { DataDetailContent } from '@/pages/DataDemo/components/DataDetailContent';
 
 export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
-  const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+  const { conversationId } = useParams<{ conversationId: string }>();
+  const [searchParams] = useSearchParams();
+  const sidePaneItemId = searchParams.get('itemId');
 
   const staticContentMap = useMemo(() => ({
     main: {
@@ -84,57 +81,18 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
     },
   }), [conversationId, staticContentMap]);
 
-  const selectedItem = useMemo(() => {
-    if (!itemId) return null;
-    return (mockDataItems.find(item => item.id === itemId) as DataDemoItem) ?? null;
-  }, [itemId]);
+  const selectedItem = useSelectedItem(sidePaneItemId);
 
   const { meta, content } = useMemo(() => {
     if (sidePaneContent === 'dataItem' && selectedItem) {
       return {
-        meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
-        content: (
-          <DynamicViewProvider
-            viewConfig={dataDemoViewConfig}
-            items={mockDataItems as DataDemoItem[]}
-            isLoading={false}
-            isInitialLoading={false}
-            totalItemCount={0}
-            hasMore={false}
-            viewMode="list"
-            filters={{ searchTerm: "" }}
-            sortConfig={null}
-            groupBy="none"
-            activeGroupTab=""
-            page={1}
-            onViewModeChange={() => {}}
-            onFiltersChange={() => {}}
-            onSortChange={() => {}}
-            onGroupByChange={() => {}}
-            onActiveGroupTabChange={() => {}}
-            onPageChange={() => {}}
-            onItemSelect={() => {}}
-          >
-            <div className="h-full flex flex-col">
-              <div className="flex-1 overflow-y-auto">
-                <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
-              </div>
-              {/* Application-specific actions can be composed here */}
-              <div className="p-6 border-t border-border/50 bg-card/30">
-                <div className="flex gap-3">
-                  <Button className="flex-1" size="sm">
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Open Project
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Share className="w-4 h-4 mr-2" />
-                    Share
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </DynamicViewProvider>
-        ),
+        meta: { 
+          title: "Item Details", 
+          icon: Database, 
+          page: `data-demo/${sidePaneItemId}`,
+          hasOwnScrolling: true 
+        },
+        content: <DataDetailContent item={selectedItem} />,
       };
     }
     const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
@@ -142,7 +100,7 @@ export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneCont
       meta: mappedContent,
       content: mappedContent.content,
     };
-  }, [sidePaneContent, selectedItem, contentMap, itemId]);
+  }, [sidePaneContent, selectedItem, contentMap, sidePaneItemId]);
 
   return { meta, content };
 }

@@ -1,0 +1,1089 @@
+uuid: c329d675-5735-430c-a99b-d748f346b0a7
+projectId: jeli-app-shell
+createdAt: '2025-10-21T17:03:37.395Z'
+gitCommitMsg: >-
+  refactor(DataDemo): Decouple detail view and fix layout bugs
+
+  Decoupled the data item detail view from the right-hand pane architecture,
+  creating a reusable `DataDetailContent` component. This enables the detail
+  view to function as main page content, fixing issues with "normal" and
+  fullscreen view modes.
+
+  - Fixed horizontal overflow in `DetailPanel` by applying truncation and
+  word-wrapping utilities. - Created `DataDetailContent` to encapsulate detail
+  view rendering logic. - Updated `DataDemoPage` to conditionally render the
+  detail view based on URL params. - Simplified `useRightPaneContent` to consume
+  the new component. - Enhanced `RightPane` to conditionally disable its own
+  scrolling when content provides its own, eliminating double scrollbar bugs.
+promptSummary: >-
+  The user wants to refactor the data detail view to fix layout bugs (horizontal
+  scroll, double scrollbar), enable it to work as main page content (fixing
+  normal/fullscreen modes), and improve the overall architecture by decoupling
+  it from the side pane.
+reasoning:
+  - >-
+    This is a comprehensive refactor to decouple the data detail view, fix
+    layout bugs, and improve the overall architecture of the App Shell. Here's a
+    summary of the changes:
+  - >-
+    1.  **Fix Horizontal Overflow**: I've applied `truncate` and `break-words`
+    utilities within the `DetailPanel` to prevent long, unbreakable content from
+    causing horizontal scrollbars and breaking the layout. The component's root
+    is also adjusted to work correctly within a flexbox parent.
+  - >-
+    2.  **Create Reusable Detail Component**: All logic for rendering an item's
+    detail view, including the `DynamicViewProvider` and action buttons, has
+    been extracted from `useRightPaneContent.hook.tsx` into a new, reusable
+    component: `src/pages/DataDemo/components/DataDetailContent.tsx`.
+  - >-
+    3.  **Enable "Normal" View for Details**: The main `DataDemoPage` component
+    now uses the URL parameter (`:itemId`) to conditionally render either the
+    list view or the new `DataDetailContent` component, allowing item details to
+    be viewed as the main page content, which also fixes fullscreen mode.
+  - >-
+    4.  **Simplify Right Pane Logic**: The `useRightPaneContent` hook is now
+    much simpler. For data items, it just returns the new `DataDetailContent`
+    component and adds a `hasOwnScrolling: true` flag to its metadata.
+  - >-
+    5.  **Eliminate Double Scrollbars**: The `RightPane` component now
+    intelligently checks for the `hasOwnScrolling` flag. If true, it renders its
+    content directly without adding its own scrollable container, permanently
+    fixing the double scrollbar issue.
+  - >-
+    This set of changes results in a cleaner, more maintainable codebase and a
+    more polished, bug-free user experience across all view modes.
+operations:
+  - type: write
+    path: src/features/dynamic-view/components/shared/DetailPanel.tsx
+    content: >+
+      --- src/features/dynamic-view/components/shared/DetailPanel.tsx
+
+      +++ src/features/dynamic-view/components/shared/DetailPanel.tsx
+
+      @@ -48,22 +48,22 @@
+         }
+         
+         return (
+      -    <div ref={contentRef} className="h-full flex flex-col">
+
+      +    <div ref={contentRef} className="flex-1 flex flex-col min-h-0">
+             {/* Header */}
+             <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+               <div className="flex items-start gap-4 mb-4">
+                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                    <EditableField item={item} fieldId={header.thumbnailField} />
+                 </div>
+      -          <div className="flex-1 min-w-0">
+
+      -            <h1 className="text-2xl font-bold mb-1 leading-tight">
+
+      +          <div className="flex-1 min-w-0 break-words">
+
+      +            <h1 className="text-2xl font-bold mb-1 leading-tight
+      truncate">
+                     <EditableField item={item} fieldId={header.titleField} />
+                   </h1>
+      -            <p className="text-muted-foreground">
+
+      +            <p className="text-muted-foreground truncate">
+                     <EditableField item={item} fieldId={header.descriptionField} />
+                   </p>
+                 </div>
+               </div>
+       
+               {/* Status badges */}
+      @@ -107,7 +107,7 @@
+                                 return (
+                                   <div key={fieldId} className="flex items-start gap-4 text-sm">
+                                     <div className="w-1/3 text-muted-foreground pt-1.5 shrink-0">{fieldDef?.label}</div>
+      -                              <div className="w-2/3 grow"><EditableField
+      item={item} fieldId={fieldId} /></div>
+
+      +                              <div className="w-2/3 grow min-w-0
+      break-words"><EditableField item={item} fieldId={fieldId} /></div>
+                                   </div>
+                                 );
+                               })}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataDetailContent.tsx
+    content: >-
+      import { ExternalLink, Share } from 'lucide-react';
+
+      import { Button } from '@/components/ui/button';
+
+      import { DynamicViewProvider } from
+      '@/features/dynamic-view/DynamicViewContext';
+
+      import { DetailPanel } from
+      '@/features/dynamic-view/components/shared/DetailPanel';
+
+      import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+
+      import type { DataDemoItem } from '@/pages/DataDemo/data/DataDemoItem';
+
+      import { useDataDemoStore } from '../store/dataDemo.store';
+
+
+      interface DataDetailContentProps {
+        item: DataDemoItem;
+      }
+
+
+      export function DataDetailContent({ item }: DataDetailContentProps) {
+        const { updateItem } = useDataDemoStore();
+
+        return (
+          <DynamicViewProvider
+            viewConfig={dataDemoViewConfig}
+            items={[]} // Not needed for detail view, but provider requires it
+            isLoading={false}
+            isInitialLoading={false}
+            totalItemCount={0}
+            hasMore={false}
+            viewMode="list" // Doesn't matter which, but required
+            filters={{ searchTerm: "" }}
+            sortConfig={null}
+            groupBy="none"
+            activeGroupTab=""
+            page={1}
+            onViewModeChange={() => {}}
+            onFiltersChange={() => {}}
+            onSortChange={() => {}}
+            onGroupByChange={() => {}}
+            onActiveGroupTabChange={() => {}}
+            onPageChange={() => {}}
+            onItemSelect={() => {}}
+            onItemUpdate={updateItem}
+          >
+            <div className="h-full flex flex-col bg-card">
+              <DetailPanel item={item} config={dataDemoViewConfig.detailView} />
+              {/* Application-specific actions can be composed here */}
+              <div className="p-6 border-t border-border/50 bg-card/30 flex-shrink-0">
+                <div className="flex gap-3">
+                  <Button className="flex-1" size="sm">
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Project
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Share className="w-4 h-4 mr-2" />
+                    Share
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DynamicViewProvider>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -10,13 +10,15 @@
+         Archive,
+         PlusCircle,
+       } from "lucide-react";
+       import { DynamicView } from "@/features/dynamic-view/DynamicView";
+       import { PageLayout } from "@/components/shared/PageLayout";
+       import { useScrollToBottom } from "@/hooks/useScrollToBottom.hook";
+       import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton";
+       import { mockDataItems } from "./data/mockData";
+       import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+      -import { useDataDemoStore } from "./store/dataDemo.store";
+
+      +import { useDataDemoStore, useSelectedItem } from
+      "./store/dataDemo.store";
+       import { AddDataItemCta } from "@/features/dynamic-view/components/shared/AddDataItemCta";
+      +import { DataDetailContent } from "./components/DataDetailContent";
+       
+       import { dataDemoViewConfig } from "./DataDemo.config";
+       import type { StatItem } from "@/features/dynamic-view/types";
+      @@ -34,8 +36,11 @@
+           setPage,
+           setFilters,
+           setViewMode,
+           onItemSelect,
+      +    itemId,
+         } = useAppViewManager();
+       
+      +  const selectedItem = useSelectedItem(itemId);
+
+      +
+         const {
+           items: allItems,
+           hasMore,
+      @@ -165,6 +170,11 @@
+           [isLoading, hasMore, page, setPage],
+         );
+       
+      +  if (itemId && selectedItem) {
+
+      +    // Render detail view as the main content
+
+      +    return <DataDetailContent item={selectedItem} />;
+
+      +  }
+
+      +
+         return (
+           <PageLayout scrollRef={scrollRef} onScroll={handleScroll}>
+             <DynamicView
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useRightPaneContent.hook.tsx
+    content: >+
+      --- src/hooks/useRightPaneContent.hook.tsx
+
+      +++ src/hooks/useRightPaneContent.hook.tsx
+
+      @@ -10,19 +10,11 @@
+         ExternalLink,
+         Share,
+       } from 'lucide-react';
+      -
+
+      -import { DynamicViewProvider } from
+      '@/features/dynamic-view/DynamicViewContext';
+
+      -import { Button } from '@/components/ui/button';
+       import { DashboardContent } from "@/pages/Dashboard";
+       import { SettingsContent } from "@/features/settings/SettingsContent";
+       import { ToasterDemo } from "@/pages/ToasterDemo";
+       import { NotificationsPage } from "@/pages/Notifications";
+       import DataDemoPage from "@/pages/DataDemo/index";
+      -import { DetailPanel } from
+      '@/features/dynamic-view/components/shared/DetailPanel';
+
+      -import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+
+      -import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+      -import type { DataDemoItem } from '@/pages/DataDemo/data/DataDemoItem';
+       import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
+       import type { AppShellState } from '@/store/appShell.store';
+      +import { useSelectedItem } from '@/pages/DataDemo/store/dataDemo.store';
+
+      +import { DataDetailContent } from
+      '@/pages/DataDemo/components/DataDetailContent';
+       
+       export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
+         const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+      @@ -74,51 +66,17 @@
+           },
+         }), [conversationId, staticContentMap]);
+       
+      -  const selectedItem = useMemo(() => {
+
+      -    if (!itemId) return null;
+
+      -    return (mockDataItems.find(item => item.id === itemId) as
+      DataDemoItem) ?? null;
+
+      -  }, [itemId]);
+
+      +  const selectedItem = useSelectedItem(itemId);
+       
+         const { meta, content } = useMemo(() => {
+           if (sidePaneContent === 'dataItem' && selectedItem) {
+             return {
+      -        meta: { title: "Item Details", icon: Database, page:
+      `data-demo/${itemId}` },
+
+      -        content: (
+
+      -          <DynamicViewProvider
+
+      -            viewConfig={dataDemoViewConfig}
+
+      -            items={mockDataItems as DataDemoItem[]}
+
+      -            isLoading={false}
+
+      -            isInitialLoading={false}
+
+      -            totalItemCount={0}
+
+      -            hasMore={false}
+
+      -            viewMode="list"
+
+      -            filters={{ searchTerm: "" }}
+
+      -            sortConfig={null}
+
+      -            groupBy="none"
+
+      -            activeGroupTab=""
+
+      -            page={1}
+
+      -            onViewModeChange={() => {}}
+
+      -            onFiltersChange={() => {}}
+
+      -            onSortChange={() => {}}
+
+      -            onGroupByChange={() => {}}
+
+      -            onActiveGroupTabChange={() => {}}
+
+      -            onPageChange={() => {}}
+
+      -            onItemSelect={() => {}}
+
+      -          >
+
+      -            <div className="h-full flex flex-col">
+
+      -              <div className="flex-1 overflow-y-auto">
+
+      -                <DetailPanel item={selectedItem}
+      config={dataDemoViewConfig.detailView} />
+
+      -              </div>
+
+      -              {/* Application-specific actions can be composed here */}
+
+      -              <div className="p-6 border-t border-border/50 bg-card/30">
+
+      -                <div className="flex gap-3">
+
+      -                  <Button className="flex-1" size="sm">
+
+      -                    <ExternalLink className="w-4 h-4 mr-2" />
+
+      -                    Open Project
+
+      -                  </Button>
+
+      -                  <Button variant="outline" size="sm">
+
+      -                    <Share className="w-4 h-4 mr-2" />
+
+      -                    Share
+
+      -                  </Button>
+
+      -                </div>
+
+      -              </div>
+
+      -            </div>
+
+      -          </DynamicViewProvider>
+
+      -        ),
+
+      +        meta: { 
+
+      +          title: "Item Details", 
+
+      +          icon: Database, 
+
+      +          page: `data-demo/${itemId}`,
+
+      +          hasOwnScrolling: true 
+
+      +        },
+
+      +        content: <DataDetailContent item={selectedItem} />,
+             };
+           }
+           const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/RightPane.tsx
+    content: |+
+      --- src/components/layout/RightPane.tsx
+      +++ src/components/layout/RightPane.tsx
+      @@ -83,9 +83,13 @@
+               <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+             </div>
+             {!isSplitView && !isFullscreen && header}
+      -      <div className={cn("flex-1 overflow-y-auto")}>
+      -        {children}
+      -      </div>
+      +      {meta.hasOwnScrolling ? (
+      +        children
+      +      ) : (
+      +        <div className={cn("flex-1 overflow-y-auto")}>
+      +          {children}
+      +        </div>
+      +      )}
+           </aside>
+         )
+       }));
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/DataDetailContent.tsx: null
+  src/features/dynamic-view/components/shared/DetailPanel.tsx: >-
+    import React, { useRef, useState, useMemo } from 'react'
+
+    import {
+      DndContext,
+      closestCenter,
+      type DragEndEvent,
+    } from '@dnd-kit/core';
+
+    import {
+      arrayMove,
+      SortableContext,
+      verticalListSortingStrategy,
+    } from '@dnd-kit/sortable';
+
+    import {
+      Clock, 
+      Tag,
+      User,
+      BarChart3,
+    } from 'lucide-react'
+
+    import type { GenericItem, DetailViewConfig, DetailViewSection } from
+    '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook';
+
+    import { EditableField } from './EditableField'
+
+    import { DraggableSection } from './DraggableSection'
+
+    import { getNestedValue } from '@/lib/utils'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+
+    interface DetailPanelProps<TFieldId extends string, TItem extends
+    GenericItem> {
+      item: TItem;
+      config: DetailViewConfig<TFieldId>;
+    }
+
+
+    const SECTION_ICONS: Record<string, React.ElementType> = {
+      "Assigned to": User,
+      "Engagement Metrics": BarChart3,
+      "Tags": Tag,
+      "Timeline": Clock,
+    };
+
+
+    export function DetailPanel<TFieldId extends string, TItem extends
+    GenericItem>({ item, config }: DetailPanelProps<TFieldId, TItem>) {
+      const contentRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(contentRef, [item]);
+      
+      const { getFieldDef } = useDynamicView<TFieldId, TItem>();
+      const { header, body } = config;
+      const [sections, setSections] = useState(body.sections);
+
+      const sectionIds = useMemo(() => sections.map(s => s.title), [sections]);
+
+      const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (active.id !== over?.id) {
+          setSections((currentSections) => {
+            const oldIndex = sectionIds.indexOf(active.id as string);
+            const newIndex = sectionIds.indexOf(over!.id as string);
+            return arrayMove(currentSections, oldIndex, newIndex);
+          });
+        }
+      };
+
+      if (!item) {
+        return null
+      }
+      
+      return (
+        <div ref={contentRef} className="h-full flex flex-col">
+          {/* Header */}
+          <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                 <EditableField item={item} fieldId={header.thumbnailField} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold mb-1 leading-tight">
+                  <EditableField item={item} fieldId={header.titleField} />
+                </h1>
+                <p className="text-muted-foreground">
+                  <EditableField item={item} fieldId={header.descriptionField} />
+                </p>
+              </div>
+            </div>
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              {header.badgeFields.map((fieldId: TFieldId) => (
+                <EditableField key={fieldId} item={item} fieldId={fieldId} />
+              ))}
+            </div>
+
+            {/* Progress */}
+            <EditableField item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              <DndContext
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={sectionIds}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {sections.map((section) => {
+                    const IconComponent = SECTION_ICONS[section.title];
+                    const hasContent = section.fields.some((fieldId: TFieldId) => {
+                      const value = getNestedValue(item, fieldId as string);
+                      return value !== null && typeof value !== 'undefined';
+                    });
+
+                    if (!hasContent) return null;
+
+                    return (
+                      <DraggableSection key={section.title} id={section.title} >
+                        <div className="p-4 bg-card/30 rounded-2xl border border-border/30">
+                          <div className="flex items-center gap-1 mb-3">
+                            {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
+                            <h3 className="font-semibold text-sm">{section.title}</h3>
+                          </div>
+                          <div className="space-y-3">
+                            {section.fields.map((fieldId: TFieldId) => {
+                              const fieldDef = getFieldDef(fieldId);
+                              return (
+                                <div key={fieldId} className="flex items-start gap-4 text-sm">
+                                  <div className="w-1/3 text-muted-foreground pt-1.5 shrink-0">{fieldDef?.label}</div>
+                                  <div className="w-2/3 grow"><EditableField item={item} fieldId={fieldId} /></div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </DraggableSection>
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
+            </div>
+          </div>
+        </div>
+      )
+    }
+  src/pages/DataDemo/index.tsx: >
+    import { useRef, useEffect, useCallback } from "react";
+
+    import {
+      Layers,
+      AlertTriangle,
+      PlayCircle,
+      TrendingUp,
+      CheckCircle,
+      Clock,
+      Archive,
+      PlusCircle,
+    } from "lucide-react";
+
+    import { DynamicView } from "@/features/dynamic-view/DynamicView";
+
+    import { PageLayout } from "@/components/shared/PageLayout";
+
+    import { useScrollToBottom } from "@/hooks/useScrollToBottom.hook";
+
+    import { ScrollToBottomButton } from
+    "@/components/shared/ScrollToBottomButton";
+
+    import { mockDataItems } from "./data/mockData";
+
+    import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+    import { useDataDemoStore } from "./store/dataDemo.store";
+
+    import { AddDataItemCta } from
+    "@/features/dynamic-view/components/shared/AddDataItemCta";
+
+
+    import { dataDemoViewConfig } from "./DataDemo.config";
+
+    import type { StatItem } from "@/features/dynamic-view/types";
+
+
+    export default function DataDemoPage() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+        setFilters,
+        setViewMode,
+        onItemSelect,
+      } = useAppViewManager();
+
+      const {
+        items: allItems,
+        hasMore,
+        isLoading,
+        isInitialLoading,
+        totalItemCount,
+        loadData,
+        updateItem,
+      } = useDataDemoStore((state) => ({
+        items: state.items,
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+        updateItem: state.updateItem,
+      }));
+
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Note: The `DynamicViewProvider` needs `GenericItem[]`.
+      // Our store uses `GenericItem` so no cast is needed.
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length;
+      const { showScrollToBottom, scrollToBottom, handleScroll } =
+        useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(
+        (item) => item.status === "active",
+      ).length;
+      const highPriorityItems = mockDataItems.filter(
+        (item) => item.priority === "high" || item.priority === "critical",
+      ).length;
+      const avgCompletion =
+        totalItems > 0
+          ? Math.round(
+              mockDataItems.reduce(
+                (acc, item) => acc + item.metrics.completion,
+                0,
+              ) / totalItems,
+            )
+          : 0;
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          chartData: [120, 125, 122, 130, 135, 138, 142],
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week",
+          trend: "up" as const,
+          chartData: [45, 50, 48, 55, 53, 60, 58],
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          chartData: [25, 26, 28, 27, 26, 24, 23],
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          chartData: [65, 68, 70, 69, 72, 75, 78],
+        },
+        {
+          title: "Completion Rate",
+          value: "88%",
+          icon: <CheckCircle className="w-5 h-5" />,
+          change: "+1.5% this month",
+          trend: "up" as const,
+          chartData: [80, 82, 81, 84, 85, 87, 88],
+        },
+        {
+          title: "Overdue Items",
+          value: "8",
+          icon: <Clock className="w-5 h-5" />,
+          change: "-3 this week",
+          trend: "down" as const,
+        },
+        {
+          title: "New This Week",
+          value: "12",
+          icon: <PlusCircle className="w-5 h-5" />,
+          change: "+2 from last week",
+          trend: "up" as const,
+        },
+        {
+          title: "Archived Projects",
+          value: "153",
+          icon: <Archive className="w-5 h-5" />,
+          change: "+20 this month",
+          trend: "up" as const,
+        },
+      ];
+
+      useEffect(() => {
+        loadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === "calendar" || viewMode === "kanban",
+        });
+      }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+
+      return (
+        <PageLayout scrollRef={scrollRef} onScroll={handleScroll}>
+          <DynamicView
+            viewConfig={dataDemoViewConfig}
+            items={allItems}
+            isLoading={isLoading}
+            isInitialLoading={isInitialLoading}
+            totalItemCount={totalItemCount}
+            hasMore={hasMore}
+            // Controlled state
+            viewMode={viewMode}
+            filters={filters}
+            sortConfig={sortConfig}
+            groupBy={groupBy}
+            activeGroupTab={activeGroupTab}
+            page={page}
+            // Callbacks
+            onViewModeChange={setViewMode}
+            onFiltersChange={setFilters}
+            onSortChange={setSort}
+            onGroupByChange={setGroupBy}
+            onActiveGroupTabChange={setActiveGroupTab}
+            onPageChange={setPage}
+            onItemUpdate={updateItem}
+            onItemSelect={onItemSelect}
+            loaderRef={loaderRef}
+            scrollContainerRef={scrollRef}
+            statsData={stats}
+            // Custom Renderers
+            renderCta={(viewMode, ctaProps) => (
+              <AddDataItemCta viewMode={viewMode} colSpan={ctaProps.colSpan} />
+            )}
+          />
+
+          <ScrollToBottomButton
+            isVisible={showScrollToBottom}
+            onClick={scrollToBottom}
+          />
+        </PageLayout>
+      );
+    }
+  src/components/layout/RightPane.tsx: >-
+    import { forwardRef, useMemo, createElement, memo } from 'react'
+
+    import {
+      ChevronRight,
+      X,
+    } from 'lucide-react'
+
+    import { cn, BODY_STATES } from '@/lib/utils';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+
+    export const RightPane = memo(forwardRef<HTMLDivElement, { className?:
+    string }>(({ className }, ref) => {
+      const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget)
+      const bodyState = useAppShellStore(s => s.bodyState)
+      const { toggleFullscreen, setIsResizingRightPane } =
+        useAppShellStore.getState()
+
+      const viewManager = useAppViewManager()
+      const { sidePaneContent, closeSidePane } = viewManager
+      
+      const { meta, content: children } = useRightPaneContent(sidePaneContent)
+      
+      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+      const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+      const header = useMemo(() => (
+        <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+          {bodyState !== BODY_STATES.SPLIT_VIEW && 'icon' in meta ? (
+            <div className="flex items-center gap-2">
+              {meta.icon && createElement(meta.icon, { className: "w-5 h-5" })}
+              <h2 className="text-lg font-semibold whitespace-nowrap">{meta.title}</h2>
+            </div>
+          ) : <div />}
+          <div className="flex items-center">
+            {bodyState === BODY_STATES.SIDE_PANE && 'page' in meta && meta.page && <ViewModeSwitcher pane="right" targetPage={meta.page} />}
+          </div>
+        </div>
+      ), [bodyState, meta]);
+
+      if (isFullscreen && fullscreenTarget !== 'right') {
+        return null;
+      }
+
+      return (
+        <aside
+          ref={ref}
+          className={cn(
+            "border-l border-border flex flex-col h-full overflow-hidden",
+            isSplitView && "relative bg-background",
+            !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card", // side pane overlay
+            isFullscreen && fullscreenTarget === 'right' && "fixed inset-0 z-[60] bg-card", // fullscreen
+            className,
+          )}
+        >
+          {isFullscreen && fullscreenTarget === 'right' && (
+            <button
+              onClick={() => toggleFullscreen()}
+              className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+              title="Exit Fullscreen"
+            >
+              <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+            </button>
+          )}
+          {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
+            <button
+              onClick={closeSidePane}
+              className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+              title="Close pane"
+            >
+              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </button>
+          )}
+          <div 
+            className={cn(
+              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsResizingRightPane(true);
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+          {!isSplitView && !isFullscreen && header}
+          <div className={cn("flex-1 overflow-y-auto")}>
+            {children}
+          </div>
+        </aside>
+      )
+    }));
+
+    RightPane.displayName = "RightPane"
+  src/hooks/useRightPaneContent.hook.tsx: >-
+    import { useMemo } from 'react';
+
+    import { useParams } from 'react-router-dom';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      Database,
+      MessageSquare,
+      ExternalLink,
+      Share,
+    } from 'lucide-react';
+
+
+    import { DynamicViewProvider } from
+    '@/features/dynamic-view/DynamicViewContext';
+
+    import { Button } from '@/components/ui/button';
+
+    import { DashboardContent } from "@/pages/Dashboard";
+
+    import { SettingsContent } from "@/features/settings/SettingsContent";
+
+    import { ToasterDemo } from "@/pages/ToasterDemo";
+
+    import { NotificationsPage } from "@/pages/Notifications";
+
+    import DataDemoPage from "@/pages/DataDemo/index";
+
+    import { DetailPanel } from
+    '@/features/dynamic-view/components/shared/DetailPanel';
+
+    import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+
+    import { mockDataItems } from "@/pages/DataDemo/data/mockData";
+
+    import type { DataDemoItem } from '@/pages/DataDemo/data/DataDemoItem';
+
+    import { MessagingContent } from
+    "@/pages/Messaging/components/MessagingContent";
+
+    import type { AppShellState } from '@/store/appShell.store';
+
+
+    export function useRightPaneContent(sidePaneContent:
+    AppShellState['sidePaneContent']) {
+      const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+
+      const staticContentMap = useMemo(() => ({
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: <div className="p-6"><SettingsContent /></div>,
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      }), []);
+
+      const contentMap = useMemo(() => ({
+        ...staticContentMap,
+        messaging: {
+          title: "Conversation",
+          icon: MessageSquare,
+          page: "messaging",
+          content: <MessagingContent conversationId={conversationId} />,
+        },
+      }), [conversationId, staticContentMap]);
+
+      const selectedItem = useMemo(() => {
+        if (!itemId) return null;
+        return (mockDataItems.find(item => item.id === itemId) as DataDemoItem) ?? null;
+      }, [itemId]);
+
+      const { meta, content } = useMemo(() => {
+        if (sidePaneContent === 'dataItem' && selectedItem) {
+          return {
+            meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
+            content: (
+              <DynamicViewProvider
+                viewConfig={dataDemoViewConfig}
+                items={mockDataItems as DataDemoItem[]}
+                isLoading={false}
+                isInitialLoading={false}
+                totalItemCount={0}
+                hasMore={false}
+                viewMode="list"
+                filters={{ searchTerm: "" }}
+                sortConfig={null}
+                groupBy="none"
+                activeGroupTab=""
+                page={1}
+                onViewModeChange={() => {}}
+                onFiltersChange={() => {}}
+                onSortChange={() => {}}
+                onGroupByChange={() => {}}
+                onActiveGroupTabChange={() => {}}
+                onPageChange={() => {}}
+                onItemSelect={() => {}}
+              >
+                <div className="h-full flex flex-col">
+                  <div className="flex-1 overflow-y-auto">
+                    <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
+                  </div>
+                  {/* Application-specific actions can be composed here */}
+                  <div className="p-6 border-t border-border/50 bg-card/30">
+                    <div className="flex gap-3">
+                      <Button className="flex-1" size="sm">
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Open Project
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Share className="w-4 h-4 mr-2" />
+                        Share
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </DynamicViewProvider>
+            ),
+          };
+        }
+        const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+        return {
+          meta: mappedContent,
+          content: mappedContent.content,
+        };
+      }, [sidePaneContent, selectedItem, contentMap, itemId]);
+
+      return { meta, content };
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 569

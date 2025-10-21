@@ -15,8 +15,9 @@ import { useScrollToBottom } from "@/hooks/useScrollToBottom.hook";
 import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton";
 import { mockDataItems } from "./data/mockData";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import { useDataDemoStore } from "./store/dataDemo.store";
+import { useDataDemoStore, useSelectedItem } from "./store/dataDemo.store";
 import { AddDataItemCta } from "@/features/dynamic-view/components/shared/AddDataItemCta";
+import { DataDetailContent } from "./components/DataDetailContent";
 
 import { dataDemoViewConfig } from "./DataDemo.config";
 import type { StatItem } from "@/features/dynamic-view/types";
@@ -36,7 +37,10 @@ export default function DataDemoPage() {
     setFilters,
     setViewMode,
     onItemSelect,
+    pathItemId,
   } = useAppViewManager();
+
+  const selectedItem = useSelectedItem(pathItemId);
 
   const {
     items: allItems,
@@ -171,6 +175,11 @@ export default function DataDemoPage() {
     },
     [isLoading, hasMore, page, setPage],
   );
+
+  if (pathItemId && selectedItem) {
+    // Render detail view as the main content
+    return <DataDetailContent item={selectedItem} />;
+  }
 
   return (
     <PageLayout scrollRef={scrollRef} onScroll={handleScroll}>

@@ -31,14 +31,14 @@ export function useAppViewManager() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const params = useParams<{ itemId: string; conversationId: string }>();
-  const { itemId, conversationId } = params;
+  const { itemId: pathItemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
   const { setSidebarState, sidebarState } = useAppShellStore();
 
   // --- DERIVED STATE FROM URL ---
 
   const view = searchParams.get('view');
   const sidePane = searchParams.get('sidePane');
+  const sidePaneItemId = searchParams.get('itemId');
   const right = searchParams.get('right');
   const messagingView = searchParams.get('messagingView') as TaskView | null;
   const q = searchParams.get('q');
@@ -58,8 +58,8 @@ export function useAppViewManager() {
       return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
     }
 
-    // 2. Data item detail view (can be overlay or split)
-    if (itemId) {
+    // 2. Data item detail view in a pane, triggered by search param
+    if (sidePaneItemId) {
       if (view === 'split') {
         return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
       }
@@ -77,7 +77,7 @@ export function useAppViewManager() {
     }
 
     return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
-  }, [itemId, conversationId, view, sidePane, right]);
+  }, [sidePaneItemId, conversationId, view, sidePane, right]);
   
   const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
   const prevActivePage = usePrevious(currentActivePage);
@@ -197,12 +197,9 @@ export function useAppViewManager() {
   }, [handleParamsChange, navigate, location.pathname]);
 
   const closeSidePane = useCallback(() => {
-    if (itemId) {
-      navigate('/data-demo');
-    } else {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-    }
-  }, [itemId, navigate, handleParamsChange]);
+    // This should close any kind of side pane, including dataItem
+    handleParamsChange({ sidePane: null, view: null, right: null, itemId: null });
+  }, [handleParamsChange]);
 
   const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
     if (sidePane === pane) {
@@ -291,17 +288,20 @@ export function useAppViewManager() {
   const setCalendarColorProp = (prop: CalendarColorProp<string>) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
 
   const onItemSelect = useCallback((item: GenericItem) => {
-		navigate(`/data-demo/${item.id}${location.search}`);
-	}, [navigate, location.search]);
+		handleParamsChange({ itemId: item.id, sidePane: null });
+	}, [handleParamsChange]);
 
   const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
 
+  // The final active item ID is either from the path (main view) or a search param (pane view)
+  const itemId = pathItemId || sidePaneItemId;
 
   return useMemo(() => ({
     // State
     bodyState,
     sidePaneContent,
     currentActivePage,
+    pathItemId, // Expose for main content decisions
     itemId,
     messagingView,
     // DataDemo State
@@ -339,7 +339,7 @@ export function useAppViewManager() {
     setCalendarItemLimit,
     setCalendarColorProp,
   }), [
-    bodyState, sidePaneContent, currentActivePage, itemId, messagingView, viewMode,
+    bodyState, sidePaneContent, currentActivePage, pathItemId, itemId, messagingView, viewMode,
     page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
     calendarDisplayProps, calendarItemLimit, calendarColorProp,
     navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,

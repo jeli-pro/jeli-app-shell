@@ -60,18 +60,18 @@ export function DetailPanel<TFieldId extends string, TItem extends GenericItem>(
   }
   
   return (
-    <div ref={contentRef} className="h-full flex flex-col">
+    <div ref={contentRef} className="flex-1 flex flex-col min-h-0">
       {/* Header */}
       <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
         <div className="flex items-start gap-4 mb-4">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
              <EditableField item={item} fieldId={header.thumbnailField} />
           </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold mb-1 leading-tight">
+          <div className="flex-1 min-w-0 break-words">
+            <h1 className="text-2xl font-bold mb-1 leading-tight truncate">
               <EditableField item={item} fieldId={header.titleField} />
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground truncate">
               <EditableField item={item} fieldId={header.descriptionField} />
             </p>
           </div>
@@ -121,7 +121,7 @@ export function DetailPanel<TFieldId extends string, TItem extends GenericItem>(
                           return (
                             <div key={fieldId} className="flex items-start gap-4 text-sm">
                               <div className="w-1/3 text-muted-foreground pt-1.5 shrink-0">{fieldDef?.label}</div>
-                              <div className="w-2/3 grow"><EditableField item={item} fieldId={fieldId} /></div>
+                              <div className="w-2/3 grow min-w-0 break-words"><EditableField item={item} fieldId={fieldId} /></div>
                             </div>
                           );
                         })}

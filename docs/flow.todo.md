@@ -28,13 +28,15 @@ data demo page: calendar view: dragging items to left or right edge should move 
 
 ===
 
-data demo page: calendar view: dynamic-view;
-
-month view: should react route friendly with date
+make the app shell architecture/app view management more decoupled so the consumer has consistent behavior
 
 ===
 
-data demo page: calendar view: we need amazing tooltip with amazing UI when user hover over item
+data demo page: calendar view: dynamic-view;
+
+1. month view: should react route friendly with date
+
+2. we need amazing tooltip with amazing UI when user hover over item
 
 === DONE
 
