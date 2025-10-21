@@ -1,89 +1,178 @@
-Alright, let's architect this refactor. The goal is to pimp the calendar view. Right now, moving tasks between months is a drag (pun intended). Users have to drop, click next month, then drag again. Lame. We're going to fix it so you can just drag an item to the edge of the calendar, and it'll automagically flip to the next or previous month. We'll even add a little delay so it doesn't feel janky.
+Alright, let's get this done. The data detail view is a mess – it's bolted into the side pane and breaks in every other context. We're going to architect this properly. The goal is a clean, reusable detail component that works seamlessly across all of the AppShell's view modes: normal, side pane, split, and fullscreen. No more jank, no more double scrollbars.
 
-This is all about improving flow. Less clicking, more doing. The core logic will live inside the `handleDragOver` event in `CalendarView.tsx`. We'll sniff the cursor position, and if it's hanging out by the edge, we kick off a timer to switch the month. Simple, but effective.
+Here's the master plan. We're breaking this down into three parts. First, we'll extract the detail view logic into its own component. Second, we'll fix the routing and main page logic to render this new component correctly in a "normal" view. Finally, we'll refactor the right pane to handle content with its own scrolling, which will kill the double scrollbar bug for good.
 
-No new files needed, just a surgical strike on `CalendarView.tsx`. Let's get it.
+This approach follows the "Don't Repeat Yourself" principle by creating a single, reusable `DataDetailContent` component. By making the `RightPane` smarter about its content, we create a more flexible and robust layout system that will prevent similar issues in the future. The fix to the "normal view" routing makes the detail page a first-class citizen, which is critical for a good user experience and bookmarkable URLs.
+
+When we're done, the detail view will feel native to the shell, not like a hack. It will be fast, responsive, and work exactly as a user would expect in any layout configuration.
 
 ```yaml
 plan:
-  uuid: 'f4a9b1c0-3e5d-4f2a-8b1e-9c7d8f6a3b2c'
+  uuid: 'f3a9e1d2-5b8c-4f7a-8b6d-9c4e2a1b0f3e'
   status: 'todo'
-  title: 'Implement Drag-to-Change-Month in Calendar View'
+  title: 'Refactor Data Detail View for AppShell Architecture Compliance'
   introduction: |
-    This plan details the refactoring of the `CalendarView` component to introduce a "drag-to-change-month" feature. Currently, moving an event across month boundaries is tedious, requiring the user to drop the item, navigate, and then drag again. This refactor will streamline the user experience significantly.
+    The current data detail view implementation is tightly coupled with the side pane, causing architectural issues. It fails to render in a standard "normal" view, has a broken fullscreen mode, and exhibits layout problems like double scrollbars when displayed in an overlay.
 
-    The core idea is to detect when a user drags a calendar item to the far left or right edge of the calendar grid. When the item hovers in this "hot zone" for a brief period, the calendar will automatically navigate to the previous or next month, allowing the user to continue their drag-and-drop operation seamlessly into the new month. This will make rescheduling long-range tasks much more intuitive and efficient. The implementation will be contained within `CalendarView.tsx`, leveraging existing drag-and-drop handlers and state management for month navigation.
+    This refactoring plan will decouple the detail view into a reusable component, enabling it to function correctly as a main page content, within a side pane, or in a split view. We will fix the routing logic in the `DataDemoPage` to properly display the detail view when an item ID is present in the URL.
+
+    Furthermore, we will enhance the `RightPane` component to intelligently handle content that manages its own scrolling. This will resolve the layout and scrollbar issues, leading to a clean, predictable, and architecturally sound user experience across all of the AppShell's view modes.
   parts:
-    - uuid: '9e8c7b6a-5d4f-4e3c-8a2b-1c9d8e7f6a5b'
+    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
       status: 'todo'
-      name: 'Part 1: Enhance CalendarView with Edge-Drag Functionality'
+      name: 'Part 1: Create a Reusable Data Detail Component'
       reason: |
-        This part focuses on modifying the `CalendarView.tsx` component to enable users to navigate to adjacent months simply by dragging an event to the horizontal edges of the calendar grid. This is the core of the feature and contains all necessary logic.
+        To fix the "Don't Repeat Yourself" violation, we'll extract the detail view logic from `useRightPaneContent.hook.tsx` into a new, reusable component. This component will be the single source of truth for rendering an item's details and can be used in any context (main content, side pane, etc.).
       steps:
-        - uuid: '1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e'
+        - uuid: 'b1c2d3e4-f5g6-7890-1234-567890abcdef'
           status: 'todo'
-          name: '1. Add Refs for Edge Drag State'
+          name: '1. Create DataDetailContent Component'
           reason: |
-            We need to track the state of the edge-hover interaction without causing component re-renders on every mouse movement. `useRef` is perfect for managing the timer ID and tracking the currently active edge hot zone.
+            A new component, `DataDetailContent`, will encapsulate the rendering of the `DetailPanel` and its associated context provider and action buttons. This centralizes the detail view logic.
           files:
-            - 'src/features/dynamic-view/components/views/CalendarView.tsx'
+            - src/pages/DataDemo/components/DataDetailContent.tsx
           operations:
-            - 'Introduce two new `useRef` hooks within the `CalendarView` component.'
-            - 'One ref, `edgeHoverTimerRef`, will hold the `NodeJS.Timeout` ID for the delayed month change, initialized to `null`.'
-            - 'The second ref, `currentEdgeRef`, will store the active edge (`''left''` or `''right''`) or `null`, to prevent restarting the timer on every `dragOver` event within the same hot zone.'
-        - uuid: 'a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d'
+            - 'Create a new file `src/pages/DataDemo/components/DataDetailContent.tsx`.'
+            - 'Define a new component `DataDetailContent` that accepts an `item` prop of type `DataDemoItem`.'
+            - 'Wrap the component''s content in a `<DynamicViewProvider>`, passing necessary props like `viewConfig` and an `onItemUpdate` callback retrieved from `useDataDemoStore`.'
+            - 'The component''s layout will be a flex column (`h-full flex flex-col`) with a background color (`bg-card`).'
+            - 'Inside, render the `<DetailPanel>` component. It should be configured to be flexible (`flex-1 min-h-0`).'
+            - 'Below the `DetailPanel`, add a footer `div` containing action buttons (e.g., "Open Project", "Share"). This footer should not grow (`flex-shrink-0`).'
+        - uuid: 'c2d3e4f5-g6h7-8901-2345-67890abcdef'
           status: 'todo'
-          name: '2. Enhance `handleDragOver` for Edge Detection'
+          name: '2. Adjust DetailPanel Layout'
           reason: |
-            The `handleDragOver` function is the main event handler that fires continuously as an item is dragged over the calendar. This is the ideal place to check the cursor's position and determine if it has entered an edge hot zone.
+            To ensure the `DetailPanel` correctly fills the available space within its new flexbox parent and manages its own internal scrolling without causing parent overflow, its root element needs to be adjusted.
           files:
-            - 'src/features/dynamic-view/components/views/CalendarView.tsx'
+            - src/features/dynamic-view/components/shared/DetailPanel.tsx
           operations:
-            - 'In `handleDragOver`, get the bounding rectangle of the main calendar grid container (`gridRef.current.getBoundingClientRect()`).'
-            - 'Define a constant for the edge hot zone width, e.g., `const edgeZoneWidth = 60;`.'
-            - 'Check if the mouse event''s `clientX` is within the left or right hot zone.'
-            - 'If the cursor is in a hot zone, initiate the month change logic. Otherwise, clear any pending month change and proceed with the existing drop target logic.'
-        - uuid: 'f1e2d3c4-b5a6-9878-6f5e-4d3c2b1a0f9e'
+            - 'In `src/features/dynamic-view/components/shared/DetailPanel.tsx`, find the root `div`.'
+            - 'Change its `className` from `"h-full flex flex-col"` to `"flex-1 flex flex-col min-h-0"` to make it a flexible child that doesn''t overflow its parent.'
+        - uuid: 'd3e4f5g6-h7i8-9012-3456-7890abcdef'
           status: 'todo'
-          name: '3. Implement Month Change Timer Logic'
+          name: '3. Create a Selector for the Selected Item'
           reason: |
-            To prevent accidental and jarring month changes, the navigation should only trigger after the user has hovered near the edge for a short duration. This requires timer-based logic.
+            To provide a clean way for components to retrieve the currently selected item based on the URL parameter, we will add a utility hook/selector to the data store.
           files:
-            - 'src/features/dynamic-view/components/views/CalendarView.tsx'
+            - src/pages/DataDemo/store/dataDemo.store.tsx
           operations:
-            - 'Inside the edge detection block in `handleDragOver`, check if a timer is already running for the detected edge (`currentEdgeRef`). If not, proceed.'
-            - 'First, clear any existing timer from the other edge using `clearTimeout(edgeHoverTimerRef.current)`.'
-            - 'Set `dropTargetDate(null)` to hide any active drop indicators on calendar days.'
-            - 'Use `setTimeout` to schedule a call to `handlePrevMonth()` or `handleNextMonth()` after a delay (e.g., `700ms`).'
-            - "Store the timer ID in `edgeHoverTimerRef.current` and the direction in `currentEdgeRef.current`."
-            - 'When the cursor moves out of a hot zone, clear the timer and reset the refs.'
-        - uuid: 'b4a5c6d7-e8f9-a0b1-c2d3-e4f5a6b7c8d9'
-          status: 'todo'
-          name: '4. Ensure Timer Cleanup in Drag Handlers'
-          reason: |
-            It's crucial to clean up any pending timers when the drag operation concludes (either by dropping the item or canceling the drag) to prevent unexpected navigation.
-          files:
-            - 'src/features/dynamic-view/components/views/CalendarView.tsx'
-          operations:
-            - 'At the beginning of the `handleDrop` function, add a call to `clearTimeout(edgeHoverTimerRef.current)` and reset `currentEdgeRef`.'
-            - 'Similarly, update the `handleDragEnd` function to also clear the timer and reset the refs, ensuring all states are cleaned up when the drag action finishes for any reason.'
+            - 'In `src/pages/DataDemo/store/dataDemo.store.tsx`, export a new function `useSelectedItem(itemId?: string)`.'
+            - 'This function will check if an `itemId` is provided. If so, it will find and return the corresponding item from the `typedMockData` array. If not, it returns `null`.'
       context_files:
         compact:
-          - 'src/features/dynamic-view/components/views/CalendarView.tsx'
+          - src/features/dynamic-view/components/shared/DetailPanel.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
         medium:
-          - 'src/features/dynamic-view/components/views/CalendarView.tsx'
+          - src/features/dynamic-view/components/shared/DetailPanel.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
+          - src/pages/DataDemo/store/dataDemo.store.tsx
         extended:
-          - 'src/features/dynamic-view/components/views/CalendarView.tsx'
+          - src/features/dynamic-view/components/shared/DetailPanel.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
+          - src/pages/DataDemo/store/dataDemo.store.tsx
+          - src/pages/DataDemo/DataDemo.config.tsx
+          - src/features/dynamic-view/DynamicViewContext.tsx
+    - uuid: 'e6f7g8h9-i0j1-2345-6789-012345abcdef'
+      status: 'todo'
+      name: 'Part 2: Fix Normal View Routing and Right Pane Content'
+      reason: |
+        Currently, `DataDemoPage` only shows the list view, and `useRightPaneContent.hook.tsx` contains hardcoded detail view logic. We need to fix `DataDemoPage` to render the detail component when an item is selected, and refactor the `RightPane` to consume this new component cleanly.
+      steps:
+        - uuid: 'f7g8h9i0-j1k2-3456-7890-12345abcdef'
+          status: 'todo'
+          name: '1. Update DataDemoPage to Render Detail View'
+          reason: |
+            The main page for the data demo needs to conditionally render either the `DynamicView` (list) or the `DataDetailContent` based on the presence of an `itemId` in the URL. This will enable the "normal view" for item details.
+          files:
+            - src/pages/DataDemo/index.tsx
+          operations:
+            - 'In `src/pages/DataDemo/index.tsx`, use the `useAppViewManager` hook to get the `itemId` from the URL params.'
+            - 'Use the new `useSelectedItem` hook to fetch the selected item data.'
+            - 'Add a conditional check at the top of the component: if `itemId` and `selectedItem` exist, return the `<DataDetailContent item={selectedItem} />` component directly.'
+            - 'The `DataDetailContent` component should not be wrapped in `<PageLayout>`, as it manages its own full-page layout.'
+            - 'If `itemId` does not exist, the component should proceed to render the existing `<PageLayout>` with the `<DynamicView>` component as it does now.'
+        - uuid: 'g8h9i0j1-k2l3-4567-8901-23456abcdef'
+          status: 'todo'
+          name: '2. Refactor useRightPaneContent Hook'
+          reason: |
+            This hook should no longer contain complex rendering logic. It should be simplified to use the new `DataDetailContent` component and to provide metadata indicating that the content handles its own scrolling.
+          files:
+            - src/hooks/useRightPaneContent.hook.tsx
+          operations:
+            - 'In `useRightPaneContent.hook.tsx`, import the new `DataDetailContent` component.'
+            - 'Find the logic for `sidePaneContent === ''dataItem''`.'
+            - 'Replace the large block of JSX with a single line: `content: <DataDetailContent item={selectedItem} />`.'
+            - 'In the `meta` object for this case, add a new property: `hasOwnScrolling: true`.'
+      context_files:
+        compact:
+          - src/pages/DataDemo/index.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
+        medium:
+          - src/pages/DataDemo/index.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
+          - src/pages/DataDemo/components/DataDetailContent.tsx
+          - src/hooks/useAppViewManager.hook.ts
+        extended:
+          - src/pages/DataDemo/index.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
+          - src/pages/DataDemo/components/DataDetailContent.tsx
+          - src/hooks/useAppViewManager.hook.ts
+          - src/components/layout/RightPane.tsx
+          - src/App.tsx
+    - uuid: 'h9i0j1k2-l3m4-5678-9012-34567abcdef'
+      status: 'todo'
+      name: 'Part 3: Eliminate Double Scrollbar in RightPane'
+      reason: |
+        The `RightPane` component currently wraps all content in a scrollable container, which clashes with content that has its own internal scrolling (like our new `DataDetailContent`). We need to make the `RightPane` smart enough to disable its own scrollbar when the content provides one.
+      steps:
+        - uuid: 'i0j1k2l3-m4n5-6789-0123-45678abcdef'
+          status: 'todo'
+          name: '1. Update RightPane to Handle Custom Scrolling'
+          reason: |
+            By checking for the `hasOwnScrolling` flag from `useRightPaneContent`, the `RightPane` can conditionally apply its `overflow-y-auto` wrapper, solving the double scrollbar issue permanently.
+          files:
+            - src/components/layout/RightPane.tsx
+          operations:
+            - 'In `src/components/layout/RightPane.tsx`, ensure the `meta` object is retrieved from the `useRightPaneContent` hook.'
+            - 'Locate the `div` that wraps `{children}` and has the class `flex-1 overflow-y-auto`.'
+            - 'Wrap this `div` and the direct `{children}` in a conditional render.'
+            - 'If `meta.hasOwnScrolling` is true, render `{children}` directly (which will now fill the flex container).'
+            - 'If `meta.hasOwnScrolling` is false or undefined, render the original wrapper: `<div className="flex-1 overflow-y-auto">{children}</div>`.'
+      context_files:
+        compact:
+          - src/components/layout/RightPane.tsx
+        medium:
+          - src/components/layout/RightPane.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
+        extended:
+          - src/components/layout/RightPane.tsx
+          - src/hooks/useRightPaneContent.hook.tsx
+          - src/pages/DataDemo/components/DataDetailContent.tsx
   conclusion: |
-    By implementing this plan, the `CalendarView` will become significantly more powerful for users needing to reschedule tasks across different months. The drag-to-navigate feature removes friction and makes the UI feel more responsive and intuitive.
+    By executing this plan, we will have successfully decoupled the data detail view from the UI's pane structure. The `DataDemoPage` will correctly function as a standalone detail page, complete with proper routing and fullscreen support. The creation of a reusable `DataDetailContent` component improves maintainability and adheres to DRY principles.
 
-    This targeted refactor enhances a key user interaction with minimal code changes, contained within a single component. The resulting improvement in usability will be a noticeable win for the application's overall user experience.
+    Most importantly, the architectural enhancement to the `RightPane` component resolves the persistent double scrollbar issue and establishes a robust pattern for integrating complex components with their own layouts into the AppShell. The user experience will be significantly improved, with smooth, predictable transitions between view states and a polished, professional feel.
   context_files:
     compact:
-      - 'src/features/dynamic-view/components/views/CalendarView.tsx'
+      - src/pages/DataDemo/index.tsx
+      - src/features/dynamic-view/components/shared/DetailPanel.tsx
+      - src/hooks/useRightPaneContent.hook.tsx
+      - src/components/layout/RightPane.tsx
     medium:
-      - 'src/features/dynamic-view/components/views/CalendarView.tsx'
+      - src/pages/DataDemo/index.tsx
+      - src/features/dynamic-view/components/shared/DetailPanel.tsx
+      - src/hooks/useRightPaneContent.hook.tsx
+      - src/components/layout/RightPane.tsx
+      - src/pages/DataDemo/store/dataDemo.store.tsx
+      - src/hooks/useAppViewManager.hook.ts
     extended:
-      - 'src/features/dynamic-view/components/views/CalendarView.tsx'
-
+      - src/pages/DataDemo/index.tsx
+      - src/features/dynamic-view/components/shared/DetailPanel.tsx
+      - src/hooks/useRightPaneContent.hook.tsx
+      - src/components/layout/RightPane.tsx
+      - src/pages/DataDemo/store/dataDemo.store.tsx
+      - src/hooks/useAppViewManager.hook.ts
+      - src/App.tsx
+      - src/components/layout/MainContent.tsx
+      - src/components/shared/PageLayout.tsx
 ```

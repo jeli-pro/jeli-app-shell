@@ -22,15 +22,21 @@ data demo page: data demo detail page: overlay side pane: remove back to list te
 
 data demo page: list  view mode: remove line separator
 
-===
+=== DONE
 
 data demo page: calendar view: dragging items to left or right edge should move to previous or next month so user can easily drop item to different month. of course with acceleration
 
 ===
 
-data demo page: calendar view: we need amazing tooltip with amazing UI when user hover over item
+data demo page: calendar view: dynamic-view;
+
+month view: should react route friendly with date
 
 ===
+
+data demo page: calendar view: we need amazing tooltip with amazing UI when user hover over item
+
+=== DONE
 
 data demo page: kanban view
 

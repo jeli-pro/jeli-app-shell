@@ -150,6 +150,10 @@ export function CalendarView({ data }: CalendarViewProps) {
   // Drag & Drop State
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
+  const [activeEdge, setActiveEdge] = useState<'left' | 'right' | null>(null);
+  const edgeHoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const currentEdgeRef = useRef<'left' | 'right' | null>(null);
+  const consecutiveMonthChangesRef = useRef(0);
 
   // GSAP animation state
   const [direction, setDirection] = useState(0); // 0: initial, 1: next, -1: prev
@@ -198,14 +202,85 @@ export function CalendarView({ data }: CalendarViewProps) {
   };
   
   const handleDragEnd = () => {
+    if (edgeHoverTimerRef.current) {
+      clearTimeout(edgeHoverTimerRef.current);
+      edgeHoverTimerRef.current = null;
+    }
+    currentEdgeRef.current = null;
+    consecutiveMonthChangesRef.current = 0;
+    setActiveEdge(null);
     setDraggedItemId(null);
     setDropTargetDate(null);
   };
 
+  const handleMonthChange = (direction: 'prev' | 'next') => {
+    // Safety check: ensure user is still hovering on the correct edge
+    if ((direction === 'prev' && currentEdgeRef.current !== 'left') || (direction === 'next' && currentEdgeRef.current !== 'right')) {
+      return;
+    }
+
+    if (direction === 'prev') {
+      setDirection(-1);
+      setCurrentDate(current => subMonths(current, 1));
+    } else {
+      setDirection(1);
+      setCurrentDate(current => addMonths(current, 1));
+    }
+
+    consecutiveMonthChangesRef.current += 1;
+
+    // Schedule next accelerated change
+    const nextDelay = consecutiveMonthChangesRef.current >= 2 ? 150 : 300;
+    edgeHoverTimerRef.current = setTimeout(() => handleMonthChange(direction), nextDelay);
+  };
+
   const handleDragOver = (e: React.DragEvent, day: Date) => {
     e.preventDefault();
+    if (!gridRef.current) return;
+
+    const rect = gridRef.current.getBoundingClientRect();
+    const edgeZoneWidth = 80; // 80px hotzone on each side
+
+    const clearTimer = () => {
+      if (edgeHoverTimerRef.current) {
+        clearTimeout(edgeHoverTimerRef.current);
+        edgeHoverTimerRef.current = null;
+      }
+    };
+
+    // Check left edge
+    if (e.clientX < rect.left + edgeZoneWidth) {
+      if (currentEdgeRef.current !== 'left') {
+        clearTimer();
+        currentEdgeRef.current = 'left';
+        consecutiveMonthChangesRef.current = 0;
+        setDropTargetDate(null);
+        edgeHoverTimerRef.current = setTimeout(() => handleMonthChange('prev'), 600);
+      }
+      setActiveEdge('left');
+      return;
+    }
+
+    // Check right edge
+    if (e.clientX > rect.right - edgeZoneWidth) {
+      if (currentEdgeRef.current !== 'right') {
+        clearTimer();
+        currentEdgeRef.current = 'right';
+        consecutiveMonthChangesRef.current = 0;
+        setDropTargetDate(null);
+        edgeHoverTimerRef.current = setTimeout(() => handleMonthChange('next'), 600);
+      }
+      setActiveEdge('right');
+      return;
+    }
+
+    // If not in an edge zone
+    clearTimer();
+    setActiveEdge(null);
+    currentEdgeRef.current = null;
+    
     if (dropTargetDate === null || !isSameDay(day, dropTargetDate)) {
-        setDropTargetDate(day);
+      setDropTargetDate(day);
     }
   };
 
@@ -260,7 +335,18 @@ export function CalendarView({ data }: CalendarViewProps) {
           No items with {datePropLabels[calendarDateProp]} to display on the calendar.
         </div>
       ) : (
-        <div className="px-2" onDragEnd={handleDragEnd}>
+        <div className="px-2 relative" onDragEnd={handleDragEnd}>
+          {/* Left edge cue */}
+          <div className={cn(
+              "absolute top-0 left-2 bottom-0 w-20 bg-gradient-to-r from-primary/20 to-transparent pointer-events-none transition-opacity duration-300 z-10",
+              activeEdge === 'left' ? "opacity-100" : "opacity-0"
+          )} />
+          {/* Right edge cue */}
+          <div className={cn(
+              "absolute top-0 right-2 bottom-0 w-20 bg-gradient-to-l from-primary/20 to-transparent pointer-events-none transition-opacity duration-300 z-10",
+              activeEdge === 'right' ? "opacity-100" : "opacity-0"
+          )} />
+
           {numColumns === 7 && (
             <div className="grid grid-cols-7">
               {weekdays.map(day => (
