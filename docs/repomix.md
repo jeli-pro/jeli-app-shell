@@ -11,6 +11,8 @@ src/
           AddDataItemCta.tsx
           AnimatedLoadingSkeleton.tsx
           DetailPanel.tsx
+          DraggableSection.tsx
+          EditableField.tsx
           EmptyState.tsx
           FieldRenderer.tsx
         views/
@@ -22,9 +24,6 @@ src/
       DynamicView.tsx
       DynamicViewContext.tsx
       types.ts
-  hooks/
-    useAppViewManager.hook.ts
-    useRightPaneContent.hook.tsx
   pages/
     DataDemo/
       store/
@@ -42,6 +41,259 @@ vite.config.ts
 ```
 
 # Files
+
+## File: src/features/dynamic-view/components/shared/DraggableSection.tsx
+```typescript
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import React from 'react';
+
+interface DraggableSectionProps {
+  id: string;
+  children: React.ReactNode;
+}
+
+export function DraggableSection({ id, children }: DraggableSectionProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className={cn(isDragging && 'opacity-50 z-50')}>
+      <div className="bg-card/30 rounded-2xl border border-border/30 relative group">
+        <button
+          {...attributes}
+          {...listeners}
+          className="absolute top-3 -left-7 p-1 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+        >
+          <GripVertical className="w-5 h-5" />
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+```
+
+## File: src/features/dynamic-view/components/shared/EditableField.tsx
+```typescript
+import React, { useState, useRef, useEffect } from 'react';
+import { useDynamicView } from '../../DynamicViewContext';
+import type { GenericItem, ControlOption } from '../../types';
+import { FieldRenderer } from './FieldRenderer';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+import { Slider } from '@/components/ui/slider';
+import { cn, getNestedValue } from '@/lib/utils';
+import { mockDataItems } from '@/pages/DataDemo/data/mockData';
+
+interface EditableFieldProps<TFieldId extends string, TItem extends GenericItem> {
+  item: TItem;
+  fieldId: TFieldId;
+  className?: string;
+  options?: Record<string, any>;
+}
+
+// Mock user list for assignee field
+const userList = Array.from(new Set(mockDataItems.map(i => i.assignee.email)))
+  .map(email => mockDataItems.find(i => i.assignee.email === email)?.assignee)
+  .filter(Boolean) as { name: string; email: string; avatar: string }[];
+
+
+export function EditableField<TFieldId extends string, TItem extends GenericItem>({
+  item,
+  fieldId,
+  className,
+  options,
+}: EditableFieldProps<TFieldId, TItem>) {
+  const { config, getFieldDef, onItemUpdate } = useDynamicView<TFieldId, TItem>();
+  const [isEditing, setIsEditing] = useState(false);
+  const fieldDef = getFieldDef(fieldId);
+  const value = getNestedValue(item, fieldId);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (isEditing && (fieldDef?.type === 'string' || fieldDef?.type === 'longtext' || fieldDef?.type === 'thumbnail')) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [isEditing, fieldDef]);
+
+  if (!fieldDef || !onItemUpdate) {
+    return <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />;
+  }
+
+  const handleUpdate = (newValue: any) => {
+    if (value !== newValue) {
+      onItemUpdate(item.id, { [fieldId]: newValue } as Partial<TItem>);
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !(e.currentTarget instanceof HTMLTextAreaElement)) {
+      handleUpdate(e.currentTarget.value);
+    }
+    if (e.key === 'Escape') {
+      setIsEditing(false);
+    }
+  };
+
+  const renderEditComponent = () => {
+    switch (fieldDef.type) {
+      case 'string':
+      case 'thumbnail': // For emoji
+        return (
+          <Input
+            ref={inputRef as React.Ref<HTMLInputElement>}
+            type="text"
+            defaultValue={value}
+            onBlur={(e) => handleUpdate(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="w-full h-auto p-0 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+        );
+      case 'longtext':
+        return (
+          <Textarea
+            ref={inputRef as React.Ref<HTMLTextAreaElement>}
+            defaultValue={value}
+            onBlur={(e) => handleUpdate(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="text-sm w-full p-0 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+        );
+      case 'badge': {
+        const filterableField = config.filterableFields.find((f) => f.id === fieldId);
+        const badgeOptions: readonly ControlOption<string>[] = filterableField?.options || [];
+
+        return (
+          <Popover open={isEditing} onOpenChange={setIsEditing}>
+            <PopoverTrigger asChild>
+              <button className="w-full text-left" onClick={() => setIsEditing(true)}>
+                <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[200px]" align="start">
+              <Command>
+                <CommandList>
+                  <CommandGroup>
+                    {badgeOptions.map((option) => (
+                      <CommandItem
+                        key={option.id}
+                        onSelect={() => handleUpdate(option.id)}
+                      >
+                        {option.label}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        );
+      }
+      case 'progress': {
+        const progressValue = typeof value === 'number' ? value : 0;
+        return (
+           <div className="flex items-center gap-3 py-2 w-full">
+            <Slider
+              value={[progressValue]}
+              max={100}
+              step={1}
+              onValueCommit={(val) => handleUpdate(val[0])}
+              className="flex-1"
+            />
+            <span className="text-sm font-medium text-muted-foreground w-10 text-right">{progressValue}%</span>
+           </div>
+        );
+      }
+      case 'avatar': {
+        return (
+          <Popover open={isEditing} onOpenChange={setIsEditing}>
+            <PopoverTrigger asChild>
+              <button className="w-full text-left" onClick={() => setIsEditing(true)}>
+                <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="p-0 w-[250px]" align="start">
+              <Command>
+                <CommandList>
+                  <CommandGroup>
+                    {userList.map((user) => (
+                      <CommandItem key={user.email} onSelect={() => handleUpdate(user)}>
+                          <FieldRenderer item={{ assignee: user } as TItem} fieldId={'assignee' as TFieldId} />
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        );
+      }
+      case 'date': {
+        return (
+          <Input
+            type="date"
+            defaultValue={value ? new Date(value).toISOString().split('T')[0] : ''}
+            onChange={(e) => {
+              const date = e.target.valueAsDate;
+              if (date) {
+                // preserve time if exists
+                const originalDate = value ? new Date(value) : new Date();
+                date.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds());
+                handleUpdate(date.toISOString());
+              }
+            }}
+            className="h-8"
+          />
+        )
+      }
+      // TODO: Add tags editor
+      default:
+        return <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />;
+    }
+  };
+
+  if (['badge', 'avatar'].includes(fieldDef.type)) {
+    return renderEditComponent();
+  }
+
+  if (fieldDef.type === 'progress') {
+      return renderEditComponent();
+  }
+
+  return (
+    <div className={cn("w-full group", className)} onClick={() => !isEditing && setIsEditing(true)}>
+      {isEditing ? (
+        renderEditComponent()
+      ) : (
+        <div className={cn(
+          "hover:bg-accent/50 rounded-md transition-colors cursor-text min-h-[32px] w-full",
+           fieldDef.type === 'longtext' ? 'py-1 flex items-start' : 'flex items-center'
+        )}>
+            <FieldRenderer item={item} fieldId={fieldId} options={options} />
+        </div>
+      )}
+    </div>
+  );
+}
+```
 
 ## File: src/index.css
 ```css
@@ -850,17 +1102,29 @@ export const AnimatedLoadingSkeleton = ({ viewMode }: { viewMode: ViewMode }) =>
 
 ## File: src/features/dynamic-view/components/shared/DetailPanel.tsx
 ```typescript
-import React, { useRef } from 'react'
+import React, { useRef, useState, useMemo } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import {
   Clock, 
   Tag,
   User,
   BarChart3,
 } from 'lucide-react'
-import type { GenericItem, DetailViewConfig } from '../../types'
+import type { GenericItem, DetailViewConfig, DetailViewSection } from '../../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook';
-import { FieldRenderer } from '@/features/dynamic-view/components/shared/FieldRenderer'
+import { EditableField } from './EditableField'
+import { DraggableSection } from './DraggableSection'
 import { getNestedValue } from '@/lib/utils'
+import { useDynamicView } from '../../DynamicViewContext'
 
 interface DetailPanelProps<TFieldId extends string, TItem extends GenericItem> {
   item: TItem;
@@ -877,27 +1141,41 @@ const SECTION_ICONS: Record<string, React.ElementType> = {
 export function DetailPanel<TFieldId extends string, TItem extends GenericItem>({ item, config }: DetailPanelProps<TFieldId, TItem>) {
   const contentRef = useRef<HTMLDivElement>(null)
   useStaggeredAnimation(contentRef, [item]);
+  
+  const { header, body } = config;
+  const [sections, setSections] = useState(body.sections);
+
+  const sectionIds = useMemo(() => sections.map(s => s.title), [sections]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      setSections((currentSections) => {
+        const oldIndex = sectionIds.indexOf(active.id as string);
+        const newIndex = sectionIds.indexOf(over!.id as string);
+        return arrayMove(currentSections, oldIndex, newIndex);
+      });
+    }
+  };
 
   if (!item) {
     return null
   }
   
-  const { header, body } = config;
-
   return (
     <div ref={contentRef} className="h-full flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
         <div className="flex items-start gap-4 mb-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
-            <FieldRenderer item={item} fieldId={header.thumbnailField} />
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+             <EditableField item={item} fieldId={header.thumbnailField} />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold mb-2 leading-tight">
-              <FieldRenderer item={item} fieldId={header.titleField} />
+            <h1 className="text-2xl font-bold mb-1 leading-tight">
+              <EditableField item={item} fieldId={header.titleField} />
             </h1>
             <p className="text-muted-foreground">
-              <FieldRenderer item={item} fieldId={header.descriptionField} />
+              <EditableField item={item} fieldId={header.descriptionField} />
             </p>
           </div>
         </div>
@@ -905,41 +1183,52 @@ export function DetailPanel<TFieldId extends string, TItem extends GenericItem>(
         {/* Status badges */}
         <div className="flex items-center gap-2 flex-wrap mb-4">
           {header.badgeFields.map((fieldId: TFieldId) => (
-            <FieldRenderer key={fieldId} item={item} fieldId={fieldId} />
+            <EditableField key={fieldId} item={item} fieldId={fieldId} />
           ))}
         </div>
 
         {/* Progress */}
-        <FieldRenderer item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
+        <EditableField item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-6 space-y-6">
-          {body.sections.map((section) => {
-            const IconComponent = SECTION_ICONS[section.title];
-            // Render section only if at least one of its fields has a value
-            const hasContent = section.fields.some((fieldId: TFieldId) => {
-              const value = getNestedValue(item, fieldId as string);
-              return value !== null && typeof value !== 'undefined';
-            });
+          <DndContext
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={sectionIds}
+              strategy={verticalListSortingStrategy}
+            >
+              {sections.map((section) => {
+                const IconComponent = SECTION_ICONS[section.title];
+                const hasContent = section.fields.some((fieldId: TFieldId) => {
+                  const value = getNestedValue(item, fieldId as string);
+                  return value !== null && typeof value !== 'undefined';
+                });
 
-            if (!hasContent) return null;
+                if (!hasContent) return null;
 
-            return (
-              <div key={section.title} className="bg-card/30 rounded-2xl p-4 border border-border/30">
-                <div className="flex items-center gap-1 mb-3">
-                  {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
-                  <h3 className="font-semibold text-sm">{section.title}</h3>
-                </div>
-                <div className="space-y-3">
-                  {section.fields.map((fieldId: TFieldId) => (
-                    <FieldRenderer key={fieldId} item={item} fieldId={fieldId} options={{ avatarClassName: "w-12 h-12" }} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+                return (
+                  <DraggableSection key={section.title} id={section.title}>
+                    <div className="p-4">
+                      <div className="flex items-center gap-1 mb-3">
+                        {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
+                        <h3 className="font-semibold text-sm">{section.title}</h3>
+                      </div>
+                      <div className="space-y-3">
+                        {section.fields.map((fieldId: TFieldId) => (
+                          <EditableField key={fieldId} item={item} fieldId={fieldId} options={{ avatarClassName: "w-12 h-12" }} />
+                        ))}
+                      </div>
+                    </div>
+                  </DraggableSection>
+                );
+              })}
+            </SortableContext>
+          </DndContext>
         </div>
       </div>
     </div>
@@ -1553,196 +1842,6 @@ export function DynamicView<TFieldId extends string, TItem extends GenericItem>(
 }
 ```
 
-## File: src/pages/DataDemo/DataDemo.config.tsx
-```typescript
-import { FieldRenderer } from "@/features/dynamic-view/components/shared/FieldRenderer";
-import type { ViewConfig } from "@/features/dynamic-view/types";
-import type { DataDemoItem } from "./data/DataDemoItem";
-
-const config = {
-  // 1. Field Definitions
-  fields: [
-    { id: "id", label: "ID", type: "string" },
-    { id: "title", label: "Title", type: "string" },
-    { id: "description", label: "Description", type: "longtext" },
-    { id: "thumbnail", label: "Thumbnail", type: "thumbnail" },
-    { id: "category", label: "Category", type: "badge" },
-    {
-      id: "status",
-      label: "Status",
-      type: "badge",
-      colorMap: {
-        active: "bg-sky-500/10 text-sky-600 border-sky-500/20",
-        pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-        completed: "bg-emerald-600/10 text-emerald-700 border-emerald-600/20",
-        archived: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
-      },
-    },
-    {
-      id: "priority",
-      label: "Priority",
-      type: "badge",
-      colorMap: {
-        critical: "bg-red-600/10 text-red-700 border-red-600/20",
-        high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
-        medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-        low: "bg-green-500/10 text-green-600 border-green-500/20",
-      },
-      indicatorColorMap: {
-        critical: "bg-red-500",
-        high: "bg-orange-500",
-        medium: "bg-blue-500",
-        low: "bg-green-500",
-      },
-    },
-    { id: "assignee", label: "Assignee", type: "avatar" },
-    { id: "tags", label: "Tags", type: "tags" },
-    { id: "metrics", label: "Engagement", type: "metrics" },
-    { id: "metrics.completion", label: "Progress", type: "progress" },
-    { id: "dueDate", label: "Due Date", type: "date" },
-    { id: "createdAt", label: "Created At", type: "date" },
-    { id: "updatedAt", label: "Last Updated", type: "date" },
-    // A custom field to replicate the composite "Project" column in the table view
-    {
-      id: "project_details",
-      label: "Project",
-      type: "custom",
-      render: (item: DataDemoItem) => (
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
-            <FieldRenderer item={item} fieldId="thumbnail" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h4 className="font-medium group-hover:text-primary transition-colors truncate">
-              <FieldRenderer item={item} fieldId="title" />
-            </h4>
-            <p className="text-sm text-muted-foreground truncate">
-              <FieldRenderer item={item} fieldId="category" />
-            </p>
-          </div>
-        </div>
-      ),
-    },
-  ] as const,
-  // 2. Control Definitions
-  sortableFields: [
-    { id: "updatedAt", label: "Last Updated" },
-    { id: "title", label: "Title" },
-    { id: "status", label: "Status" },
-    { id: "priority", label: "Priority" },
-    { id: "metrics.completion", label: "Progress" },
-  ],
-  groupableFields: [
-    { id: "none", label: "None" },
-    { id: "status", label: "Status" },
-    { id: "priority", label: "Priority" },
-    { id: "category", label: "Category" },
-  ],
-  filterableFields: [
-    {
-      id: "status",
-      label: "Status",
-      options: [
-        { id: "active", label: "Active" },
-        { id: "pending", label: "Pending" },
-        { id: "completed", label: "Completed" },
-        { id: "archived", label: "Archived" },
-      ],
-    },
-    {
-      id: "priority",
-      label: "Priority",
-      options: [
-        { id: "critical", label: "Critical" },
-        { id: "high", label: "High" },
-        { id: "medium", label: "Medium" },
-        { id: "low", label: "Low" },
-      ],
-    },
-  ],
-  // 3. View Layouts
-  listView: {
-    iconField: "thumbnail",
-    titleField: "title",
-    metaFields: [
-      { fieldId: "status", className: "hidden sm:flex" },
-      { fieldId: "tags", className: "hidden lg:flex" },
-      { fieldId: "updatedAt", className: "hidden md:flex" },
-      { fieldId: "assignee" },
-      { fieldId: "priority", className: "hidden xs:flex" },
-    ],
-  },
-  cardView: {
-    thumbnailField: "thumbnail",
-    titleField: "title",
-    descriptionField: "description",
-    headerFields: ["priority"],
-    statusField: "status",
-    categoryField: "category",
-    tagsField: "tags",
-    progressField: "metrics.completion",
-    assigneeField: "assignee",
-    metricsField: "metrics",
-    dateField: "updatedAt",
-  },
-  tableView: {
-    columns: [
-      { fieldId: "project_details", label: "Project", isSortable: true },
-      { fieldId: "status", label: "Status", isSortable: true },
-      { fieldId: "priority", label: "Priority", isSortable: true },
-      { fieldId: "assignee", label: "Assignee", isSortable: true },
-      { fieldId: "metrics.completion", label: "Progress", isSortable: true },
-      { fieldId: "metrics", label: "Engagement", isSortable: true },
-      { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
-    ],
-  },
-  kanbanView: {
-    groupByField: "status",
-    cardFields: {
-      titleField: "title",
-      descriptionField: "description",
-      priorityField: "priority",
-      tagsField: "tags",
-      dateField: "dueDate",
-      metricsField: "metrics",
-      assigneeField: "assignee",
-    },
-  },
-  calendarView: {
-    dateField: "dueDate",
-    titleField: "title",
-    displayFields: ["tags", "priority", "assignee"],
-    colorByField: "priority",
-  },
-  detailView: {
-    header: {
-      thumbnailField: "thumbnail",
-      titleField: "title",
-      descriptionField: "description",
-      badgeFields: ["status", "priority", "category"],
-      progressField: "metrics.completion",
-    },
-    body: {
-      sections: [
-        { title: "Assigned to", fields: ["assignee"] },
-        { title: "Engagement Metrics", fields: ["metrics"] },
-        { title: "Tags", fields: ["tags"] },
-        {
-          title: "Timeline",
-          fields: ["createdAt", "updatedAt", "dueDate"],
-        },
-      ],
-    },
-  },
-} as const;
-
-// Infer the field IDs from the const-asserted array.
-type DataDemoFieldId = (typeof config.fields)[number]["id"];
-
-// This line validates the entire config object against the generic ViewConfig type.
-export const dataDemoViewConfig: ViewConfig<DataDemoFieldId, DataDemoItem> = config;
-```
-
 ## File: src/features/dynamic-view/components/views/KanbanView.tsx
 ```typescript
 import { useState, useEffect, Fragment } from "react";
@@ -1960,6 +2059,198 @@ export function KanbanView({ data }: DataKanbanViewProps) {
     </div>
   );
 }
+```
+
+## File: src/pages/DataDemo/DataDemo.config.tsx
+```typescript
+import { FieldRenderer } from "@/features/dynamic-view/components/shared/FieldRenderer";
+import type {
+  ViewConfig,
+  FieldDefinition,
+} from "@/features/dynamic-view/types";
+import type { DataDemoItem } from "./data/DataDemoItem";
+
+const fields: readonly FieldDefinition<string, DataDemoItem>[] = [
+  { id: "id", label: "ID", type: "string" },
+  { id: "title", label: "Title", type: "string" },
+  { id: "description", label: "Description", type: "longtext" },
+  { id: "thumbnail", label: "Thumbnail", type: "thumbnail" },
+  { id: "category", label: "Category", type: "badge" },
+  {
+    id: "status",
+    label: "Status",
+    type: "badge",
+    colorMap: {
+      active: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+      pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+      completed: "bg-emerald-600/10 text-emerald-700 border-emerald-600/20",
+      archived: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
+    },
+  },
+  {
+    id: "priority",
+    label: "Priority",
+    type: "badge",
+    colorMap: {
+      critical: "bg-red-600/10 text-red-700 border-red-600/20",
+      high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+      medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+      low: "bg-green-500/10 text-green-600 border-green-500/20",
+    },
+    indicatorColorMap: {
+      critical: "bg-red-500",
+      high: "bg-orange-500",
+      medium: "bg-blue-500",
+      low: "bg-green-500",
+    },
+  },
+  { id: "assignee", label: "Assignee", type: "avatar" },
+  { id: "tags", label: "Tags", type: "tags" },
+  { id: "metrics", label: "Engagement", type: "metrics" },
+  { id: "metrics.completion", label: "Progress", type: "progress" },
+  { id: "dueDate", label: "Due Date", type: "date" },
+  { id: "createdAt", label: "Created At", type: "date" },
+  { id: "updatedAt", label: "Last Updated", type: "date" },
+  // A custom field to replicate the composite "Project" column in the table view
+  {
+    id: "project_details",
+    label: "Project",
+    type: "custom",
+    render: (item: DataDemoItem) => (
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+          <FieldRenderer item={item} fieldId="thumbnail" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+            <FieldRenderer item={item} fieldId="title" />
+          </h4>
+          <p className="text-sm text-muted-foreground truncate">
+            <FieldRenderer item={item} fieldId="category" />
+          </p>
+        </div>
+      </div>
+    ),
+  },
+] as const;
+
+// Infer the field IDs from the const-asserted array.
+type DataDemoFieldId = (typeof fields)[number]["id"];
+
+export const dataDemoViewConfig: ViewConfig<DataDemoFieldId, DataDemoItem> = {
+  // 1. Field Definitions
+  fields,
+  // 2. Control Definitions
+  sortableFields: [
+    { id: "updatedAt", label: "Last Updated" },
+    { id: "title", label: "Title" },
+    { id: "status", label: "Status" },
+    { id: "priority", label: "Priority" },
+    { id: "metrics.completion", label: "Progress" },
+  ],
+  groupableFields: [
+    { id: "none", label: "None" },
+    { id: "status", label: "Status" },
+    { id: "priority", label: "Priority" },
+    { id: "category", label: "Category" },
+  ],
+  filterableFields: [
+    {
+      id: "status",
+      label: "Status",
+      options: [
+        { id: "active", label: "Active" },
+        { id: "pending", label: "Pending" },
+        { id: "completed", label: "Completed" },
+        { id: "archived", label: "Archived" },
+      ],
+    },
+    {
+      id: "priority",
+      label: "Priority",
+      options: [
+        { id: "critical", label: "Critical" },
+        { id: "high", label: "High" },
+        { id: "medium", label: "Medium" },
+        { id: "low", label: "Low" },
+      ],
+    },
+  ],
+  // 3. View Layouts
+  listView: {
+    iconField: "thumbnail",
+    titleField: "title",
+    metaFields: [
+      { fieldId: "status", className: "hidden sm:flex" },
+      { fieldId: "tags", className: "hidden lg:flex" },
+      { fieldId: "updatedAt", className: "hidden md:flex" },
+      { fieldId: "assignee" },
+      { fieldId: "priority", className: "hidden xs:flex" },
+    ],
+  },
+  cardView: {
+    thumbnailField: "thumbnail",
+    titleField: "title",
+    descriptionField: "description",
+    headerFields: ["priority"],
+    statusField: "status",
+    categoryField: "category",
+    tagsField: "tags",
+    progressField: "metrics.completion",
+    assigneeField: "assignee",
+    metricsField: "metrics",
+    dateField: "updatedAt",
+  },
+  tableView: {
+    columns: [
+      { fieldId: "project_details", label: "Project", isSortable: true },
+      { fieldId: "status", label: "Status", isSortable: true },
+      { fieldId: "priority", label: "Priority", isSortable: true },
+      { fieldId: "assignee", label: "Assignee", isSortable: true },
+      { fieldId: "metrics.completion", label: "Progress", isSortable: true },
+      { fieldId: "metrics", label: "Engagement", isSortable: true },
+      { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
+    ],
+  },
+  kanbanView: {
+    groupByField: "status",
+    cardFields: {
+      titleField: "title",
+      descriptionField: "description",
+      priorityField: "priority",
+      tagsField: "tags",
+      dateField: "dueDate",
+      metricsField: "metrics",
+      assigneeField: "assignee",
+    },
+  },
+  calendarView: {
+    dateField: "dueDate",
+    titleField: "title",
+    displayFields: ["tags", "priority", "assignee"],
+    colorByField: "priority",
+  },
+  detailView: {
+    header: {
+      thumbnailField: "thumbnail",
+      titleField: "title",
+      descriptionField: "description",
+      badgeFields: ["status", "priority", "category"],
+      progressField: "metrics.completion",
+    },
+    body: {
+      sections: [
+        { title: "Assigned to", fields: ["assignee"] },
+        { title: "Engagement Metrics", fields: ["metrics"] },
+        { title: "Tags", fields: ["tags"] },
+        {
+          title: "Timeline",
+          fields: ["createdAt", "updatedAt", "dueDate"],
+        },
+      ],
+    },
+  },
+};
 ```
 
 ## File: src/features/dynamic-view/components/controls/ViewControls.tsx
@@ -2890,10 +3181,13 @@ export function ListView({ data, ctaElement }: { data: GenericItem[], ctaElement
     "vite": "^4.5.0"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.1.0",
+    "@dnd-kit/sortable": "^8.0.0",
     "@faker-js/faker": "^10.1.0",
     "@radix-ui/react-checkbox": "^1.3.3",
     "@radix-ui/react-radio-group": "^1.3.8",
     "@radix-ui/react-separator": "^1.1.7",
+    "@radix-ui/react-slider": "^1.3.6",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tooltip": "^1.2.8"
   }
@@ -3244,503 +3538,6 @@ export const useSelectedItem = (itemId?: string) => {
 };
 ```
 
-## File: src/hooks/useRightPaneContent.hook.tsx
-```typescript
-import { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Settings,
-  Component,
-  Bell,
-  SlidersHorizontal,
-  Database,
-  MessageSquare,
-  ExternalLink,
-  Share,
-} from 'lucide-react';
-
-import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext';
-import { Button } from '@/components/ui/button';
-import { DashboardContent } from "@/pages/Dashboard";
-import { SettingsContent } from "@/features/settings/SettingsContent";
-import { ToasterDemo } from "@/pages/ToasterDemo";
-import { NotificationsPage } from "@/pages/Notifications";
-import DataDemoPage from "@/pages/DataDemo/index";
-import { DetailPanel } from '@/features/dynamic-view/components/shared/DetailPanel';
-import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
-import { mockDataItems } from "@/pages/DataDemo/data/mockData";
-import type { DataDemoItem } from '@/pages/DataDemo/data/DataDemoItem';
-import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
-import type { AppShellState } from '@/store/appShell.store';
-
-export function useRightPaneContent(sidePaneContent: AppShellState['sidePaneContent']) {
-  const { itemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
-
-  const staticContentMap = useMemo(() => ({
-    main: {
-      title: "Dashboard",
-      icon: LayoutDashboard,
-      page: "dashboard",
-      content: <DashboardContent />,
-    },
-    settings: {
-      title: "Settings",
-      icon: Settings,
-      page: "settings",
-      content: <div className="p-6"><SettingsContent /></div>,
-    },
-    toaster: {
-      title: "Toaster Demo",
-      icon: Component,
-      page: "toaster",
-      content: <ToasterDemo />,
-    },
-    notifications: {
-      title: "Notifications",
-      icon: Bell,
-      page: "notifications",
-      content: <NotificationsPage />,
-    },
-    dataDemo: {
-      title: "Data Showcase",
-      icon: Database,
-      page: "data-demo",
-      content: <DataDemoPage />,
-    },
-    details: {
-      title: "Details Panel",
-      icon: SlidersHorizontal,
-      content: (
-        <div className="p-6">
-          <p className="text-muted-foreground">
-            This is the side pane. It can be used to display contextual
-            information, forms, or actions related to the main content.
-          </p>
-        </div>
-      ),
-    },
-  }), []);
-
-  const contentMap = useMemo(() => ({
-    ...staticContentMap,
-    messaging: {
-      title: "Conversation",
-      icon: MessageSquare,
-      page: "messaging",
-      content: <MessagingContent conversationId={conversationId} />,
-    },
-  }), [conversationId, staticContentMap]);
-
-  const selectedItem = useMemo(() => {
-    if (!itemId) return null;
-    return (mockDataItems.find(item => item.id === itemId) as DataDemoItem) ?? null;
-  }, [itemId]);
-
-  const { meta, content } = useMemo(() => {
-    if (sidePaneContent === 'dataItem' && selectedItem) {
-      return {
-        meta: { title: "Item Details", icon: Database, page: `data-demo/${itemId}` },
-        content: (
-          <DynamicViewProvider
-            viewConfig={dataDemoViewConfig}
-            items={mockDataItems as DataDemoItem[]}
-            isLoading={false}
-            isInitialLoading={false}
-            totalItemCount={0}
-            hasMore={false}
-            viewMode="list"
-            filters={{ searchTerm: "" }}
-            sortConfig={null}
-            groupBy="none"
-            activeGroupTab=""
-            page={1}
-            onViewModeChange={() => {}}
-            onFiltersChange={() => {}}
-            onSortChange={() => {}}
-            onGroupByChange={() => {}}
-            onActiveGroupTabChange={() => {}}
-            onPageChange={() => {}}
-            onItemSelect={() => {}}
-          >
-            <div className="h-full flex flex-col">
-              <div className="flex-1 overflow-y-auto">
-                <DetailPanel item={selectedItem} config={dataDemoViewConfig.detailView} />
-              </div>
-              {/* Application-specific actions can be composed here */}
-              <div className="p-6 border-t border-border/50 bg-card/30">
-                <div className="flex gap-3">
-                  <Button className="flex-1" size="sm">
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Open Project
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    <Share className="w-4 h-4 mr-2" />
-                    Share
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </DynamicViewProvider>
-        ),
-      };
-    }
-    const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
-    return {
-      meta: mappedContent,
-      content: mappedContent.content,
-    };
-  }, [sidePaneContent, selectedItem, contentMap, itemId]);
-
-  return { meta, content };
-}
-```
-
-## File: src/hooks/useAppViewManager.hook.ts
-```typescript
-import { useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { GenericItem, ViewMode, SortConfig, GroupableField, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';
-import type { TaskView } from '@/pages/Messaging/types';
-import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
-
-const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
-  dashboard: 'main',
-  settings: 'settings',
-  toaster: 'toaster',
-  notifications: 'notifications',
-  'data-demo': 'dataDemo',
-  messaging: 'messaging',
-};
-
-function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>();
-  useEffect(() => {
-    ref.current = value;
-  });
-  return ref.current;
-}
-
-/**
- * A centralized hook to manage and synchronize all URL-based view states.
- * This is the single source of truth for view modes, side panes, split views,
- * and page-specific parameters.
- */
-export function useAppViewManager() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const params = useParams<{ itemId: string; conversationId: string }>();
-  const { itemId, conversationId } = params;
-  const { setSidebarState, sidebarState } = useAppShellStore();
-
-  // --- DERIVED STATE FROM URL ---
-
-  const view = searchParams.get('view');
-  const sidePane = searchParams.get('sidePane');
-  const right = searchParams.get('right');
-  const messagingView = searchParams.get('messagingView') as TaskView | null;
-  const q = searchParams.get('q');
-  const status = searchParams.get('status');
-  const priority = searchParams.get('priority');
-  const sort = searchParams.get('sort');
-  const calDate = searchParams.get('calDate');
-  const calDisplay = searchParams.get('calDisplay');
-  const calLimit = searchParams.get('calLimit');
-  const calColor = searchParams.get('calColor');
-
-  const { bodyState, sidePaneContent } = useMemo(() => {
-    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
-    
-    // 1. Priority: Explicit side pane overlay via URL param
-    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
-    }
-
-    // 2. Data item detail view (can be overlay or split)
-    if (itemId) {
-      if (view === 'split') {
-        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
-      }
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
-    }
-
-    // 3. Messaging conversation view (always split)
-    if (conversationId) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
-    }
-
-    // 4. Generic split view via URL param
-    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
-    }
-
-    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
-  }, [itemId, conversationId, view, sidePane, right]);
-  
-  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
-  const prevActivePage = usePrevious(currentActivePage);
-
-  // --- SIDE EFFECTS ---
-  useEffect(() => {
-    // On navigating to messaging page, collapse sidebar if it's expanded.
-    // This ensures a good default view but allows the user to expand it again if they wish.
-    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {
-      setSidebarState(SIDEBAR_STATES.COLLAPSED);
-    }
-  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
-
-  // DataDemo specific state
-  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
-	const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-	const groupBy = useMemo(() => (searchParams.get('groupBy') as GroupableField<string> | 'none') || 'none', [searchParams]);
-	const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
-	const filters = useMemo<FilterConfig>(
-		() => ({
-			searchTerm: q || '',
-			status: (status?.split(',') || []).filter(Boolean),
-			priority: (priority?.split(',') || []).filter(Boolean),
-		}),
-		[q, status, priority],
-	);
-	const sortConfig = useMemo<SortConfig<string> | null>(() => {
-		const sortParam = sort;
-		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
-		if (sortParam === 'default') return null;
-
-		const [key, direction] = sortParam.split('-');
-		return { key, direction: direction as 'asc' | 'desc' };
-	}, [sort]);
-  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp<string>, [calDate]);
-  const calendarDisplayProps = useMemo(
-    () => {
-      if (calDisplay === null) return []; // Default is now nothing
-      if (calDisplay === '') return []; // Explicitly empty is also nothing
-      return calDisplay.split(',') as CalendarDisplayProp<string>[];
-    },
-    [calDisplay]
-  );
-  const calendarItemLimit = useMemo(() => {
-    const limit = parseInt(calLimit || '3', 10);
-    if (calLimit === 'all') return 'all';
-    return isNaN(limit) ? 3 : limit;
-  }, [calLimit]);
-  const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp<string>, [calColor]);
-
-  // --- MUTATOR ACTIONS ---
-
-  const handleParamsChange = useCallback(
-		(newParams: Record<string, string | number | string[] | null | undefined>, resetPage = false) => {
-			setSearchParams(
-				(prev) => {
-					const updated = new URLSearchParams(prev);
-					
-					for (const [key, value] of Object.entries(newParams)) {
-						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
-							updated.delete(key);
-						} else if (Array.isArray(value)) {
-							updated.set(key, value.join(','));
-						} else {
-							updated.set(key, String(value));
-						}
-					}
-
-					if (resetPage) {
-						updated.delete('page');
-					}
-					if ('groupBy' in newParams) {
-						updated.delete('tab');
-					}
-
-					return updated;
-				},
-				{ replace: true },
-			);
-		},
-		[setSearchParams],
-	);
-
-  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {
-    const targetPath = page.startsWith('/') ? page : `/${page}`;
-    const isSamePage = location.pathname === targetPath;
-    
-    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);
-
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        if (value === null || value === undefined) {
-          newSearchParams.delete(key);
-        } else {
-          newSearchParams.set(key, value);
-        }
-      }
-    }
-
-    navigate({ pathname: targetPath, search: newSearchParams.toString() });
-  }, [navigate, location.pathname, searchParams]);
-
-  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
-        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });
-    } else {
-        handleParamsChange({ sidePane: pane, view: null, right: null });
-    }
-  }, [handleParamsChange, navigate, location.pathname]);
-
-  const closeSidePane = useCallback(() => {
-    if (itemId) {
-      navigate('/data-demo');
-    } else {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-    }
-  }, [itemId, navigate, handleParamsChange]);
-
-  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (sidePane === pane) {
-      closeSidePane();
-    } else {
-      openSidePane(pane);
-    }
-  }, [sidePane, openSidePane, closeSidePane]);
-
-  const toggleSplitView = useCallback(() => {
-    if (bodyState === BODY_STATES.SIDE_PANE) {
-      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
-    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
-      handleParamsChange({ sidePane: right, view: null, right: null });
-    } else { // From normal
-      const paneContent = pageToPaneMap[currentActivePage] || 'details';
-      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
-    }
-  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
-  
-  const setNormalView = useCallback(() => {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-  }, [handleParamsChange]);
-
-  const switchSplitPanes = useCallback(() => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    const newSidePaneContent = pageToPaneMap[currentActivePage];
-    const newActivePage = Object.entries(pageToPaneMap).find(
-      ([, value]) => value === sidePaneContent
-    )?.[0] as ActivePage | undefined;
-
-    if (newActivePage && newSidePaneContent) {
-      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    if (paneToClose === 'right') {
-      navigate(`/${currentActivePage}`, { replace: true });
-    } else { // Closing main pane
-      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
-        ([, value]) => value === sidePaneContent
-      )?.[0] as ActivePage | undefined;
-      
-      if (pageToBecomeActive) {
-        navigate(`/${pageToBecomeActive}`, { replace: true });
-      } else {
-        navigate(`/dashboard`, { replace: true });
-      }
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  // DataDemo actions
-  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
-  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
-  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
-  const setFilters = (newFilters: FilterConfig) => {
-    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
-  }
-  const setSort = (config: SortConfig<string> | null) => {
-    if (!config) {
-      handleParamsChange({ sort: null }, true);
-    } else {
-      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
-    }
-  }
-  const setTableSort = (field: string) => {
-    let newSort: string | null = `${field}-desc`;
-    if (sortConfig && sortConfig.key === field) {
-      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
-      else if (sortConfig.direction === 'asc') newSort = null;
-    }
-    handleParamsChange({ sort: newSort }, true);
-  };
-  const setPage = (newPage: number) => handleParamsChange({ page: newPage > 1 ? newPage.toString() : null });
-
-  // Calendar specific actions
-  const setCalendarDateProp = (prop: CalendarDateProp<string>) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
-  const setCalendarDisplayProps = (props: CalendarDisplayProp<string>[]) => {
-    // Check for default state to keep URL clean
-    const isDefault = props.length === 0;
-    handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });
-  };
-  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
-  const setCalendarColorProp = (prop: CalendarColorProp<string>) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
-
-  const onItemSelect = useCallback((item: GenericItem) => {
-		navigate(`/data-demo/${item.id}${location.search}`);
-	}, [navigate, location.search]);
-
-  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
-
-
-  return useMemo(() => ({
-    // State
-    bodyState,
-    sidePaneContent,
-    currentActivePage,
-    itemId,
-    messagingView,
-    // DataDemo State
-    viewMode,
-    page,
-    groupBy,
-    activeGroupTab,
-    filters,
-    sortConfig,
-    calendarDateProp,
-    calendarDisplayProps,
-    calendarItemLimit,
-    calendarColorProp,
-    // Actions
-    navigateTo,
-    openSidePane,
-    closeSidePane,
-    toggleSidePane,
-    toggleSplitView,
-    setNormalView,
-    switchSplitPanes,
-    setMessagingView,
-    closeSplitPane,
-    // DataDemo Actions
-    onItemSelect,
-    setViewMode,
-    setGroupBy,
-    setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort,
-    setPage,
-    setCalendarDateProp,
-    setCalendarDisplayProps,
-    setCalendarItemLimit,
-    setCalendarColorProp,
-  }), [
-    bodyState, sidePaneContent, currentActivePage, itemId, messagingView, viewMode,
-    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
-    calendarDisplayProps, calendarItemLimit, calendarColorProp,
-    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
-    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
-    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp
-  ]);
-}
-```
-
 ## File: src/pages/DataDemo/index.tsx
 ```typescript
 import { useRef, useEffect, useCallback } from "react";
@@ -3761,7 +3558,6 @@ import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton";
 import { mockDataItems } from "./data/mockData";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useDataDemoStore } from "./store/dataDemo.store";
-import {} from "./store/dataDemo.store";
 import { AddDataItemCta } from "@/features/dynamic-view/components/shared/AddDataItemCta";
 
 import { dataDemoViewConfig } from "./DataDemo.config";
@@ -3791,6 +3587,7 @@ export default function DataDemoPage() {
     isInitialLoading,
     totalItemCount,
     loadData,
+    updateItem,
   } = useDataDemoStore((state) => ({
     items: state.items,
     hasMore: state.hasMore,
@@ -3798,6 +3595,7 @@ export default function DataDemoPage() {
     isInitialLoading: state.isInitialLoading,
     totalItemCount: state.totalItemCount,
     loadData: state.loadData,
+    updateItem: state.updateItem,
   }));
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -3951,6 +3749,7 @@ export default function DataDemoPage() {
         onGroupByChange={setGroupBy}
         onActiveGroupTabChange={setActiveGroupTab}
         onPageChange={setPage}
+        onItemUpdate={updateItem}
         onItemSelect={onItemSelect}
         loaderRef={loaderRef}
         scrollContainerRef={scrollRef}

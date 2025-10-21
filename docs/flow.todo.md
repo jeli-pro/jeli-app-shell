@@ -68,7 +68,11 @@ but for day view should be open as split view mode in right pane, where main/lef
 
 ===
 
-data demo page: when user open data demo page that automatically show as overlay side pane,the UI UX should be like notion, where every data points are editable and can be dragged drop reorder
+data demo page: calendar view: dynamic-view make the item drag drop works between days in month. currently it can be drag but cannot drop
+
+=== DOING
+
+data demo page: dynamic-view: when user open data demo detail page that automatically show as overlay side pane,the UI UX should be like notion, where every data points are editable and can be dragged drop reorder
 
 ===
 
@@ -84,7 +88,7 @@ but treat current data demo layout and UI as template like notion, so only the d
 
 spread the model into another sub page in data demo sidebar. like contact, company, etc
 
-===
+=== DONE
 
 dynamic-view and data demo page:
 

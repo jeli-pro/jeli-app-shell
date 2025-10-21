@@ -16,7 +16,6 @@ import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton";
 import { mockDataItems } from "./data/mockData";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useDataDemoStore } from "./store/dataDemo.store";
-import {} from "./store/dataDemo.store";
 import { AddDataItemCta } from "@/features/dynamic-view/components/shared/AddDataItemCta";
 
 import { dataDemoViewConfig } from "./DataDemo.config";
@@ -46,6 +45,7 @@ export default function DataDemoPage() {
     isInitialLoading,
     totalItemCount,
     loadData,
+    updateItem,
   } = useDataDemoStore((state) => ({
     items: state.items,
     hasMore: state.hasMore,
@@ -53,6 +53,7 @@ export default function DataDemoPage() {
     isInitialLoading: state.isInitialLoading,
     totalItemCount: state.totalItemCount,
     loadData: state.loadData,
+    updateItem: state.updateItem,
   }));
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -206,6 +207,7 @@ export default function DataDemoPage() {
         onGroupByChange={setGroupBy}
         onActiveGroupTabChange={setActiveGroupTab}
         onPageChange={setPage}
+        onItemUpdate={updateItem}
         onItemSelect={onItemSelect}
         loaderRef={loaderRef}
         scrollContainerRef={scrollRef}

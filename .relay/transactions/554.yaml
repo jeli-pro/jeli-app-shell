@@ -1,0 +1,968 @@
+uuid: 44b7d022-ec90-4d43-9878-8edb36e92825
+projectId: jeli-app-shell
+createdAt: '2025-10-21T14:05:20.293Z'
+gitCommitMsg: >-
+  refactor(dynamic-view): overhaul DetailPanel for Notion-style UX
+
+  Refactored the DetailPanel and its child components to achieve a fluid,
+  Notion-like user experience with full inline editing capabilities.
+
+  - `EditableField`: Completely overhauled the component to unify state
+  management. This fixes inconsistent "click-to-edit" behavior across all field
+  types, including those using Popovers (Badge, Avatar). Input styles are now
+  minimal to provide a seamless transition from display to edit mode.
+
+  - `DraggableSection`: Redesigned to be a lightweight wrapper. Removed
+  intrusive card styling and repositioned the drag handle to be a subtle,
+  contextual element that appears on group hover, improving the component's
+  aesthetics and usability.
+
+  - `DetailPanel`: Restructured the content layout into a two-column
+  (Label/Value) format, mimicking Notion's property lists. This improves
+  scannability and provides a cleaner, more organized presentation of data.
+  Fields are now fully editable and sections are reorderable.
+promptSummary: >-
+  I'm executing a plan to refactor the DetailPanel to have a true Notion-style
+  UX with fully functional inline editing and a cleaner drag-and-drop interface.
+reasoning:
+  - >-
+    Of course. It seems the previous implementation didn't fully capture the
+    fluid, Notion-style user experience we're aiming for. Let's perform a
+    targeted refactor to correct this. We'll overhaul the `EditableField` for
+    seamless inline editing, redesign the `DraggableSection` to be less
+    intrusive, and restructure the `DetailPanel` layout into a clean, two-column
+    property list. This will deliver the intuitive and polished interface we're
+    looking for.
+  - '### Part 1: Fix and Polish Inline Editing'
+  - >-
+    First, I'll completely refactor the `EditableField` component. The current
+    logic is inconsistent. This change will unify the state handling, ensuring a
+    reliable "click-to-edit" experience for all field types, from simple text to
+    complex popovers. I'm also refining the input styles to make the transition
+    between display and edit modes feel invisible, a key part of the Notion
+    aesthetic.
+  - '### Part 2: Redesign DraggableSection and Layout'
+  - >-
+    Next, I'll streamline the `DraggableSection` component. The heavy card
+    styling will be removed, and the drag handle will be repositioned to appear
+    subtly on hover, right next to the content it controls. This makes the
+    drag-and-drop functionality feel integrated, not bolted on.
+  - >-
+    Finally, I'll restructure the `DetailPanel` itself. By fetching field
+    definitions from our context, I can arrange the fields into a clean
+    two-column layout—label on the left, editable value on the right. This is a
+    fundamental change that brings the UI in line with the organized, scannable
+    property lists found in Notion.
+  - >-
+    These changes, executed together, will transform the detail panel into the
+    fluid, powerful, and intuitive editor we originally envisioned.
+operations:
+  - type: write
+    path: src/features/dynamic-view/components/shared/EditableField.tsx
+    content: >
+      <<<<<<< SEARCH
+
+      export function EditableField<TFieldId extends string, TItem extends
+      GenericItem>({
+        item,
+        fieldId,
+        className,
+        options,
+      }: EditableFieldProps<TFieldId, TItem>) {
+        const { config, getFieldDef, onItemUpdate } = useDynamicView<TFieldId, TItem>();
+        const [isEditing, setIsEditing] = useState(false);
+        const fieldDef = getFieldDef(fieldId);
+        const value = getNestedValue(item, fieldId);
+        const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+        useEffect(() => {
+          if (isEditing && (fieldDef?.type === 'string' || fieldDef?.type === 'longtext' || fieldDef?.type === 'thumbnail')) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+          }
+        }, [isEditing, fieldDef]);
+
+        if (!fieldDef || !onItemUpdate) {
+          return <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />;
+        }
+
+        const handleUpdate = (newValue: any) => {
+          if (value !== newValue) {
+            onItemUpdate(item.id, { [fieldId]: newValue } as Partial<TItem>);
+          }
+          setIsEditing(false);
+        };
+
+        const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+          if (e.key === 'Enter' && !(e.currentTarget instanceof HTMLTextAreaElement)) {
+            handleUpdate(e.currentTarget.value);
+          }
+          if (e.key === 'Escape') {
+            setIsEditing(false);
+          }
+        };
+
+        const renderEditComponent = () => {
+          switch (fieldDef.type) {
+            case 'string':
+            case 'thumbnail': // For emoji
+              return (
+                <Input
+                  ref={inputRef as React.Ref<HTMLInputElement>}
+                  type="text"
+                  defaultValue={value}
+                  onBlur={(e) => handleUpdate(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="w-full h-auto p-0 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                />
+              );
+            case 'longtext':
+              return (
+                <Textarea
+                  ref={inputRef as React.Ref<HTMLTextAreaElement>}
+                  defaultValue={value}
+                  onBlur={(e) => handleUpdate(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="text-sm w-full p-0 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                />
+              );
+            case 'badge': {
+              const filterableField = config.filterableFields.find((f) => f.id === fieldId);
+              const badgeOptions: readonly ControlOption<string>[] = filterableField?.options || [];
+
+              return (
+                <Popover open={isEditing} onOpenChange={setIsEditing}>
+                  <PopoverTrigger asChild>
+                    <button className="w-full text-left" onClick={() => setIsEditing(true)}>
+                      <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-[200px]" align="start">
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          {badgeOptions.map((option) => (
+                            <CommandItem
+                              key={option.id}
+                              onSelect={() => handleUpdate(option.id)}
+                            >
+                              {option.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              );
+            }
+            case 'progress': {
+              const progressValue = typeof value === 'number' ? value : 0;
+              return (
+                 <div className="flex items-center gap-3 py-2 w-full">
+                  <Slider
+                    value={[progressValue]}
+                    max={100}
+                    step={1}
+                    onValueCommit={(val) => handleUpdate(val[0])}
+                    className="flex-1"
+                  />
+                  <span className="text-sm font-medium text-muted-foreground w-10 text-right">{progressValue}%</span>
+                 </div>
+              );
+            }
+            case 'avatar': {
+              return (
+                <Popover open={isEditing} onOpenChange={setIsEditing}>
+                  <PopoverTrigger asChild>
+                    <button className="w-full text-left" onClick={() => setIsEditing(true)}>
+                      <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-[250px]" align="start">
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          {userList.map((user) => (
+                            <CommandItem key={user.email} onSelect={() => handleUpdate(user)}>
+                                <FieldRenderer item={{ assignee: user } as TItem} fieldId={'assignee' as TFieldId} />
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              );
+            }
+            case 'date': {
+              return (
+                <Input
+                  type="date"
+                  defaultValue={value ? new Date(value).toISOString().split('T')[0] : ''}
+                  onChange={(e) => {
+                    const date = e.target.valueAsDate;
+                    if (date) {
+                      // preserve time if exists
+                      const originalDate = value ? new Date(value) : new Date();
+                      date.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds());
+                      handleUpdate(date.toISOString());
+                    }
+                  }}
+                  className="h-8"
+                />
+              )
+            }
+            // TODO: Add tags editor
+            default:
+              return <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />;
+          }
+        };
+
+        if (['badge', 'avatar'].includes(fieldDef.type)) {
+          return renderEditComponent();
+        }
+
+        if (fieldDef.type === 'progress') {
+            return renderEditComponent();
+        }
+
+        return (
+          <div className={cn("w-full group", className)} onClick={() => !isEditing && setIsEditing(true)}>
+            {isEditing ? (
+              renderEditComponent()
+            ) : (
+              <div className={cn(
+                "hover:bg-accent/50 rounded-md transition-colors cursor-text min-h-[32px] w-full",
+                 fieldDef.type === 'longtext' ? 'py-1 flex items-start' : 'flex items-center'
+              )}>
+                  <FieldRenderer item={item} fieldId={fieldId} options={options} />
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      =======
+
+      export function EditableField<TFieldId extends string, TItem extends
+      GenericItem>({
+        item,
+        fieldId,
+        className,
+        options,
+      }: EditableFieldProps<TFieldId, TItem>) {
+        const { config, getFieldDef, onItemUpdate } = useDynamicView<TFieldId, TItem>();
+        const [isEditing, setIsEditing] = useState(false);
+        const fieldDef = getFieldDef(fieldId);
+        const value = getNestedValue(item, fieldId);
+        const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+        useEffect(() => {
+          if (isEditing && (fieldDef?.type === 'string' || fieldDef?.type === 'longtext' || fieldDef?.type === 'thumbnail')) {
+            inputRef.current?.focus();
+            inputRef.current?.select();
+          }
+        }, [isEditing, fieldDef]);
+
+        if (!fieldDef || !onItemUpdate) {
+          return <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />;
+        }
+
+        const handleUpdate = (newValue: any) => {
+          if (value !== newValue) {
+            onItemUpdate(item.id, { [fieldId]: newValue } as Partial<TItem>);
+          }
+          setIsEditing(false);
+        };
+
+        const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+          if (e.key === 'Enter' && !(e.currentTarget instanceof HTMLTextAreaElement)) {
+            handleUpdate(e.currentTarget.value);
+          }
+          if (e.key === 'Escape') {
+            setIsEditing(false);
+          }
+        };
+
+        const renderEditComponent = () => {
+          switch (fieldDef.type) {
+            case 'string':
+            case 'thumbnail': // For emoji
+              return (
+                <Input
+                  ref={inputRef as React.Ref<HTMLInputElement>}
+                  type="text"
+                  defaultValue={value}
+                  onBlur={(e) => handleUpdate(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="w-full h-auto p-1 bg-transparent border-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+                />
+              );
+            case 'longtext':
+              return (
+                <Textarea
+                  ref={inputRef as React.Ref<HTMLTextAreaElement>}
+                  defaultValue={value}
+                  onBlur={(e) => handleUpdate(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="text-sm w-full p-1 bg-transparent border-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+                />
+              );
+            case 'badge': {
+              const filterableField = config.filterableFields.find((f) => f.id === fieldId);
+              const badgeOptions: readonly ControlOption<string>[] = filterableField?.options || [];
+              return (
+                <Popover open={isEditing} onOpenChange={setIsEditing}>
+                  <PopoverTrigger asChild>
+                    <div className="w-full h-full absolute inset-0 opacity-0 cursor-pointer"></div>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-[200px]" align="start">
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          {badgeOptions.map((option) => (
+                            <CommandItem key={option.id} onSelect={() => handleUpdate(option.id)}>
+                              {option.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              );
+            }
+            case 'progress': {
+              const progressValue = typeof value === 'number' ? value : 0;
+              return (
+                 <div className="flex items-center gap-3 w-full">
+                  <Slider
+                    value={[progressValue]}
+                    max={100} step={1}
+                    onValueCommit={(val) => handleUpdate(val[0])}
+                    className="flex-1"
+                  />
+                  <span className="text-sm font-medium text-muted-foreground w-10 text-right">{progressValue}%</span>
+                 </div>
+              );
+            }
+            case 'avatar': {
+              return (
+                <Popover open={isEditing} onOpenChange={setIsEditing}>
+                  <PopoverTrigger asChild>
+                     <div className="w-full h-full absolute inset-0 opacity-0 cursor-pointer"></div>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 w-[250px]" align="start">
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          {userList.map((user) => (
+                            <CommandItem key={user.email} onSelect={() => handleUpdate(user)}>
+                                <FieldRenderer item={{ assignee: user } as TItem} fieldId={'assignee' as TFieldId} />
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              );
+            }
+            case 'date': {
+              return (
+                <Input
+                  autoFocus
+                  type="date"
+                  defaultValue={value ? new Date(value).toISOString().split('T')[0] : ''}
+                  onChange={(e) => {
+                    const date = e.target.valueAsDate;
+                    if (date) {
+                      const originalDate = value ? new Date(value) : new Date();
+                      date.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds());
+                      handleUpdate(date.toISOString());
+                    }
+                  }}
+                  onBlur={() => setIsEditing(false)}
+                  className="h-8"
+                />
+              )
+            }
+            default:
+              return <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />;
+          }
+        };
+
+        return (
+          <div className={cn("w-full group relative", className)} onClick={() => !isEditing && setIsEditing(true)}>
+            {isEditing ? (
+              renderEditComponent()
+            ) : (
+              <div className={cn(
+                "hover:bg-accent/50 rounded-md transition-colors cursor-text min-h-[32px] w-full p-1",
+                 fieldDef.type === 'longtext' ? 'flex items-start' : 'flex items-center'
+              )}>
+                  <FieldRenderer item={item} fieldId={fieldId} options={options} />
+              </div>
+            )}
+             {/* For Popover fields, the editor is always rendered when isEditing is true to control its open state */}
+             {isEditing && ['badge', 'avatar'].includes(fieldDef.type) && renderEditComponent()}
+          </div>
+        );
+      }
+
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+  - type: write
+    path: src/features/dynamic-view/components/shared/DraggableSection.tsx
+    content: >+
+      --- src/features/dynamic-view/components/shared/DraggableSection.tsx
+
+      +++ src/features/dynamic-view/components/shared/DraggableSection.tsx
+
+      @@ -18,17 +18,14 @@
+         };
+       
+         return (
+      -    <div ref={setNodeRef} style={style} className={cn(isDragging &&
+      'opacity-50 z-50')}>
+
+      -      <div className="bg-card/30 rounded-2xl border border-border/30
+      relative group">
+
+      -        <button
+
+      -          {...attributes}
+
+      -          {...listeners}
+
+      -          className="absolute top-3 -left-7 p-1 text-muted-foreground
+      opacity-0 group-hover:opacity-100 transition-opacity cursor-grab
+      active:cursor-grabbing"
+
+      -        >
+
+      -          <GripVertical className="w-5 h-5" />
+
+      -        </button>
+
+      -        {children}
+
+      -      </div>
+
+      +    <div ref={setNodeRef} style={style} className={cn('relative group',
+      isDragging && 'opacity-50 z-50')}>
+
+      +      <button
+
+      +        {...attributes}
+
+      +        {...listeners}
+
+      +        className="absolute top-4 left-0 -translate-x-full pr-2 p-1
+      text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity
+      cursor-grab active:cursor-grabbing"
+
+      +      >
+
+      +        <GripVertical className="w-5 h-5" />
+
+      +      </button>
+
+      +      {children}
+           </div>
+         );
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/shared/DetailPanel.tsx
+    content: >
+      --- src/features/dynamic-view/components/shared/DetailPanel.tsx
+
+      +++ src/features/dynamic-view/components/shared/DetailPanel.tsx
+
+      @@ -28,7 +28,8 @@
+         const contentRef = useRef<HTMLDivElement>(null)
+         useStaggeredAnimation(contentRef, [item]);
+         
+      -  const { header, body } = config;
+
+      +  const { getFieldDef } = useDynamicView<TFieldId, TItem>();
+
+      +  const { header, body } = config;
+         const [sections, setSections] = useState(body.sections);
+       
+         const sectionIds = useMemo(() => sections.map(s => s.title), [sections]);
+      @@ -95,14 +96,21 @@
+                       if (!hasContent) return null;
+       
+                       return (
+      -                  <DraggableSection key={section.title}
+      id={section.title}>
+
+      -                    <div className="p-4">
+
+      +                  <DraggableSection key={section.title}
+      id={section.title} >
+
+      +                    <div className="p-4 bg-card/30 rounded-2xl border
+      border-border/30">
+                             <div className="flex items-center gap-1 mb-3">
+                               {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
+                               <h3 className="font-semibold text-sm">{section.title}</h3>
+                             </div>
+                             <div className="space-y-3">
+      -                        {section.fields.map((fieldId: TFieldId) => (
+
+      -                          <EditableField key={fieldId} item={item}
+      fieldId={fieldId} options={{ avatarClassName: "w-12 h-12" }} />
+
+      -                        ))}
+
+      +                        {section.fields.map((fieldId: TFieldId) => {
+
+      +                          const fieldDef = getFieldDef(fieldId);
+
+      +                          return (
+
+      +                            <div key={fieldId} className="flex
+      items-start gap-4 text-sm">
+
+      +                              <div className="w-1/3 text-muted-foreground
+      pt-1.5 shrink-0">{fieldDef?.label}</div>
+
+      +                              <div className="w-2/3 grow"><EditableField
+      item={item} fieldId={fieldId} /></div>
+
+      +                            </div>
+
+      +                          );
+
+      +                        })}
+                             </div>
+                           </div>
+                         </DraggableSection>
+    patchStrategy: standard-diff
+snapshot:
+  src/features/dynamic-view/components/shared/DraggableSection.tsx: |-
+    import { useSortable } from '@dnd-kit/sortable';
+    import { CSS } from '@dnd-kit/utilities';
+    import { GripVertical } from 'lucide-react';
+    import { cn } from '@/lib/utils';
+    import React from 'react';
+
+    interface DraggableSectionProps {
+      id: string;
+      children: React.ReactNode;
+    }
+
+    export function DraggableSection({ id, children }: DraggableSectionProps) {
+      const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+      } = useSortable({ id });
+
+      const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+      };
+
+      return (
+        <div ref={setNodeRef} style={style} className={cn(isDragging && 'opacity-50 z-50')}>
+          <div className="bg-card/30 rounded-2xl border border-border/30 relative group">
+            <button
+              {...attributes}
+              {...listeners}
+              className="absolute top-3 -left-7 p-1 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+            >
+              <GripVertical className="w-5 h-5" />
+            </button>
+            {children}
+          </div>
+        </div>
+      );
+    }
+  src/features/dynamic-view/components/shared/EditableField.tsx: >-
+    import React, { useState, useRef, useEffect } from 'react';
+
+    import { useDynamicView } from '../../DynamicViewContext';
+
+    import type { GenericItem, ControlOption } from '../../types';
+
+    import { FieldRenderer } from './FieldRenderer';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover';
+
+    import { Command, CommandGroup, CommandItem, CommandList } from
+    '@/components/ui/command';
+
+    import { Slider } from '@/components/ui/slider';
+
+    import { cn, getNestedValue } from '@/lib/utils';
+
+    import { mockDataItems } from '@/pages/DataDemo/data/mockData';
+
+
+    interface EditableFieldProps<TFieldId extends string, TItem extends
+    GenericItem> {
+      item: TItem;
+      fieldId: TFieldId;
+      className?: string;
+      options?: Record<string, any>;
+    }
+
+
+    // Mock user list for assignee field
+
+    const userList = Array.from(new Set(mockDataItems.map(i =>
+    i.assignee.email)))
+      .map(email => mockDataItems.find(i => i.assignee.email === email)?.assignee)
+      .filter(Boolean) as { name: string; email: string; avatar: string }[];
+
+
+    export function EditableField<TFieldId extends string, TItem extends
+    GenericItem>({
+      item,
+      fieldId,
+      className,
+      options,
+    }: EditableFieldProps<TFieldId, TItem>) {
+      const { config, getFieldDef, onItemUpdate } = useDynamicView<TFieldId, TItem>();
+      const [isEditing, setIsEditing] = useState(false);
+      const fieldDef = getFieldDef(fieldId);
+      const value = getNestedValue(item, fieldId);
+      const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+      useEffect(() => {
+        if (isEditing && (fieldDef?.type === 'string' || fieldDef?.type === 'longtext' || fieldDef?.type === 'thumbnail')) {
+          inputRef.current?.focus();
+          inputRef.current?.select();
+        }
+      }, [isEditing, fieldDef]);
+
+      if (!fieldDef || !onItemUpdate) {
+        return <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />;
+      }
+
+      const handleUpdate = (newValue: any) => {
+        if (value !== newValue) {
+          onItemUpdate(item.id, { [fieldId]: newValue } as Partial<TItem>);
+        }
+        setIsEditing(false);
+      };
+
+      const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !(e.currentTarget instanceof HTMLTextAreaElement)) {
+          handleUpdate(e.currentTarget.value);
+        }
+        if (e.key === 'Escape') {
+          setIsEditing(false);
+        }
+      };
+
+      const renderEditComponent = () => {
+        switch (fieldDef.type) {
+          case 'string':
+          case 'thumbnail': // For emoji
+            return (
+              <Input
+                ref={inputRef as React.Ref<HTMLInputElement>}
+                type="text"
+                defaultValue={value}
+                onBlur={(e) => handleUpdate(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="w-full h-auto p-0 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              />
+            );
+          case 'longtext':
+            return (
+              <Textarea
+                ref={inputRef as React.Ref<HTMLTextAreaElement>}
+                defaultValue={value}
+                onBlur={(e) => handleUpdate(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="text-sm w-full p-0 bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              />
+            );
+          case 'badge': {
+            const filterableField = config.filterableFields.find((f) => f.id === fieldId);
+            const badgeOptions: readonly ControlOption<string>[] = filterableField?.options || [];
+
+            return (
+              <Popover open={isEditing} onOpenChange={setIsEditing}>
+                <PopoverTrigger asChild>
+                  <button className="w-full text-left" onClick={() => setIsEditing(true)}>
+                    <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[200px]" align="start">
+                  <Command>
+                    <CommandList>
+                      <CommandGroup>
+                        {badgeOptions.map((option) => (
+                          <CommandItem
+                            key={option.id}
+                            onSelect={() => handleUpdate(option.id)}
+                          >
+                            {option.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            );
+          }
+          case 'progress': {
+            const progressValue = typeof value === 'number' ? value : 0;
+            return (
+               <div className="flex items-center gap-3 py-2 w-full">
+                <Slider
+                  value={[progressValue]}
+                  max={100}
+                  step={1}
+                  onValueCommit={(val) => handleUpdate(val[0])}
+                  className="flex-1"
+                />
+                <span className="text-sm font-medium text-muted-foreground w-10 text-right">{progressValue}%</span>
+               </div>
+            );
+          }
+          case 'avatar': {
+            return (
+              <Popover open={isEditing} onOpenChange={setIsEditing}>
+                <PopoverTrigger asChild>
+                  <button className="w-full text-left" onClick={() => setIsEditing(true)}>
+                    <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[250px]" align="start">
+                  <Command>
+                    <CommandList>
+                      <CommandGroup>
+                        {userList.map((user) => (
+                          <CommandItem key={user.email} onSelect={() => handleUpdate(user)}>
+                              <FieldRenderer item={{ assignee: user } as TItem} fieldId={'assignee' as TFieldId} />
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            );
+          }
+          case 'date': {
+            return (
+              <Input
+                type="date"
+                defaultValue={value ? new Date(value).toISOString().split('T')[0] : ''}
+                onChange={(e) => {
+                  const date = e.target.valueAsDate;
+                  if (date) {
+                    // preserve time if exists
+                    const originalDate = value ? new Date(value) : new Date();
+                    date.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds());
+                    handleUpdate(date.toISOString());
+                  }
+                }}
+                className="h-8"
+              />
+            )
+          }
+          // TODO: Add tags editor
+          default:
+            return <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />;
+        }
+      };
+
+      if (['badge', 'avatar'].includes(fieldDef.type)) {
+        return renderEditComponent();
+      }
+
+      if (fieldDef.type === 'progress') {
+          return renderEditComponent();
+      }
+
+      return (
+        <div className={cn("w-full group", className)} onClick={() => !isEditing && setIsEditing(true)}>
+          {isEditing ? (
+            renderEditComponent()
+          ) : (
+            <div className={cn(
+              "hover:bg-accent/50 rounded-md transition-colors cursor-text min-h-[32px] w-full",
+               fieldDef.type === 'longtext' ? 'py-1 flex items-start' : 'flex items-center'
+            )}>
+                <FieldRenderer item={item} fieldId={fieldId} options={options} />
+            </div>
+          )}
+        </div>
+      );
+    }
+  src/features/dynamic-view/components/shared/DetailPanel.tsx: >-
+    import React, { useRef, useState, useMemo } from 'react'
+
+    import {
+      DndContext,
+      closestCenter,
+      type DragEndEvent,
+    } from '@dnd-kit/core';
+
+    import {
+      arrayMove,
+      SortableContext,
+      verticalListSortingStrategy,
+    } from '@dnd-kit/sortable';
+
+    import {
+      Clock, 
+      Tag,
+      User,
+      BarChart3,
+    } from 'lucide-react'
+
+    import type { GenericItem, DetailViewConfig, DetailViewSection } from
+    '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook';
+
+    import { EditableField } from './EditableField'
+
+    import { DraggableSection } from './DraggableSection'
+
+    import { getNestedValue } from '@/lib/utils'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+
+    interface DetailPanelProps<TFieldId extends string, TItem extends
+    GenericItem> {
+      item: TItem;
+      config: DetailViewConfig<TFieldId>;
+    }
+
+
+    const SECTION_ICONS: Record<string, React.ElementType> = {
+      "Assigned to": User,
+      "Engagement Metrics": BarChart3,
+      "Tags": Tag,
+      "Timeline": Clock,
+    };
+
+
+    export function DetailPanel<TFieldId extends string, TItem extends
+    GenericItem>({ item, config }: DetailPanelProps<TFieldId, TItem>) {
+      const contentRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(contentRef, [item]);
+      
+      const { header, body } = config;
+      const [sections, setSections] = useState(body.sections);
+
+      const sectionIds = useMemo(() => sections.map(s => s.title), [sections]);
+
+      const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (active.id !== over?.id) {
+          setSections((currentSections) => {
+            const oldIndex = sectionIds.indexOf(active.id as string);
+            const newIndex = sectionIds.indexOf(over!.id as string);
+            return arrayMove(currentSections, oldIndex, newIndex);
+          });
+        }
+      };
+
+      if (!item) {
+        return null
+      }
+      
+      return (
+        <div ref={contentRef} className="h-full flex flex-col">
+          {/* Header */}
+          <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                 <EditableField item={item} fieldId={header.thumbnailField} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-bold mb-1 leading-tight">
+                  <EditableField item={item} fieldId={header.titleField} />
+                </h1>
+                <p className="text-muted-foreground">
+                  <EditableField item={item} fieldId={header.descriptionField} />
+                </p>
+              </div>
+            </div>
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              {header.badgeFields.map((fieldId: TFieldId) => (
+                <EditableField key={fieldId} item={item} fieldId={fieldId} />
+              ))}
+            </div>
+
+            {/* Progress */}
+            <EditableField item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              <DndContext
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={sectionIds}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {sections.map((section) => {
+                    const IconComponent = SECTION_ICONS[section.title];
+                    const hasContent = section.fields.some((fieldId: TFieldId) => {
+                      const value = getNestedValue(item, fieldId as string);
+                      return value !== null && typeof value !== 'undefined';
+                    });
+
+                    if (!hasContent) return null;
+
+                    return (
+                      <DraggableSection key={section.title} id={section.title}>
+                        <div className="p-4">
+                          <div className="flex items-center gap-1 mb-3">
+                            {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
+                            <h3 className="font-semibold text-sm">{section.title}</h3>
+                          </div>
+                          <div className="space-y-3">
+                            {section.fields.map((fieldId: TFieldId) => (
+                              <EditableField key={fieldId} item={item} fieldId={fieldId} options={{ avatarClassName: "w-12 h-12" }} />
+                            ))}
+                          </div>
+                        </div>
+                      </DraggableSection>
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
+            </div>
+          </div>
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 554
