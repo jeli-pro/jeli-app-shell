@@ -1,168 +1,73 @@
-Okay, let's architect this refactor. We're going for a full Notion-style makeover on the data detail view. Think editable everything, drag-and-drop sections, and a cleaner, more interactive UI. The goal is to transform a static display into a dynamic workspace.
+ok, let's architect this refactor. dropping items on the calendar is a must-have, classic kanban-for-your-week stuff. right now, it's all sizzle and no steak – you can drag, but you can't drop. we're gonna fix that.
 
-We'll break this down into two main thrusts: first, wiring up in-place editing for all the data fields, and second, rebuilding the detail panel itself to support a customizable layout and that slick Notion aesthetic. This is a deep refactor touching the data flow from the store all the way to the final render. No half-measures.
+the plan is to light up the day cells as drop targets. when an event is dragged over a day, we'll give some visual feedback. when it's dropped, we'll grab the item's id, the new date, and fire off an update. we need to be smart about it and preserve the original time of day, just changing the date part. this keeps things predictable for the user.
 
-Here's the plan.
+we'll contain all this logic within the `CalendarView.tsx` component. it's a surgical strike. we'll add some state for tracking the drag operation, implement the necessary event handlers (`onDragOver`, `onDrop`, `onDragLeave`), and wire everything into the existing day-rendering loop. no need to touch the data store logic or other view components. clean in, clean out.
 
 ```yaml
 plan:
-  uuid: 'f4b1e8a9-c7d6-4a1e-8f2b-9c0d3a5b6e7f'
+  uuid: 'e8a1d4b6-7c0f-4e5b-9a2d-0f1c3a4b5d6e'
   status: 'todo'
-  title: 'Refactor: Notion-Style Editable & Draggable Detail Page'
+  title: 'Enable Drag-and-Drop Item Updates in Calendar View'
   introduction: |
-    This master plan outlines the refactoring of the `DynamicView`'s detail page into a Notion-style interactive document. The current detail panel is a read-only view. This effort will transform it into a fully editable and customizable overlay, enhancing the user experience from passive consumption to active data manipulation.
+    The current calendar view lets you start dragging items, but you can't drop them anywhere to reschedule. It's a dead-end interaction. This refactor will fully implement drag-and-drop functionality, turning each day cell into a valid drop target.
 
-    The strategy involves two core parts. First, we will introduce in-place editing capabilities to the fundamental `FieldRenderer` component, allowing users to click and edit data directly. This requires plumbing the update logic from our UI components back to the central state management. Second, we will overhaul the `DetailPanel` component itself. It will be redesigned to support a Notion-like aesthetic with cover images and icons, and crucially, we'll implement drag-and-drop functionality for its content sections, giving users control over their data layout.
-
-    By the end of this refactor, selecting an item in the `DataDemoPage` will launch an elegant, editable, and re-orderable side pane, dramatically improving the application's interactivity and aligning it with modern productivity app standards.
+    The goal is to allow users to intuitively reschedule items by dragging them from one day to another. When an item is dropped, its date property (e.g., `dueDate`) will be updated to reflect the new day, while preserving the original time. This is a significant UX improvement that makes the calendar view truly interactive and functional. We will achieve this by adding state management for the drag operation and wiring up the necessary event handlers directly within the `CalendarView` component.
   parts:
-    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+    - uuid: 'f3d9a0c2-1b8e-4f7a-8b1c-9e6a7d5b4c3d'
       status: 'todo'
-      name: 'Part 1: Implement In-Place Field Editing'
+      name: 'Part 1: Implement Drag and Drop Logic in CalendarView'
       reason: |
-        The foundation of a Notion-like experience is the ability to edit content directly where it's displayed. This part will replace static text fields with interactive components that can be edited in-place, with changes propagating back to the data store.
+        The core of the feature is missing. We need to add state and event handlers to `CalendarView.tsx` to manage the drag-and-drop lifecycle. This includes tracking the dragged item, identifying drop targets, and handling the final drop action to update the data.
       steps:
-        - uuid: 'b9d8c7e6-f5a4-4b3c-2a1b-0987654321fe'
+        - uuid: 'c9b4e1d1-0a7f-4b6c-8c5e-2f1d3b4a5b6f'
           status: 'todo'
-          name: '1. Wire Up Update Logic from Store to View'
+          name: '1. Add State and D&D Handlers'
           reason: |
-            The `DynamicView` component is decoupled from the data store. We need to explicitly pass the `updateItem` action from `useDataDemoStore` to `DynamicView` so that child components like `FieldRenderer` can trigger data updates.
+            To enable drag and drop, we need to introduce state for tracking the currently dragged item (`draggedItemId`) and the potential drop target (`dropTargetDate`). We also need the core handler functions (`handleDragOver`, `handleDrop`, etc.) that will contain the logic for the D&D interaction.
           files:
-            - 'src/pages/DataDemo/index.tsx'
+            - src/features/dynamic-view/components/views/CalendarView.tsx
           operations:
-            - 'In `DataDemoPage`, import `useDataDemoStore`.'
-            - 'Destructure the `updateItem` action from the store hook: `const { updateItem } = useDataDemoStore()`. '
-            - 'Pass this action to the `<DynamicView />` component via the `onItemUpdate` prop: `onItemUpdate={updateItem}`.'
-        - uuid: 'c3d4e5f6-7890-1234-5678-90abcdef1234'
+            - 'Introduce two new state variables using `useState`: `draggedItemId` (string | null) and `dropTargetDate` (Date | null).'
+            - 'Update the `handleDragStart` function to accept an `itemId` and set both the `dataTransfer` value and the `draggedItemId` state.'
+            - 'Create a new `handleDragEnd` function to reset `draggedItemId` and `dropTargetDate` to null, ensuring a clean state after any drag operation.'
+            - 'Create a `handleDragOver` function. It should call `event.preventDefault()` to allow dropping and update the `dropTargetDate` state with the current day being hovered over.'
+            - 'Create a `handleDragLeave` function to reset `dropTargetDate` when the cursor leaves a day cell.'
+            - 'Create the main `handleDrop` function. This function will read the `itemId` from `dataTransfer`, find the original item, construct a new date using the drop day but preserving the original time, and then call `onItemUpdate` with the new date. It should call `handleDragEnd` to clean up.'
+        - uuid: 'a0b8d7c4-5e9f-4d3a-9b1e-8f2c3d4e5a6b'
           status: 'todo'
-          name: '2. Enhance FieldRenderer with Editing Capabilities'
+          name: '2. Wire up Handlers and Visual Feedback in JSX'
           reason: |
-            `FieldRenderer` is the single component responsible for rendering all data types. We will augment it to handle an `isEditable` state, switching between a display view and an appropriate input element.
+            With the logic in place, we need to connect it to the rendered elements. The day cells must become aware of drag events, and the user needs visual feedback to understand they can drop an item on a specific day.
           files:
-            - 'src/features/dynamic-view/components/shared/FieldRenderer.tsx'
+            - src/features/dynamic-view/components/views/CalendarView.tsx
           operations:
-            - "Add a new prop to `FieldRendererProps`: `isEditable?: boolean`."
-            - 'Import `useState` from React and `useDynamicView` to get access to `onItemUpdate`.'
-            - "For simple types like `'string'` and `'longtext'`, introduce a local state: `const [isEditing, setIsEditing] = useState(false)`."
-            - "If `isEditable` is true, wrap the output in a clickable element that sets `isEditing` to true."
-            - 'When `isEditing` is true, render an `<input>` or `<textarea>` instead of a `<span>`.'
-            - "Implement `onBlur` and `onKeyDown` handlers for the input. On blur or `Enter` key press, call `onItemUpdate(item.id, { [fieldId]: newValue })` and set `isEditing` to false."
-            - "On `Escape` key press, discard changes and set `isEditing` to false."
-            - 'Leave complex types like `avatar` or `badge` as read-only for now, focusing on text-based fields.'
-        - uuid: 'd4e5f6g7-8901-2345-6789-0abcdef12345'
-          status: 'todo'
-          name: '3. Enable Editing within the Detail Panel'
-          reason: |
-            The `DetailPanel` is the container for all the fields. It needs to signal to `FieldRenderer` that its fields should be editable.
-          files:
-            - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
-          operations:
-            - 'Add a new prop to `DetailPanelProps`: `isEditable?: boolean`.'
-            - 'When mapping over fields to render `FieldRenderer`, pass the `isEditable` prop down: `<FieldRenderer ... isEditable={isEditable} />`.'
-            - 'In `useRightPaneContent.hook.tsx`, when rendering `DetailPanel` for a `dataItem`, set `isEditable={true}`.'
+            - 'In the `days.map` loop, attach the new handlers (`onDragOver`, `onDragLeave`, `onDrop`) to the main `div` for each day cell.'
+            - 'Attach the `handleDragEnd` handler to the main calendar grid container (`div` with `className="px-2"`) to catch drops that happen outside a valid target.'
+            - 'Update the `className` of the day cell `div` using `cn()`. Add conditional classes that apply a visual style (e.g., `border-primary/50 bg-primary/10`) when the `day` is the current `dropTargetDate`.'
+            - 'In the `CalendarEvent` component invocation, update the `onDragStart` prop to pass the `item.id` to the `handleDragStart` handler: `onDragStart={(e) => handleDragStart(e, item.id)}`.'
+            - 'Update the `CalendarEvent` props interface to reflect the change in `onDragStart` signature: `onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void`.'
       context_files:
         compact:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/features/dynamic-view/components/shared/FieldRenderer.tsx'
-          - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
+          - src/features/dynamic-view/components/views/CalendarView.tsx
         medium:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/features/dynamic-view/components/shared/FieldRenderer.tsx'
-          - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
-          - 'src/pages/DataDemo/store/dataDemo.store.tsx'
-          - 'src/hooks/useRightPaneContent.hook.tsx'
+          - src/features/dynamic-view/components/views/CalendarView.tsx
+          - src/features/dynamic-view/DynamicViewContext.tsx
         extended:
-          - 'src/pages/DataDemo/index.tsx'
-          - 'src/features/dynamic-view/components/shared/FieldRenderer.tsx'
-          - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
-          - 'src/pages/DataDemo/store/dataDemo.store.tsx'
-          - 'src/hooks/useRightPaneContent.hook.tsx'
-          - 'src/features/dynamic-view/DynamicViewContext.tsx'
-          - 'src/pages/DataDemo/DataDemo.config.tsx'
-    - uuid: 'e6f7g8h9-0123-4567-8901-234567abcdef'
-      status: 'todo'
-      name: 'Part 2: Implement Draggable Sections & Notion UI'
-      reason: |
-        To complete the Notion-like experience, the detail panel's structure must be fluid. This part focuses on allowing users to reorder content sections via drag-and-drop and redesigning the panel's chrome to be cleaner and more modern.
-      steps:
-        - uuid: 'f7g8h9i0-1234-5678-9012-345678abcdef'
-          status: 'todo'
-          name: '1. Redesign DetailPanel Header'
-          reason: |
-            The current header is generic. A Notion-style header includes placeholders for a cover image and page icon, and treats the title as the primary editable element.
-          files:
-            - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
-          operations:
-            - 'At the top of the component, add a placeholder `div` for a cover image with a subtle hover effect and an "Add Cover" button.'
-            - 'Just above the title, add a placeholder for a page icon, with a similar "Add Icon" hover button.'
-            - "Modify the rendering of the `titleField`. Instead of using a standard `FieldRenderer`, render it as a larger, font-weighty `h1`-like element and wrap it with its own in-place editing logic to make it stand out."
-            - 'Rework the `badgeFields` and `progressField` to appear below the title as a list of "properties", rather than being embedded in the header.'
-        - uuid: 'g8h9i0j1-2345-6789-0123-456789abcdef'
-          status: 'todo'
-          name: '2. Implement Drag-and-Drop for Body Sections'
-          reason: |
-            The core of a customizable workspace is layout flexibility. We will enable drag-and-drop for the content sections within the detail panel's body.
-          files:
-            - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
-          operations:
-            - 'Import `useState` and `GripVertical` from `lucide-react`.'
-            - 'Create a local state to manage the order of sections, initialized from the view config: `const [sections, setSections] = useState(config.body.sections)`.'
-            - 'Map over the `sections` state to render the sections instead of directly mapping over `config.body.sections`.'
-            - 'Wrap each section in a `div` with `draggable={true}` and attach `onDragStart`, `onDragOver`, and `onDrop` event handlers.'
-            - 'Add a `GripVertical` icon as a drag handle that appears on hover next to each section title.'
-            - 'Implement the drag-and-drop handler functions (`handleDragStart`, `handleDragOver`, `handleDrop`) to update the `sections` state array, reordering the elements. Borrow logic from `KanbanView.tsx` for a consistent implementation.'
-        - uuid: 'h9i0j1k2-3456-7890-1234-567890abcdef'
-          status: 'todo'
-          name: '3. Adjust Styling for a Cleaner Aesthetic'
-          reason: |
-            The final step is to adjust the overall styling to match the spacious, clean, and minimalist design language of applications like Notion.
-          files:
-            - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
-          operations:
-            - 'Reduce the overall padding within the panel to give content more room to breathe.'
-            - 'Increase the spacing between sections and fields to improve readability.'
-            - 'Use a consistent and cleaner typography scale for titles, labels, and content.'
-            - 'Ensure all interactive elements (buttons, drag handles) have clear hover and focus states.'
-      context_files:
-        compact:
-          - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
-          - 'src/features/dynamic-view/components/views/KanbanView.tsx'
-        medium:
-          - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
-          - 'src/features/dynamic-view/components/views/KanbanView.tsx'
-          - 'src/pages/DataDemo/DataDemo.config.tsx'
-          - 'src/features/dynamic-view/types.ts'
-        extended:
-          - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
-          - 'src/features/dynamic-view/components/views/KanbanView.tsx'
-          - 'src/pages/DataDemo/DataDemo.config.tsx'
-          - 'src/features/dynamic-view/types.ts'
-          - 'src/hooks/useRightPaneContent.hook.tsx'
-          - 'src/index.css'
+          - src/features/dynamic-view/components/views/CalendarView.tsx
+          - src/features/dynamic-view/DynamicViewContext.tsx
+          - src/pages/DataDemo/index.tsx
+          - src/pages/DataDemo/store/dataDemo.store.tsx
   conclusion: |
-    Upon completion, this refactor will fundamentally elevate the Data Demo feature from a simple data display to a powerful, interactive editing experience. Users will be able to modify data seamlessly within an overlay panel that is both aesthetically pleasing and highly functional, featuring customizable layouts through drag-and-drop.
-
-    This effort not only delivers a significant UX improvement but also establishes a robust pattern for creating editable, dynamic interfaces elsewhere in the application. The enhanced `FieldRenderer` and `DetailPanel` will serve as powerful, reusable primitives for future development.
+    Once complete, this refactor will deliver a fully interactive calendar. Users will be able to reschedule items simply by dragging them to a new date, providing a fluid and intuitive experience. The update is immediate and reflects in the underlying data store, making the calendar a powerful tool for managing date-based items. The changes are cleanly encapsulated within the `CalendarView` component, ensuring maintainability and no side effects on other parts of the application.
   context_files:
     compact:
-      - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
-      - 'src/features/dynamic-view/components/shared/FieldRenderer.tsx'
-      - 'src/pages/DataDemo/index.tsx'
+      - src/features/dynamic-view/components/views/CalendarView.tsx
     medium:
-      - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
-      - 'src/features/dynamic-view/components/shared/FieldRenderer.tsx'
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/pages/DataDemo/store/dataDemo.store.tsx'
-      - 'src/hooks/useRightPaneContent.hook.tsx'
-      - 'src/pages/DataDemo/DataDemo.config.tsx'
+      - src/features/dynamic-view/components/views/CalendarView.tsx
+      - src/features/dynamic-view/DynamicViewContext.tsx
     extended:
-      - 'src/features/dynamic-view/components/shared/DetailPanel.tsx'
-      - 'src/features/dynamic-view/components/shared/FieldRenderer.tsx'
-      - 'src/pages/DataDemo/index.tsx'
-      - 'src/pages/DataDemo/store/dataDemo.store.tsx'
-      - 'src/hooks/useRightPaneContent.hook.tsx'
-      - 'src/pages/DataDemo/DataDemo.config.tsx'
-      - 'src/features/dynamic-view/types.ts'
-      - 'src/features/dynamic-view/DynamicView.tsx'
-      - 'src/hooks/useAppViewManager.hook.ts'
+      - src/features/dynamic-view/components/views/CalendarView.tsx
+      - src/features/dynamic-view/DynamicViewContext.tsx
+      - src/pages/DataDemo/index.tsx
 ```

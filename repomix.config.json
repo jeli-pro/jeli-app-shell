@@ -32,15 +32,19 @@
     "postcss.config.js",
     "index.html",
     "src/index.css",
-    // "src"
-    "src/pages/DataDemo",
-    "src/features/dynamic-view"
+    "src"
+    // "src/pages/DataDemo",
+    // "src/features/dynamic-view"
     // "src/hooks/useAppViewManager.hook.ts",
     // "src/hooks/useRightPaneContent.hook.tsx"
     //
     //
     //
     //
+    // "src/features/dynamic-view/DynamicViewContext.tsx",
+    // "src/features/dynamic-view/components/views/CalendarView.tsx",
+    // "src/pages/DataDemo/index.tsx",
+    // "src/pages/DataDemo/store/dataDemo.store.tsx"
   ],
   "ignore": {
     "useGitignore": true,

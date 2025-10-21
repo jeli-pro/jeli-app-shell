@@ -140,11 +140,11 @@ const datePropLabels: Record<CalendarDateProp<string>, string> = {
 export function CalendarView({ data }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const {
-    selectedItemId,
     onItemUpdate,
     calendarDateProp = 'dueDate', // Provide default
     calendarItemLimit = 3, // Provide default
     calendarColorProp = 'none', // Provide default
+    selectedItemId,
   } = useDynamicView<string, GenericItem>();
   
   // Drag & Drop State
@@ -317,8 +317,8 @@ export function CalendarView({ data }: CalendarViewProps) {
                         <CalendarEvent
                           key={item.id} 
                           item={item} 
-                          isSelected={selectedItemId === item.id}
-                          isDragging={draggedItemId === item.id}
+                          isSelected={!!selectedItemId && selectedItemId === item.id}
+                          isDragging={!!draggedItemId && draggedItemId === item.id}
                           onDragStart={handleDragStart}
                           colorProp={calendarColorProp}
                         />
