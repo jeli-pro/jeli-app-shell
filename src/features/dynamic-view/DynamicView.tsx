@@ -40,6 +40,7 @@ export interface DynamicViewProps<TFieldId extends string, TItem extends Generic
   calendarDisplayProps?: CalendarDisplayProp<TFieldId>[];
   calendarItemLimit?: 'all' | number;
   calendarColorProp?: CalendarColorProp<TFieldId>;
+  calendarDate?: Date;
   statsData?: StatItem[];
 
   // State Change Callbacks
@@ -56,6 +57,7 @@ export interface DynamicViewProps<TFieldId extends string, TItem extends Generic
   onCalendarDisplayPropsChange?: (props: CalendarDisplayProp<TFieldId>[]) => void;
   onCalendarItemLimitChange?: (limit: 'all' | number) => void;
   onCalendarColorPropChange?: (prop: CalendarColorProp<TFieldId>) => void;
+  onCalendarDateChange?: (date: Date) => void;
   
   // Custom Renderers
   renderHeaderControls?: () => ReactNode;

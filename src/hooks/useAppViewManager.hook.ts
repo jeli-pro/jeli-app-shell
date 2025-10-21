@@ -1,6 +1,7 @@
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
+import { format, parse, isValid } from 'date-fns';
 import type { GenericItem, ViewMode, SortConfig, GroupableField, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';
 import type { TaskView } from '@/pages/Messaging/types';
 import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
@@ -49,6 +50,7 @@ export function useAppViewManager() {
   const calDisplay = searchParams.get('calDisplay');
   const calLimit = searchParams.get('calLimit');
   const calColor = searchParams.get('calColor');
+  const dateParam = searchParams.get('date');
 
   const { bodyState, sidePaneContent } = useMemo(() => {
     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
@@ -135,6 +137,12 @@ export function useAppViewManager() {
     return isNaN(limit) ? 3 : limit;
   }, [calLimit]);
   const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp<string>, [calColor]);
+
+  const calendarDate = useMemo(() => {
+    if (!dateParam) return new Date();
+    const parsedDate = parse(dateParam, 'yyyy-MM', new Date());
+    return isValid(parsedDate) ? parsedDate : new Date();
+  }, [dateParam]);
 
   // --- MUTATOR ACTIONS ---
 
@@ -288,8 +296,16 @@ export function useAppViewManager() {
   const setCalendarColorProp = (prop: CalendarColorProp<string>) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
 
   const onItemSelect = useCallback((item: GenericItem) => {
-		handleParamsChange({ itemId: item.id, sidePane: null });
-	}, [handleParamsChange]);
+    handleParamsChange({ itemId: item.id, sidePane: null });
+  }, [handleParamsChange]);
+  
+  const setCalendarDate = useCallback((date: Date) => {
+    const newDateStr = format(date, 'yyyy-MM');
+    const currentDateStr = format(new Date(), 'yyyy-MM');
+    // If it's the current month, clear the param to keep the URL clean
+    const valueToSet = newDateStr === currentDateStr ? null : newDateStr;
+    handleParamsChange({ date: valueToSet });
+  }, [handleParamsChange]);
 
   const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
 
@@ -315,6 +331,7 @@ export function useAppViewManager() {
     calendarDisplayProps,
     calendarItemLimit,
     calendarColorProp,
+    calendarDate,
     // Actions
     navigateTo,
     openSidePane,
@@ -338,12 +355,13 @@ export function useAppViewManager() {
     setCalendarDisplayProps,
     setCalendarItemLimit,
     setCalendarColorProp,
+    setCalendarDate,
   }), [
     bodyState, sidePaneContent, currentActivePage, pathItemId, itemId, messagingView, viewMode,
     page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
-    calendarDisplayProps, calendarItemLimit, calendarColorProp,
+    calendarDisplayProps, calendarItemLimit, calendarColorProp, calendarDate,
     navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
     switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
-    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp
+    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp, setCalendarDate
   ]);
 }

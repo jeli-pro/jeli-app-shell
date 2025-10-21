@@ -38,6 +38,8 @@ export default function DataDemoPage() {
     setViewMode,
     onItemSelect,
     pathItemId,
+    calendarDate,
+    setCalendarDate,
   } = useAppViewManager();
 
   const selectedItem = useSelectedItem(pathItemId);
@@ -198,6 +200,8 @@ export default function DataDemoPage() {
         activeGroupTab={activeGroupTab}
         page={page}
         // Callbacks
+        calendarDate={calendarDate}
+        onCalendarDateChange={setCalendarDate}
         onViewModeChange={setViewMode}
         onFiltersChange={setFilters}
         onSortChange={setSort}

@@ -2,149 +2,29 @@
 ```
 src/
   components/
-    auth/
-      LoginPage.tsx
-      useLoginForm.hook.ts
-    effects/
-      AnimatedInput.tsx
-      BottomGradient.tsx
-      BoxReveal.tsx
-      OrbitingCircles.tsx
-      Ripple.tsx
-    global/
-      CommandPalette.tsx
-    layout/
-      AppShell.tsx
-      EnhancedSidebar.tsx
-      MainContent.tsx
-      RightPane.tsx
-      Sidebar.tsx
-      TopBar.tsx
-      UserDropdown.tsx
-      ViewModeSwitcher.tsx
-      WorkspaceSwitcher.tsx
-    shared/
-      ContentInSidePanePlaceholder.tsx
-      PageHeader.tsx
-      PageLayout.tsx
-      ScrollToBottomButton.tsx
-      StatCard.tsx
     ui/
-      animated-tabs.tsx
-      avatar.tsx
-      badge.tsx
-      button.tsx
-      card.tsx
-      checkbox.tsx
-      command.tsx
-      dialog.tsx
-      dropdown-menu.tsx
-      input.tsx
-      label.tsx
-      popover.tsx
-      radio-group.tsx
-      scroll-area.tsx
-      separator.tsx
-      skeleton.tsx
-      slider.tsx
-      switch.tsx
-      tabs.tsx
-      textarea.tsx
-      timeline.tsx
-      toast.tsx
       tooltip.tsx
   features/
     dynamic-view/
       components/
-        controls/
-          ViewControls.tsx
-          ViewModeSelector.tsx
         shared/
-          AddDataItemCta.tsx
-          AnimatedLoadingSkeleton.tsx
-          DetailPanel.tsx
-          DraggableSection.tsx
-          EditableField.tsx
-          EmptyState.tsx
           FieldRenderer.tsx
         views/
           CalendarView.tsx
-          CardView.tsx
-          KanbanView.tsx
-          ListView.tsx
-          TableView.tsx
       DynamicView.tsx
       DynamicViewContext.tsx
       types.ts
-    settings/
-      SettingsContent.tsx
-      SettingsSection.tsx
-      SettingsToggle.tsx
   hooks/
-    useAppShellAnimations.hook.ts
     useAppViewManager.hook.ts
-    useAutoAnimateStats.hook.ts
-    useAutoAnimateTopBar.ts
-    useCommandPaletteToggle.hook.ts
-    usePageViewConfig.hook.ts
-    usePaneDnd.hook.ts
-    useResizablePanes.hook.ts
-    useResizeObserver.hook.ts
-    useRightPaneContent.hook.tsx
-    useScrollToBottom.hook.ts
-    useStaggeredAnimation.motion.hook.ts
   lib/
     utils.ts
   pages/
-    Dashboard/
-      hooks/
-        useDashboardAnimations.motion.hook.ts
-      DemoContent.tsx
-      index.tsx
     DataDemo/
       data/
         DataDemoItem.ts
-        mockData.ts
-      store/
-        dataDemo.store.tsx
       DataDemo.config.tsx
       index.tsx
-    Messaging/
-      components/
-        ActivityFeed.tsx
-        ActivityPanel.tsx
-        AIInsightsPanel.tsx
-        ChannelIcons.tsx
-        ContactInfoPanel.tsx
-        JourneyScrollbar.tsx
-        MessagingContent.tsx
-        NotesPanel.tsx
-        TakeoverBanner.tsx
-        TaskDetail.tsx
-        TaskHeader.tsx
-        TaskList.tsx
-      data/
-        mockData.ts
-      store/
-        messaging.store.ts
-      index.tsx
-      types.ts
-    Notifications/
-      index.tsx
-      notifications.store.ts
-    Settings/
-      index.tsx
-    ToasterDemo/
-      index.tsx
-  providers/
-    AppShellProvider.tsx
-  store/
-    appShell.store.ts
-    authStore.ts
-  App.tsx
   index.css
-  index.ts
-  main.tsx
 index.html
 package.json
 postcss.config.js
@@ -156,249 +36,134 @@ vite.config.ts
 
 # Files
 
-## File: src/components/layout/UserDropdown.tsx
-```typescript
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils"
-import { Icon } from "@iconify/react";
-import { useAuthStore } from "@/store/authStore";
-⋮----
-// Interface for menu item for better type safety
-interface MenuItem {
-  value?: string;
-  icon: string;
-  label: string;
-  action?: string;
-  iconClass?: string;
-  badge?: { text: string; className: string };
-  rightIcon?: string;
-  showAvatar?: boolean;
-}
-⋮----
-interface User {
-  name: string;
-  username: string;
-  avatar: string;
-  initials: string;
-  status: string;
-}
-⋮----
-interface UserDropdownProps {
-  user?: User;
-  onAction?: (action?: string) => void;
-  onStatusChange?: (status: string) => void;
-  selectedStatus?: string;
-  promoDiscount?: string;
-}
-⋮----
-const handleAction = (action?: string) =>
-⋮----
-"px-3 py-2", // Consistent with base component
-⋮----
-className=
-```
-
-## File: src/components/shared/ContentInSidePanePlaceholder.tsx
-```typescript
-import { ChevronsLeftRight } from 'lucide-react'
-⋮----
-interface ContentInSidePanePlaceholderProps {
-  icon: React.ElementType
-  title: string
-  pageName: string
-  onBringBack: () => void
-}
-⋮----
-export function ContentInSidePanePlaceholder({
-  icon: Icon,
-  title,
-  pageName,
-  onBringBack,
-}: ContentInSidePanePlaceholderProps)
-```
-
-## File: src/components/shared/PageHeader.tsx
-```typescript
-interface PageHeaderProps {
-  title: string;
-  description: React.ReactNode;
-  children?: React.ReactNode;
-}
-⋮----
-export function PageHeader(
-```
-
-## File: src/components/ui/avatar.tsx
-```typescript
-import { cn } from "@/lib/utils"
-```
-
-## File: src/components/ui/card.tsx
-```typescript
-import { cn } from "@/lib/utils"
-⋮----
-className=
-⋮----
-<div ref=
-```
-
-## File: src/components/ui/command.tsx
-```typescript
-import { type DialogProps } from "@radix-ui/react-dialog"
-import { Command as CommandPrimitive } from "cmdk"
-import { Search } from "lucide-react"
-⋮----
-import { cn } from "@/lib/utils"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
-⋮----
-className=
-```
-
-## File: src/components/ui/dialog.tsx
-```typescript
-import { X } from "lucide-react"
-⋮----
-import { cn } from "@/lib/utils"
-⋮----
-className=
-```
-
-## File: src/components/ui/dropdown-menu.tsx
-```typescript
-import { Check, ChevronRight, Circle } from "lucide-react"
-⋮----
-import { cn } from "@/lib/utils"
-⋮----
-className=
-```
-
-## File: src/components/ui/input.tsx
-```typescript
-import { cn } from "@/lib/utils"
-⋮----
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
-⋮----
-className=
-```
-
-## File: src/components/ui/label.tsx
-```typescript
-import { cva, type VariantProps } from "class-variance-authority"
-⋮----
-import { cn } from "@/lib/utils"
-```
-
-## File: src/components/ui/popover.tsx
-```typescript
-import { cn } from "@/lib/utils"
-⋮----
-interface PopoverContentProps
-  extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
-  useTriggerWidth?: boolean
-}
-```
-
-## File: src/components/ui/tabs.tsx
-```typescript
-import { cn } from "@/lib/utils"
-```
-
-## File: src/features/settings/SettingsSection.tsx
-```typescript
-interface SettingsSectionProps {
-  icon: React.ReactElement
-  title: string
-  children: React.ReactNode
-}
-⋮----
-export function SettingsSection(
-```
-
-## File: src/features/settings/SettingsToggle.tsx
-```typescript
-import { cn } from '@/lib/utils'
-⋮----
-interface SettingsToggleProps {
-  icon: React.ReactNode
-  title: string
-  description: string
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
-}
-```
-
-## File: src/pages/Settings/index.tsx
-```typescript
-import { SettingsContent } from '@/features/settings/SettingsContent';
-import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { PageLayout } from '@/components/shared/PageLayout';
-⋮----
-export function SettingsPage()
-⋮----
-{/* Header */}
-```
-
 ## File: src/index.css
 ```css
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
 @layer base {
-⋮----
-:root {
-⋮----
-.dark {
-⋮----
-* {
-⋮----
-@apply border-border;
-⋮----
-body {
-⋮----
+  :root {
+    --primary-hsl: 220 84% 60%;
+    --background: 210 40% 96.1%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: var(--primary-hsl);
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 240 6% 9%;
+    --foreground: 210 40% 98%;
+    --card: 240 6% 14%;
+    --card-foreground: 210 40% 98%;
+    --popover: 240 6% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: var(--primary-hsl);
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 5% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 240 5% 20%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 240 5% 20%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 240 5% 20%;
+    --input: 240 5% 20%;
+    --ring: var(--primary-hsl);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
 /* Custom scrollbar styles */
 ::-webkit-scrollbar {
-⋮----
+  width: 6px;
+  height: 6px;
+}
+
 ::-webkit-scrollbar-track {
-⋮----
-@apply bg-transparent;
-⋮----
+  @apply bg-transparent;
+}
+
 ::-webkit-scrollbar-thumb {
-⋮----
+  @apply bg-border rounded-full;
+}
+
 ::-webkit-scrollbar-thumb:hover {
-⋮----
+  @apply bg-muted-foreground/50;
+}
+
 /* For UserDropdown */
 .no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 .no-scrollbar {
-⋮----
--ms-overflow-style: none; /* IE and Edge */
-scrollbar-width: none; /* Firefox */
-⋮----
-.login-page-theme {
-⋮----
-.dark .login-page-theme {
-⋮----
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+@layer base {
+  .login-page-theme {
+    --background: hsl(0 0% 100%);
+    --foreground: hsl(0 0% 0%);
+    --skeleton: hsl(0 0% 90%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(214.3 31.8% 91.4%);
+    --input: hsl(220 20% 90%);
+    --radius: 0.5rem;
+  }
+ 
+  .dark .login-page-theme {
+    --background: hsl(222 94% 5%);
+    --foreground: hsl(0 0% 100%);
+    --skeleton: hsl(218 36% 16%);
+    --border: hsl(220 20% 90%);
+    --btn-border: hsl(217 32.6% 17.5%);
+    --input: hsl(219 63% 16%);
+    --radius: 0.5rem;
+  }
+}
+
 @layer components {
-⋮----
-.g-button {
+  .g-button {
+    @apply rounded-[var(--radius)] border;
+    border-color: var(--btn-border);
+  }
+}
 ```
 
 ## File: postcss.config.js
 ```javascript
-
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
 ```
 
 ## File: vite.config.ts
@@ -408,454 +173,81 @@ import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'url'
 import { resolve } from 'path'
 import pkg from './package.json' with { type: 'json' }
-⋮----
+
 // https://vitejs.dev/config/
-⋮----
-// make sure to externalize deps that shouldn't be bundled
-// into your library
-⋮----
-// Provide global variables to use in the UMD build
-// for externalized deps
-```
-
-## File: src/components/auth/useLoginForm.hook.ts
-```typescript
-import { useState, FormEvent } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '@/store/authStore';
-⋮----
-type LoginState = 'login' | 'forgot-password' | 'reset-sent';
-⋮----
-export function useLoginForm()
-⋮----
-const handleLoginSubmit = async (e: FormEvent) =>
-⋮----
-// In a real app, you'd show an error message to the user
-setErrors({ email: 'Invalid credentials', password: ' ' }); // Add a generic error
-⋮----
-const handleForgotSubmit = async (e: FormEvent) =>
-⋮----
-const handleSignUp = () =>
-⋮----
-// In a real app, navigate to sign up page
-```
-
-## File: src/components/effects/AnimatedInput.tsx
-```typescript
-import React, { memo, forwardRef, useRef, useEffect } from 'react';
-import { cn } from '@/lib/utils';
-⋮----
-const handleMouseMove = (e: MouseEvent) =>
-⋮----
-const handleMouseEnter = () =>
-⋮----
-const handleMouseLeave = () =>
-```
-
-## File: src/components/effects/BottomGradient.tsx
-```typescript
-export const BottomGradient = () => (
-	<>
-		<span className="group-hover/btn:opacity-100 block transition duration-500 opacity-0 absolute h-px w-full -bottom-px inset-x-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent" />
-		<span className="group-hover/btn:opacity-100 blur-sm block transition duration-500 opacity-0 absolute h-px w-1/2 mx-auto -bottom-px inset-x-10 bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
-	</>
-);
-```
-
-## File: src/components/effects/BoxReveal.tsx
-```typescript
-import { ReactNode, useEffect, useRef, memo } from 'react';
-import { gsap } from 'gsap';
-import { cn } from '@/lib/utils';
-⋮----
-type BoxRevealProps = {
-	children: ReactNode;
-	width?: string;
-	boxColor?: string;
-	duration?: number;
-	className?: string;
-};
-⋮----
-<div ref=
-```
-
-## File: src/components/effects/OrbitingCircles.tsx
-```typescript
-import React, { ReactNode, memo } from 'react';
-import { cn } from '@/lib/utils';
-⋮----
-className=
-⋮----
-{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg' alt='HTML5' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 100, path: false, reverse: false },
-{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg' alt='CSS3' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 100, path: false, reverse: false },
-{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg' alt='TypeScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, path: false, reverse: false },
-{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg' alt='JavaScript' />, className: 'size-[50px] border-none bg-transparent', radius: 210, duration: 20, delay: 20, path: false, reverse: false },
-{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg' alt='TailwindCSS' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 20, radius: 150, path: false, reverse: true },
-{ component: () => <img width={30} height={30} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg' alt='Nextjs' />, className: 'size-[30px] border-none bg-transparent', duration: 20, delay: 10, radius: 150, path: false, reverse: true },
-{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg' alt='React' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, path: false, reverse: true },
-{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/figma/figma-original.svg' alt='Figma' />, className: 'size-[50px] border-none bg-transparent', radius: 270, duration: 20, delay: 60, path: false, reverse: true },
-{ component: () => <img width={50} height={50} src='https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg' alt='Git' />, className: 'size-[50px] border-none bg-transparent', radius: 320, duration: 20, delay: 20, path: false, reverse: false },
-```
-
-## File: src/components/effects/Ripple.tsx
-```typescript
-import React, { memo } from 'react';
-⋮----
-interface RippleProps {
-	mainCircleSize?: number;
-	mainCircleOpacity?: number;
-	numCircles?: number;
-}
-```
-
-## File: src/components/layout/WorkspaceSwitcher.tsx
-```typescript
-import { CheckIcon, ChevronsUpDownIcon, Search } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
-import {
-	Popover,
-	PopoverTrigger,
-	PopoverContent,
-	type PopoverContentProps,
-} from '@/components/ui/popover';
-⋮----
-// Generic workspace interface - can be extended
-export interface Workspace {
-	id: string;
-	name: string;
-	logo?: string;
-	plan?: string;
-	[key: string]: unknown; // Allow additional properties
-}
-⋮----
-[key: string]: unknown; // Allow additional properties
-⋮----
-// Context for workspace state management
-interface WorkspaceContextValue<T extends Workspace> {
-	open: boolean;
-	setOpen: (open: boolean) => void;
-	selectedWorkspace: T | undefined;
-	workspaces: T[];
-	onWorkspaceSelect: (workspace: T) => void;
-	getWorkspaceId: (workspace: T) => string;
-	getWorkspaceName: (workspace: T) => string;
-}
-⋮----
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-⋮----
-function useWorkspaceContext<T extends Workspace>()
-⋮----
-// Main provider component
-interface WorkspaceProviderProps<T extends Workspace> {
-	children: React.ReactNode;
-	workspaces: T[];
-	selectedWorkspaceId?: string;
-	onWorkspaceChange?: (workspace: T) => void;
-	open?: boolean;
-	onOpenChange?: (open: boolean) => void;
-	getWorkspaceId?: (workspace: T) => string;
-	getWorkspaceName?: (workspace: T) => string;
-}
-⋮----
-function WorkspaceProvider<T extends Workspace>({
-	children,
-	workspaces,
-	selectedWorkspaceId,
-	onWorkspaceChange,
-	open: controlledOpen,
-	onOpenChange,
-	getWorkspaceId = (workspace) => workspace.id,
-	getWorkspaceName = (workspace) => workspace.name,
-}: WorkspaceProviderProps<T>)
-⋮----
-// Trigger component
-interface WorkspaceTriggerProps extends React.ComponentProps<'button'> {
-	renderTrigger?: (workspace: Workspace, isOpen: boolean) => React.ReactNode;
-  collapsed?: boolean;
-  avatarClassName?: string;
-}
-⋮----
-className=
-⋮----
-<Avatar className=
-⋮----
-alt=
-⋮----
-// Content component
-⋮----
-key=
-```
-
-## File: src/components/shared/ScrollToBottomButton.tsx
-```typescript
-import { ArrowDown } from 'lucide-react';
-⋮----
-interface ScrollToBottomButtonProps {
-  isVisible: boolean;
-  onClick: () => void;
-}
-```
-
-## File: src/components/ui/badge.tsx
-```typescript
-import { cva, type VariantProps } from "class-variance-authority"
-⋮----
-import { cn } from "@/lib/utils"
-⋮----
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
-⋮----
-<div className=
-⋮----
-// eslint-disable-next-line react-refresh/only-export-components
-```
-
-## File: src/components/ui/button.tsx
-```typescript
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
-⋮----
-import { cn } from "@/lib/utils"
-⋮----
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean
-}
-⋮----
-// eslint-disable-next-line react-refresh/only-export-components
-```
-
-## File: src/components/ui/checkbox.tsx
-```typescript
-import { Check } from "lucide-react"
-⋮----
-import { cn } from "@/lib/utils"
-⋮----
-className=
-```
-
-## File: src/components/ui/radio-group.tsx
-```typescript
-import { Circle } from "lucide-react"
-⋮----
-import { cn } from "@/lib/utils"
-⋮----
-className=
-```
-
-## File: src/components/ui/scroll-area.tsx
-```typescript
-import { cn } from "@/lib/utils"
-⋮----
-className=
-```
-
-## File: src/components/ui/separator.tsx
-```typescript
-import { cn } from "@/lib/utils"
-```
-
-## File: src/components/ui/skeleton.tsx
-```typescript
-import { cn } from "@/lib/utils";
-⋮----
-className={cn("animate-pulse rounded-md bg-muted", className)}
-      {...props}
-    />
-  );
-```
-
-## File: src/components/ui/slider.tsx
-```typescript
-import { cn } from "@/lib/utils"
-⋮----
-className=
-```
-
-## File: src/components/ui/switch.tsx
-```typescript
-import { cn } from "@/lib/utils"
-⋮----
-className=
-```
-
-## File: src/components/ui/textarea.tsx
-```typescript
-import { cn } from "@/lib/utils"
-⋮----
-export interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
-⋮----
-className=
-```
-
-## File: src/components/ui/toast.tsx
-```typescript
-import {
-  forwardRef,
-  useImperativeHandle,
-  createContext,
-  useContext,
-  useCallback,
-  useRef,
-  type ReactNode,
-} from "react";
-import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner";
-import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from "lucide-react";
-⋮----
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-⋮----
-type Variant = "default" | "success" | "error" | "warning";
-type Position =
-  | "top-left"
-  | "top-center"
-  | "top-right"
-  | "bottom-left"
-  | "bottom-center"
-  | "bottom-right";
-⋮----
-interface ActionButton {
-  label: string;
-  onClick: () => void;
-  variant?: "default" | "outline" | "ghost";
-}
-⋮----
-export interface ToasterProps {
-  title?: string;
-  message: string;
-  variant?: Variant;
-  duration?: number;
-  position?: Position;
-  actions?: ActionButton;
-  onDismiss?: () => void;
-  highlightTitle?: boolean;
-}
-⋮----
-export interface ToasterRef {
-  show: (props: ToasterProps) => void;
-}
-⋮----
-const handleDismiss = () =>
-⋮----
-className=
-⋮----
-show({
-        title,
-        message,
-        variant = "default",
-        duration = 4000,
-        position = defaultPosition,
-        actions,
-        onDismiss,
-        highlightTitle,
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  build: {
+    lib: {
+      entry: resolve(__dirname, 'src/index.ts'),
+      name: 'JeliAppShell',
+      fileName: (format) => `jeli-app-shell.${format}.js`,
+    },
+    rollupOptions: {
+      // make sure to externalize deps that shouldn't be bundled
+      // into your library
+      external: Object.keys(pkg.peerDependencies || {}),
+      output: {
+        // Provide global variables to use in the UMD build
+        // for externalized deps
+        globals: {
+          react: 'React',
+          'react-dom': 'ReactDOM',
+          tailwindcss: 'tailwindcss',
+          gsap: 'gsap',
+          'lucide-react': 'lucide-react',
+          zustand: 'zustand',
+          sonner: 'sonner'
+        },
+      },
+    },
+  },
 })
-⋮----
-// By removing `unstyled`, sonner handles positioning and animations.
-// We then use `classNames` to override only the styles we don't want,
-// allowing our custom component to define the appearance.
-⋮----
-toast: "p-0 border-none shadow-none bg-transparent", // Neutralize wrapper styles
-// We can add specific styling to other parts if needed
-// closeButton: '...',
-⋮----
-// The z-index is still useful as a safeguard
-⋮----
-// eslint-disable-next-line react-refresh/only-export-components
-⋮----
-export const ToasterProvider = (
 ```
 
 ## File: src/components/ui/tooltip.tsx
 ```typescript
+"use client"
+
+import * as React from "react"
+import * as TooltipPrimitive from "@radix-ui/react-tooltip"
+
 import { cn } from "@/lib/utils"
-```
 
-## File: src/features/dynamic-view/components/shared/DraggableSection.tsx
-```typescript
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import React from 'react';
-⋮----
-interface DraggableSectionProps {
-  id: string;
-  children: React.ReactNode;
-}
-⋮----
-export function DraggableSection(
-⋮----
-<div ref=
-```
+const TooltipProvider = TooltipPrimitive.Provider
 
-## File: src/features/dynamic-view/components/shared/EditableField.tsx
-```typescript
-import React, { useState, useRef, useEffect } from 'react';
-import { useDynamicView } from '../../DynamicViewContext';
-import type { GenericItem, ControlOption } from '../../types';
-import { FieldRenderer } from './FieldRenderer';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
-import { Slider } from '@/components/ui/slider';
-import { cn, getNestedValue } from '@/lib/utils';
-import { mockDataItems } from '@/pages/DataDemo/data/mockData';
-⋮----
-interface EditableFieldProps<TFieldId extends string, TItem extends GenericItem> {
-  item: TItem;
-  fieldId: TFieldId;
-  className?: string;
-  options?: Record<string, any>;
-}
-⋮----
-// Mock user list for assignee field
-⋮----
-const renderEditComponent = () =>
-⋮----
-case 'thumbnail': // For emoji
-⋮----
-onBlur=
-⋮----
-const filterableField = config.filterableFields.find((f)
-⋮----
-onValueCommit=
-⋮----
-{/* For Popover fields, the editor is always rendered when isEditing is true to control its open state */}
-```
+const Tooltip = TooltipPrimitive.Root
 
-## File: src/hooks/useCommandPaletteToggle.hook.ts
-```typescript
-import { useEffect } from 'react';
-import { useAppShellStore } from '@/store/appShell.store';
-⋮----
-export function useCommandPaletteToggle()
-⋮----
-const down = (e: KeyboardEvent) =>
-```
+const TooltipTrigger = TooltipPrimitive.Trigger
 
-## File: src/hooks/useResizeObserver.hook.ts
-```typescript
-import { useState, useEffect } from 'react';
-⋮----
-interface Dimensions {
-  width: number;
-  height: number;
-}
-⋮----
-export function useResizeObserver<T extends HTMLElement>(
-  ref: React.RefObject<T>
-): Dimensions
+const TooltipContent = React.forwardRef<
+  React.ElementRef<typeof TooltipPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
+>(({ className, sideOffset = 4, ...props }, ref) => (
+  <TooltipPrimitive.Content
+    ref={ref}
+    sideOffset={sideOffset}
+    className={cn(
+      "z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+      className
+    )}
+    {...props}
+  />
+))
+TooltipContent.displayName = TooltipPrimitive.Content.displayName
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
 ```
 
 ## File: src/pages/DataDemo/data/DataDemoItem.ts
 ```typescript
 import type { GenericItem, Status, Priority } from '@/features/dynamic-view/types';
-⋮----
+
 export interface DataDemoItem extends GenericItem {
   id: string;
   title: string;
@@ -880,188 +272,6 @@ export interface DataDemoItem extends GenericItem {
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
-⋮----
-dueDate: string; // ISO date string
-createdAt: string; // ISO date string
-updatedAt: string; // ISO date string
-```
-
-## File: src/pages/Messaging/components/AIInsightsPanel.tsx
-```typescript
-import React from 'react';
-import type { Task, Contact, Assignee } from '../types';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Sparkles, Reply, ThumbsUp, ThumbsDown, Copy } from 'lucide-react';
-import { toast } from 'sonner';
-⋮----
-interface AIInsightsPanelProps {
-  task: (Task & { contact: Contact; assignee: Assignee | null });
-}
-⋮----
-const handleCopy = (text: string) =>
-```
-
-## File: src/pages/Messaging/components/ChannelIcons.tsx
-```typescript
-import { Instagram, MessageCircle, Facebook } from 'lucide-react';
-import type { Channel, ChannelIcon as ChannelIconType } from '../types';
-import { cn } from '@/lib/utils';
-⋮----
-export const ChannelIcon: React.FC<
-```
-
-## File: src/pages/Messaging/components/NotesPanel.tsx
-```typescript
-import React from 'react';
-import { format } from 'date-fns';
-import { Send } from 'lucide-react';
-import type { Contact } from '../types';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-⋮----
-interface NotesPanelProps {
-  contact: Contact;
-}
-```
-
-## File: src/pages/Messaging/components/TakeoverBanner.tsx
-```typescript
-import React from 'react';
-import { Bot, UserCheck, Loader2 } from 'lucide-react';
-import type { Assignee } from '../types';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-⋮----
-interface TakeoverBannerProps {
-  activeHandler: Assignee;
-  isRequesting: boolean;
-  onTakeOver: () => void;
-  onRequestTakeover: () => void;
-}
-```
-
-## File: src/pages/Notifications/notifications.store.ts
-```typescript
-import { create } from 'zustand';
-⋮----
-// --- Types ---
-export type Notification = {
-  id: number;
-  type: string;
-  user: {
-    name: string;
-    avatar: string;
-    fallback: string;
-  };
-  action: string;
-  target?: string;
-  content?: string;
-  timestamp: string;
-  timeAgo: string;
-  isRead: boolean;
-  hasActions?: boolean;
-  file?: {
-    name: string;
-    size: string;
-    type: string;
-  };
-};
-⋮----
-// --- State and Actions ---
-type ActiveTab = 'all' | 'verified' | 'mentions';
-⋮----
-interface NotificationsState {
-    notifications: Notification[];
-    activeTab: ActiveTab;
-}
-⋮----
-interface NotificationsActions {
-    markAsRead: (id: number) => void;
-    markAllAsRead: () => number; // Returns number of items marked as read
-    setActiveTab: (tab: ActiveTab) => void;
-}
-⋮----
-markAllAsRead: () => number; // Returns number of items marked as read
-⋮----
-// --- Store ---
-⋮----
-// --- Selectors ---
-const selectNotifications = (state: NotificationsState)
-const selectActiveTab = (state: NotificationsState)
-⋮----
-export const useFilteredNotifications = () => useNotificationsStore(state =>
-⋮----
-export const useNotificationCounts = () => useNotificationsStore(state =>
-```
-
-## File: src/pages/ToasterDemo/index.tsx
-```typescript
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/toast';
-import { PageHeader } from '@/components/shared/PageHeader';
-import { PageLayout } from '@/components/shared/PageLayout';
-import { useAppShellStore } from '@/store/appShell.store';
-import { cn, BODY_STATES } from '@/lib/utils';
-⋮----
-type Variant = 'default' | 'success' | 'error' | 'warning';
-type Position =
-  | 'top-left'
-  | 'top-center'
-  | 'top-right'
-  | 'bottom-left'
-  | 'bottom-center'
-  | 'bottom-right';
-⋮----
-const DemoSection: React.FC<{ title: string; children: React.ReactNode }> = ({
-  title,
-  children,
-}) => (
-  <section>
-    <h2 className="text-lg font-semibold mb-2">{title}</h2>
-    {children}
-  </section>
-);
-⋮----
-const showToast = (variant: Variant, position: Position = 'bottom-right') =>
-⋮----
-const simulateApiCall = async () =>
-⋮----
-{/* Header */}
-```
-
-## File: src/store/authStore.ts
-```typescript
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-⋮----
-interface AuthState {
-  isAuthenticated: boolean
-  user: {
-    email: string
-    name: string
-  } | null
-  login: (email: string, password: string) => Promise<void>
-  logout: () => void
-  forgotPassword: (email: string) => Promise<void>
-}
-⋮----
-// Simulate API call
-⋮----
-// Mock authentication - in real app, validate with backend
-⋮----
-name: email.split('@')[0], // Simple name extraction
-⋮----
-// Simulate API call
-⋮----
-// In real app, send reset email via backend
-```
-
-## File: src/main.tsx
-```typescript
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.tsx'
 ```
 
 ## File: index.html
@@ -1104,10 +314,114 @@ import App from './App.tsx'
 ## File: tailwind.config.js
 ```javascript
 /** @type {import('tailwindcss').Config} */
-⋮----
-].join(", "),
-⋮----
-addUtilities({
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 8px)",
+        DEFAULT: "0.5rem",
+      },
+      boxShadow: {
+        input: [
+          "0px 2px 3px -1px rgba(0, 0, 0, 0.1)",
+          "0px 1px 0px 0px rgba(25, 28, 33, 0.02)",
+          "0px 0px 0px 1px rgba(25, 28, 33, 0.08)",
+        ].join(", "),
+      },
+      animation: {
+        "fade-in": "fadeIn 0.5s ease-in-out",
+        "slide-in": "slideIn 0.3s ease-out",
+        "scale-in": "scaleIn 0.2s ease-out",
+        ripple: "ripple 2s ease calc(var(--i, 0) * 0.2s) infinite",
+        orbit: "orbit calc(var(--duration) * 1s) linear infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        slideIn: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(0)" },
+        },
+        scaleIn: {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        ripple: {
+          "0%, 100%": { transform: "translate(-50%, -50%) scale(1)" },
+          "50%": { transform: "translate(-50%, -50%) scale(0.9)" },
+        },
+        orbit: {
+          "0%": {
+            transform:
+              "rotate(0deg) translateY(calc(var(--radius) * 1px)) rotate(0deg)",
+          },
+          "100%": {
+            transform:
+              "rotate(360deg) translateY(calc(var(--radius) * 1px)) rotate(-360deg)",
+          },
+        }
+      },
+    },
+  },
+  plugins: [
+    require("tailwindcss-animate"),
+    require("tailwindcss/plugin")(function ({ addUtilities }) {
+      addUtilities({
+        ".no-scrollbar::-webkit-scrollbar": {
+          display: "none",
+        },
+        ".no-scrollbar": {
+          "-ms-overflow-style": "none",
+          "scrollbar-width": "none",
+        },
+      });
+    }),
+  ],
+}
 ```
 
 ## File: tsconfig.json
@@ -1170,422 +484,11 @@ addUtilities({
 }
 ```
 
-## File: src/components/shared/PageLayout.tsx
-```typescript
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { useAppShellStore } from '@/store/appShell.store';
-import { BODY_STATES } from '@/lib/utils';
-⋮----
-interface PageLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-  scrollRef?: React.RefObject<HTMLDivElement>;
-}
-⋮----
-className=
-```
-
-## File: src/components/ui/timeline.tsx
-```typescript
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Check,
-  Clock,
-  AlertCircle,
-  X,
-  Calendar,
-  User,
-  MapPin,
-  MessageSquare,
-  Award,
-  Briefcase,
-  GraduationCap,
-  Heart,
-} from "lucide-react";
-⋮----
-export interface TimelineItem {
-  id: string;
-  title: string;
-  description?: string;
-  timestamp?: string | Date;
-  status?: "default" | "completed" | "active" | "pending" | "error";
-  icon?: React.ReactNode;
-  content?: React.ReactNode;
-  metadata?: Record<string, any>;
-}
-⋮----
-export interface TimelineProps extends VariantProps<typeof timelineVariants> {
-  items: TimelineItem[];
-  className?: string;
-  showConnectors?: boolean;
-  showTimestamps?: boolean;
-  timestampPosition?: "top" | "bottom" | "inline";
-}
-⋮----
-function getStatusIcon(status: TimelineItem["status"])
-⋮----
-function formatTimestamp(timestamp: string | Date): string
-⋮----
-className=
-⋮----
-{/* Connector Line */}
-⋮----
-{/* Icon */}
-⋮----
-{/* Content */}
-⋮----
-{/* Timestamp - Top */}
-⋮----
-{/* Title and Inline Timestamp */}
-⋮----
-{/* Description */}
-⋮----
-{/* Custom Content */}
-⋮----
-{/* Timestamp - Bottom */}
-⋮----
-// Example Components for Documentation
-```
-
-## File: src/features/dynamic-view/components/shared/EmptyState.tsx
-```typescript
-import { Eye } from 'lucide-react'
-⋮----
-export function EmptyState()
-```
-
-## File: src/features/settings/SettingsContent.tsx
-```typescript
-import { useState } from 'react'
-import { 
-  Moon, 
-  Sun, 
-  Zap, 
-  Eye, 
-  Minimize2, 
-  RotateCcw,
-  Monitor,
-  Smartphone,
-  Palette,
-  Accessibility,
-  Check
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useAppShellStore } from '@/store/appShell.store'
-import { SettingsToggle } from './SettingsToggle'
-import { SettingsSection } from './SettingsSection'
-⋮----
-const handleSidebarWidthChange = (width: number) =>
-⋮----
-const handleReset = () =>
-⋮----
-setTempSidebarWidth(280); // Reset temp state as well
-⋮----
-const handleSetSidebarWidth = (payload: number) =>
-⋮----
-{/* Appearance */}
-⋮----
-{/* Dark Mode */}
-⋮----
-{/* Compact Mode */}
-⋮----
-{/* Accent Color */}
-⋮----
-{/* Behavior */}
-⋮----
-{/* Auto Expand Sidebar */}
-⋮----
-{/* Sidebar Width */}
-⋮----
-onChange=
-⋮----
-{/* Accessibility */}
-⋮----
-{/* Reduced Motion */}
-⋮----
-{/* Presets */}
-⋮----
-// Custom slider styles
-⋮----
-// Inject styles
-```
-
-## File: src/hooks/useAutoAnimateTopBar.ts
-```typescript
-import { useRef, useCallback, useEffect } from 'react';
-import { useAppShellStore } from '@/store/appShell.store';
-import { BODY_STATES } from '@/lib/utils';
-⋮----
-export function useAutoAnimateTopBar(isPane = false)
-⋮----
-// Clear previous timeout
-⋮----
-// Set new timeout to show top bar when scrolling stops
-⋮----
-// Don't hide, just ensure it's visible after scrolling stops
-// and we are not at the top of the page.
-⋮----
-}, 250); // Adjust timeout as needed
-⋮----
-// Cleanup on unmount
-```
-
-## File: src/hooks/usePageViewConfig.hook.ts
-```typescript
-import { useEffect } from 'react';
-import { useAppShellStore } from '@/store/appShell.store';
-⋮----
-interface PageViewConfig {
-    sidePaneWidth?: number;
-    splitPaneWidth?: number;
-}
-⋮----
-/**
- * A hook for a page component to declaratively set its desired pane widths.
- * It sets the widths when config changes and resets them to the application defaults on unmount.
- * @param {PageViewConfig} config - The desired widths for side pane and split view.
- */
-export function usePageViewConfig(config: PageViewConfig)
-⋮----
-// Return a cleanup function to reset widths when the component unmounts
-```
-
-## File: src/hooks/usePaneDnd.hook.ts
-```typescript
-import { useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useAppShellStore } from '@/store/appShell.store';
-import { BODY_STATES } from '@/lib/utils';
-⋮----
-export function usePaneDnd()
-```
-
-## File: src/hooks/useScrollToBottom.hook.ts
-```typescript
-import { useState, useCallback } from 'react';
-⋮----
-export function useScrollToBottom(
-  contentRef: React.RefObject<HTMLDivElement>
-)
-⋮----
-// Show button if scrolled down more than 200px, and there's more than 200px left to scroll
-⋮----
-const scrollToBottom = () =>
-```
-
-## File: src/pages/DataDemo/data/mockData.ts
-```typescript
-import type { GenericItem } from '@/features/dynamic-view/types';
-```
-
-## File: src/pages/Messaging/components/ActivityPanel.tsx
-```typescript
-import React, { useMemo } from 'react';
-import { Mail, StickyNote, PhoneCall, Calendar } from 'lucide-react';
-import type { Contact, ActivityEventType } from '../types';
-import { Timeline, type TimelineItem } from '@/components/ui/timeline';
-import { capitalize } from '@/lib/utils';
-⋮----
-interface ActivityPanelProps {
-  contact: Contact;
-}
-⋮----
-export const ActivityPanel: React.FC<ActivityPanelProps> = (
-```
-
-## File: src/pages/Messaging/components/ContactInfoPanel.tsx
-```typescript
-import React from 'react';
-import { Mail, Phone } from 'lucide-react';
-import type { Contact } from '../types';
-import { useMessagingStore } from '../store/messaging.store';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-⋮----
-const DetailRow: React.FC<{icon: React.ReactNode, children: React.ReactNode}> = ({ icon, children }) => (
-    <div className="flex items-start gap-3 text-sm">
-        <div className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0">{icon}</div>
-        <div className="flex-1 text-foreground/90 break-all">{children}</div>
-    </div>
-);
-⋮----
-interface ContactInfoPanelProps {
-  contact: Contact;
-}
-⋮----
-{/* Header */}
-⋮----
-{/* Contact Details */}
-⋮----
-{/* Colleagues */}
-```
-
-## File: src/pages/Notifications/index.tsx
-```typescript
-import React from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { useToast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
-import { 
-  CheckCheck, 
-  Download, 
-  Settings, 
-  Bell,
-  MessageSquare,
-  UserPlus,
-  Mail,
-  File as FileIcon,
-  Heart,
-  AtSign,
-  ClipboardCheck,
-  ShieldCheck,
-} from "lucide-react";
-import { useAppShellStore } from "@/store/appShell.store";
-import { BODY_STATES } from "@/lib/utils";
-⋮----
-import { PageLayout } from "@/components/shared/PageLayout";
-import { 
-  useNotificationsStore,
-  useFilteredNotifications,
-  useNotificationCounts,
-  type Notification
-} from "./notifications.store";
-⋮----
-const handleMarkAllAsRead = () =>
-⋮----
-<Tabs value=
-```
-
-## File: src/providers/AppShellProvider.tsx
-```typescript
-import { useEffect, type ReactNode, type ReactElement } from 'react';
-import { useAppShellStore } from '@/store/appShell.store';
-⋮----
-interface AppShellProviderProps {
-  children: ReactNode;
-  appName?: string;
-  appLogo?: ReactElement;
-  defaultSplitPaneWidth?: number;
-}
-⋮----
-export function AppShellProvider(
-⋮----
-// Side effect for primary color
-⋮----
-// This effect is here because the store itself can't run side-effects on init
-// before React has mounted. So we trigger it from the provider.
-```
-
-## File: src/components/layout/MainContent.tsx
-```typescript
-import { forwardRef } from 'react'
-import { X } from 'lucide-react'
-import { cn } from '@/lib/utils';
-import { BODY_STATES } from '@/lib/utils'
-import { useAppShellStore } from '@/store/appShell.store'
-⋮----
-interface MainContentProps {
-  children?: React.ReactNode;
-}
-⋮----
-className=
-```
-
-## File: src/features/dynamic-view/components/controls/ViewModeSelector.tsx
-```typescript
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { List, Grid3X3, LayoutGrid, Table, LayoutDashboard, CalendarDays } from 'lucide-react'
-import type { ViewMode } from '../../types';
-import { useDynamicView } from '../../DynamicViewContext';
-⋮----
-// Set position immediately without animation for initial load
-⋮----
-// Initial setup - set position immediately without animation
-⋮----
-// eslint-disable-next-line react-hooks/exhaustive-deps
-}, []) // Only run once on mount
-⋮----
-const handleMouseEnter = () =>
-⋮----
-// Wait for expand animation to complete
-⋮----
-const handleMouseLeave = () =>
-⋮----
-// Wait for collapse animation to complete
-⋮----
-{/* Animated indicator */}
-⋮----
-{/* Mode buttons */}
-⋮----
-{/* Label with smooth expand/collapse */}
-```
-
-## File: src/features/dynamic-view/components/shared/AddDataItemCta.tsx
-```typescript
-import { Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
-⋮----
-import type { ViewMode } from '../../types'
-⋮----
-interface AddDataItemCtaProps {
-  viewMode: ViewMode
-  colSpan?: number
-}
-```
-
-## File: src/features/dynamic-view/components/shared/AnimatedLoadingSkeleton.tsx
-```typescript
-import { useEffect, useRef, useState } from 'react'
-import { gsap } from 'gsap'
-import { Search } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import type { ViewMode } from '../../types'
-⋮----
-interface GridConfig {
-  numCards: number
-  cols: number
-}
-⋮----
-const getGridConfig = (width: number): GridConfig =>
-⋮----
-if (width === 0) return { numCards: 8, cols: 2 }; // Default before measurement
-⋮----
-// For card view
-⋮----
-const cols = Math.max(1, Math.floor(width / 344)); // 320px card + 24px gap
-⋮----
-// For grid view
-const cols = Math.max(1, Math.floor(width / 304)); // 280px card + 24px gap
-⋮----
-// Allow DOM to update with new skeleton cards
-⋮----
-const getCardPosition = (card: Element) =>
-⋮----
-// Animate to a few random cards
-⋮----
-// Loop back to the start
-⋮----
-}, 100) // Small delay to ensure layout is calculated
-⋮----
-className=
-⋮----
-kanban: "", // Kanban has its own skeleton
-calendar: "" // Calendar has its own skeleton
-```
-
 ## File: src/features/dynamic-view/DynamicViewContext.tsx
 ```typescript
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, GroupableField } from './types';
-⋮----
+
 export interface DynamicViewContextProps<TFieldId extends string, TItem extends GenericItem> {
   config: ViewConfig<TFieldId, TItem>;
   data: TItem[];
@@ -1627,242 +530,44 @@ export interface DynamicViewContextProps<TFieldId extends string, TItem extends 
   onCalendarItemLimitChange?: (limit: 'all' | number) => void;
   onCalendarColorPropChange?: (prop: CalendarColorProp<TFieldId>) => void;
 }
-⋮----
-// Data & State from parent
-⋮----
-// Controlled State Props from parent
-⋮----
-// Calendar-specific state
-⋮----
-// Callbacks to parent
-⋮----
-// Calendar-specific callbacks
-⋮----
+
+const DynamicViewContext = createContext<DynamicViewContextProps<any, any> | null>(null);
+
 interface DynamicViewProviderProps<TFieldId extends string, TItem extends GenericItem> extends Omit<DynamicViewContextProps<TFieldId, TItem>, 'getFieldDef' | 'config' | 'data'> {
   viewConfig: ViewConfig<TFieldId, TItem>,
   children: ReactNode;
 }
-⋮----
-export function DynamicViewProvider<TFieldId extends string, TItem extends GenericItem>(
-⋮----
-const getFieldDef = (fieldId: TFieldId) =>
-⋮----
-data: rest.items, // alias for convenience
-⋮----
-export function useDynamicView<TFieldId extends string, TItem extends GenericItem>()
-```
 
-## File: src/hooks/useAutoAnimateStats.hook.ts
-```typescript
-import { useEffect, useRef, useCallback } from 'react';
-import { gsap } from 'gsap';
-⋮----
-/**
- * A hook that animates a stats container in and out of view based on scroll direction.
- * It creates a "sliver app bar" effect for the stats section.
- * @param scrollContainerRef Ref to the main scrolling element.
- * @param statsContainerRef Ref to the stats container element to be animated.
- */
-export function useAutoAnimateStats(
-  scrollContainerRef: React.RefObject<HTMLElement>,
-  statsContainerRef: React.RefObject<HTMLElement>
-)
-⋮----
-// Reveal on "pull to reveal" at the top
-⋮----
-// For non-scrollable containers (like Kanban), hide on any downward scroll
-⋮----
-// When component unmounts, kill any running animations on the stats ref
-```
+export function DynamicViewProvider<TFieldId extends string, TItem extends GenericItem>({ viewConfig, children, ...rest }: DynamicViewProviderProps<TFieldId, TItem>) {
+  const fieldDefsById = useMemo(() => {
+    return new Map(viewConfig.fields.map(field => [field.id, field]));
+  }, [viewConfig.fields]);
 
-## File: src/hooks/useStaggeredAnimation.motion.hook.ts
-```typescript
-import { useLayoutEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { useAppShellStore } from '@/store/appShell.store';
-⋮----
-interface StaggeredAnimationOptions {
-	stagger?: number;
-	duration?: number;
-	y?: number;
-	scale?: number;
-	ease?: string;
-	mode?: 'full' | 'incremental';
-}
-⋮----
-/**
- * Animates the direct children of a container element with a staggered fade-in effect.
- *
- * @param containerRef Ref to the container element.
- * @param deps Dependency array to trigger the animation.
- * @param options Animation options.
- * @param options.mode - 'full' (default): animates all children every time deps change.
- *                       'incremental': only animates new children added to the container.
- */
-export function useStaggeredAnimation<T extends HTMLElement>(
-	containerRef: React.RefObject<T>,
-	deps: React.DependencyList,
-	options: StaggeredAnimationOptions = {},
-)
-⋮----
-// On dependency change, if the number of children is less than what we've animated,
-// it's a list reset (e.g., filtering), so reset the counter.
-⋮----
-// eslint-disable-next-line react-hooks/exhaustive-deps
-```
+  const getFieldDef = (fieldId: TFieldId) => {
+    return fieldDefsById.get(fieldId);
+  };
 
-## File: src/pages/Dashboard/hooks/useDashboardAnimations.motion.hook.ts
-```typescript
-import { useEffect } from 'react';
-import { gsap } from 'gsap';
-import { useAppShellStore } from '@/store/appShell.store';
-import { BODY_STATES } from '@/lib/utils';
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook';
-⋮----
-export function useDashboardAnimations(
-  contentRef: React.RefObject<HTMLDivElement>,
-  statsCardsContainerRef: React.RefObject<HTMLDivElement>,
-  featureCardsContainerRef: React.RefObject<HTMLDivElement>,
-)
-⋮----
-// Animate cards on mount
-```
+  const value = useMemo(() => ({
+    ...rest,
+    config: viewConfig,
+    data: rest.items, // alias for convenience
+    getFieldDef,
+  }), [viewConfig, getFieldDef, rest]);
 
-## File: src/components/layout/Sidebar.tsx
-```typescript
-import { ChevronDown } from 'lucide-react';
-import { Slot } from '@radix-ui/react-slot';
-import { useAppShellStore } from '@/store/appShell.store';
-import { SIDEBAR_STATES } from '@/lib/utils';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-⋮----
-// --- Context ---
-interface SidebarContextValue {
-  isCollapsed: boolean;
-  isPeek: boolean;
-  compactMode: boolean;
+  return (
+    <DynamicViewContext.Provider value={value}>
+      {children}
+    </DynamicViewContext.Provider>
+  );
 }
-⋮----
-// eslint-disable-next-line react-refresh/only-export-components
-export const useSidebar = () =>
-⋮----
-// --- Main Sidebar Component ---
-interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: React.ReactNode;
-}
-⋮----
-className=
-⋮----
-// --- Sidebar Content Wrapper ---
-⋮----
-// --- Sidebar Header ---
-⋮----
-// --- Sidebar Body ---
-⋮----
-// --- Sidebar Footer ---
-⋮----
-// --- Sidebar Section ---
-⋮----
-const handleToggle = () =>
-⋮----
-// --- Sidebar Menu Item ---
-⋮----
-return <div ref=
-⋮----
-// --- Sidebar Menu Button ---
-⋮----
-// --- Sidebar Menu Action ---
-⋮----
-'focus:opacity-100', // show on focus for accessibility
-⋮----
-// --- Sidebar Menu Label ---
-⋮----
-// --- Sidebar Menu Badge ---
-⋮----
-// --- Sidebar Tooltip ---
-interface SidebarTooltipProps extends React.HTMLAttributes<HTMLDivElement> {
-  label: string;
-  badge?: number | string;
-}
-⋮----
-// --- Icon Wrapper for consistent sizing ---
-const SidebarIcon = (
-```
 
-## File: src/components/shared/StatCard.tsx
-```typescript
-import React, { useLayoutEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { cn } from '@/lib/utils';
-import { Card } from '@/components/ui/card';
-⋮----
-interface StatCardProps {
-  className?: string;
-  title: string;
-  value: string;
-  change: string;
-  trend: 'up' | 'down';
-  icon: React.ReactNode;
-  chartData?: number[];
+export function useDynamicView<TFieldId extends string, TItem extends GenericItem>() {
+  const context = useContext(DynamicViewContext);
+  if (!context) {
+    throw new Error('useDynamicView must be used within a DynamicViewProvider');
+  }
+  return context as DynamicViewContextProps<TFieldId, TItem>;
 }
-⋮----
-// Only run animation if chartData is present
-⋮----
-// --- Chart rendering logic (only if chartData is provided) ---
-const renderChart = () =>
-⋮----
-// SVG dimensions
-⋮----
-// Normalize data
-⋮----
-const y = height - ((val - min) / range) * (height - 10) + 5; // Add vertical padding
-⋮----
-// --- End of chart rendering logic ---
-⋮----
-!chartData && "h-full", // Ensure cards without charts have consistent height if needed
-```
-
-## File: src/features/dynamic-view/components/shared/DetailPanel.tsx
-```typescript
-import React, { useRef, useState, useMemo } from 'react'
-import {
-  DndContext,
-  closestCenter,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import {
-  Clock, 
-  Tag,
-  User,
-  BarChart3,
-} from 'lucide-react'
-import type { GenericItem, DetailViewConfig, DetailViewSection } from '../../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook';
-import { EditableField } from './EditableField'
-import { DraggableSection } from './DraggableSection'
-import { getNestedValue } from '@/lib/utils'
-import { useDynamicView } from '../../DynamicViewContext'
-⋮----
-interface DetailPanelProps<TFieldId extends string, TItem extends GenericItem> {
-  item: TItem;
-  config: DetailViewConfig<TFieldId>;
-}
-⋮----
-const handleDragEnd = (event: DragEndEvent) =>
-⋮----
-{/* Header */}
-⋮----
-{/* Status badges */}
-⋮----
-{/* Progress */}
-⋮----
-{/* Content */}
 ```
 
 ## File: src/features/dynamic-view/components/shared/FieldRenderer.tsx
@@ -1873,55 +578,146 @@ import { cn, getNestedValue } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Eye, Heart, Share } from 'lucide-react';
-⋮----
+
 interface FieldRendererProps<TFieldId extends string, TItem extends GenericItem> {
   item: TItem;
   fieldId: TFieldId;
   className?: string;
   options?: Record<string, any>; // For extra props like 'compact' for avatar
 }
-⋮----
-options?: Record<string, any>; // For extra props like 'compact' for avatar
-⋮----
-// Custom render function takes precedence
-⋮----
-return null; // Or some placeholder like 'N/A'
-⋮----
-return <span className=
-⋮----
 
-⋮----
-<div className=
-⋮----
-return <>
-```
+export function FieldRenderer<TFieldId extends string, TItem extends GenericItem>({ item, fieldId, className, options }: FieldRendererProps<TFieldId, TItem>) {
+  const { getFieldDef } = useDynamicView<TFieldId, TItem>();
+  const fieldDef = getFieldDef(fieldId);
+  const value = getNestedValue(item, fieldId);
 
-## File: src/features/dynamic-view/components/views/TableView.tsx
-```typescript
-import { useRef, useLayoutEffect, useMemo, type ReactNode } from 'react'
-import { gsap } from 'gsap'
-import { cn } from '@/lib/utils'
-import { 
-  ArrowUpDown, 
-  ArrowUp, 
-  ArrowDown,
-  ExternalLink
-} from 'lucide-react'
-import type { GenericItem } from '../../types'
-import { EmptyState } from '../shared/EmptyState'
-import { capitalize } from '@/lib/utils'
-import { useDynamicView } from '../../DynamicViewContext'
-import { FieldRenderer } from '../shared/FieldRenderer'
-⋮----
-// Only select item rows for animation, not group headers
-⋮----
-const SortIcon = (
-⋮----
-const handleSortClick = (field: string) =>
-⋮----
-<h3 className="font-semibold text-sm">
-⋮----
-{/* Actions Column */}
+  // Custom render function takes precedence
+  if (fieldDef?.render) {
+    return <>{(fieldDef as FieldDefinition<TFieldId, TItem>).render?.(item, options)}</>;
+  }
+
+  if (!fieldDef) {
+    console.warn(`[FieldRenderer] No field definition found for ID: ${fieldId}`);
+    return <span className="text-red-500">?</span>;
+  }
+
+  if (value === null || typeof value === 'undefined') {
+    return null; // Or some placeholder like 'N/A'
+  }
+  
+  switch (fieldDef.type) {
+    case 'string':
+    case 'longtext':
+      return <span className={cn("truncate", className)}>{String(value)}</span>;
+    
+    case 'thumbnail':
+      return <span className={cn("text-xl", className)}>{String(value)}</span>;
+
+    case 'badge': {
+      const { colorMap, indicatorColorMap } = fieldDef as BadgeFieldDefinition<TFieldId, TItem>;
+      
+      if (options?.displayAs === 'indicator' && indicatorColorMap) {
+        const indicatorColorClass = indicatorColorMap[String(value)] || 'bg-muted-foreground';
+        return (
+          <div className={cn("w-3 h-3 rounded-full", indicatorColorClass, className)} />
+        );
+      }
+
+      const colorClass = colorMap?.[String(value)] || '';
+      return (
+        <Badge variant="outline" className={cn("font-medium capitalize", colorClass, className)}>
+          {String(value)}
+        </Badge>
+      );
+    }
+    
+    case 'avatar': {
+      const { compact = false, avatarClassName = "w-8 h-8" } = options || {};
+      const avatarUrl = getNestedValue(value, 'avatar');
+      const name = getNestedValue(value, 'name');
+      const email = getNestedValue(value, 'email');
+      const fallback = name?.split(' ').map((n: string) => n[0]).join('') || '?';
+
+      const avatarEl = (
+        <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
+          <AvatarImage src={avatarUrl} alt={name} />
+          <AvatarFallback>{fallback}</AvatarFallback>
+        </Avatar>
+      );
+      if (compact) return avatarEl;
+
+      return (
+        <div className={cn("flex items-center gap-2 group", className)}>
+          {avatarEl}
+          <div className="min-w-0 hidden sm:block">
+            <p className="font-medium text-sm truncate">{name}</p>
+            <p className="text-xs text-muted-foreground truncate">{email}</p>
+          </div>
+        </div>
+      );
+    }
+    
+    case 'progress': {
+      const { showPercentage = false } = options || {};
+      const bar = (
+        <div className="w-full bg-muted rounded-full h-2.5">
+          <div
+            className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
+            style={{ width: `${value}%` }}
+          />
+        </div>
+      );
+      if (!showPercentage) return bar;
+      
+      return (
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">{bar}</div>
+          <span className="text-sm font-medium text-muted-foreground">{value}%</span>
+        </div>
+      );
+    }
+
+    case 'date':
+      return (
+        <div className={cn("flex items-center gap-1.5 text-sm", className)}>
+          <Clock className="w-4 h-4" />
+          <span>{new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+        </div>
+      );
+
+    case 'tags': {
+      const MAX_TAGS = 2;
+      const tags = Array.isArray(value) ? value : [];
+      const remainingTags = tags.length - MAX_TAGS;
+      return (
+        <div className={cn("flex items-center gap-1.5 flex-wrap", className)}>
+          {tags.slice(0, MAX_TAGS).map(tag => (
+            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+          ))}
+          {remainingTags > 0 && (
+            <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
+          )}
+        </div>
+      );
+    }
+
+    case 'metrics': {
+      const views = getNestedValue(value, 'views') || 0;
+      const likes = getNestedValue(value, 'likes') || 0;
+      const shares = getNestedValue(value, 'shares') || 0;
+      return (
+        <div className={cn("flex items-center gap-3 text-sm", className)}>
+          <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {views}</div>
+          <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {likes}</div>
+          <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {shares}</div>
+        </div>
+      );
+    }
+      
+    default:
+      return <>{String(value)}</>;
+  }
+}
 ```
 
 ## File: src/features/dynamic-view/DynamicView.tsx
@@ -1942,7 +738,7 @@ import { CalendarView } from './components/views/CalendarView';
 import { EmptyState } from './components/shared/EmptyState';
 import { useAutoAnimateStats } from '@/hooks/useAutoAnimateStats.hook';
 import { StatCard } from '@/components/shared/StatCard';
-⋮----
+
 // Define the props for the controlled DynamicView component
 export interface DynamicViewProps<TFieldId extends string, TItem extends GenericItem> {
   // Config
@@ -1991,238 +787,147 @@ export interface DynamicViewProps<TFieldId extends string, TItem extends Generic
   loaderRef?: React.Ref<HTMLDivElement>;
   scrollContainerRef?: React.RefObject<HTMLElement>;
 }
-⋮----
-// Config
-⋮----
-// Data & State
-⋮----
-// Controlled State Props
-⋮----
-// Calendar-specific state
-⋮----
-// State Change Callbacks
-⋮----
-// Calendar-specific callbacks
-⋮----
-// Custom Renderers
-⋮----
-// Auto-hide stats container on scroll down
-⋮----
-// Animate stats cards in
-⋮----
-if (isInitialLoading)
-⋮----
-// This will be expanded later to handle group tabs
-⋮----
-{/* Loader for infinite scroll */}
-```
 
-## File: src/pages/Dashboard/DemoContent.tsx
-```typescript
-import React, { useRef } from 'react'
-import { 
-  Sparkles, 
-  Zap, 
-  Rocket, 
-  Star, 
-  Heart,
-  Layers,
-  Code,
-  Palette,
-  Smartphone,
-  Monitor,
-  Settings
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { useAppShellStore } from '@/store/appShell.store'
-import { Card } from '@/components/ui/card'
-⋮----
-{/* Hero Section */}
-⋮----
-{/* Quick Stats */}
-⋮----
-<div className=
-⋮----
-{/* Feature Cards */}
-⋮----
-{/* Technology Stack */}
-⋮----
-{/* Current State Display */}
-⋮----
-{/* Interactive Demo */}
-```
+export function DynamicView<TFieldId extends string, TItem extends GenericItem>({ viewConfig, ...rest }: DynamicViewProps<TFieldId, TItem>) {
+  
+  const { viewMode, isInitialLoading, isLoading, hasMore, items, groupBy, statsData, scrollContainerRef } = rest;
+  const statsRef = useRef<HTMLDivElement>(null);
 
-## File: src/pages/Messaging/components/MessagingContent.tsx
-```typescript
-import React, { useState, useMemo } from 'react';
-import { useMessagingStore } from '../store/messaging.store';
-import { ContactInfoPanel } from './ContactInfoPanel';
-import { AIInsightsPanel } from './AIInsightsPanel';
-import { ActivityPanel } from './ActivityPanel';
-import { NotesPanel } from './NotesPanel';
-import { TaskHeader } from './TaskHeader';
-import { AnimatedTabs } from '@/components/ui/animated-tabs';
-import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
-⋮----
-interface MessagingContentProps {
-  conversationId?: string;
+  // Auto-hide stats container on scroll down
+  useAutoAnimateStats(scrollContainerRef!, statsRef);
+
+  useEffect(() => {
+    // Animate stats cards in
+    if (!isInitialLoading && statsRef.current) {
+      gsap.fromTo(statsRef.current.children,
+        { y: 30, opacity: 0 },
+        {
+          duration: 0.5,
+          y: 0,
+          opacity: 1,
+          stagger: 0.08,
+          ease: "power2.out"
+        }
+      )
+    }
+  }, [isInitialLoading]);
+
+  const groupedData = useMemo(() => {
+    if (groupBy === 'none' || viewMode !== 'kanban') {
+        return null;
+    }
+    return (items as TItem[]).reduce((acc, item) => {
+        const groupKey = String(item[groupBy as keyof TItem]) || 'N/A';
+        if (!acc[groupKey]) {
+            acc[groupKey] = [] as TItem[];
+        }
+        acc[groupKey].push(item);
+        return acc;
+    }, {} as Record<string, TItem[]>);
+  }, [items, groupBy, viewMode]);
+
+  const renderViewForData = useCallback((data: TItem[], cta: ReactNode) => {
+    switch (viewMode) {
+        case 'table': return <TableView data={data} ctaElement={cta} />;
+        case 'cards': return <CardView data={data} ctaElement={cta} />;
+        case 'grid': return <CardView data={data} isGrid ctaElement={cta} />;
+        case 'list': default: return <ListView data={data} ctaElement={cta} />;
+    }
+  }, [viewMode]);
+
+  const renderContent = () => {
+    if (isInitialLoading) {
+      return <AnimatedLoadingSkeleton viewMode={viewMode} />;
+    }
+
+    if (viewMode === 'calendar') {
+        return <CalendarView data={items} />;
+    }
+
+    if (viewMode === 'kanban') {
+        return groupedData ? (
+          <KanbanView data={groupedData} />
+        ) : (
+          <div className="flex items-center justify-center h-96 text-muted-foreground">
+            Group data by a metric to use the Kanban view.
+          </div>
+        );
+    }
+    
+    if (items.length === 0 && !isInitialLoading) {
+        return <EmptyState />;
+    }
+    
+    const ctaProps = {
+        colSpan: viewMode === 'table' ? viewConfig.tableView.columns.length + 1 : undefined,
+    };
+    const ctaElement = rest.renderCta
+        ? rest.renderCta(viewMode, ctaProps)
+        : null;
+    
+    // This will be expanded later to handle group tabs
+    return renderViewForData(items, ctaElement);
+  };
+
+  return (
+    <DynamicViewProvider<TFieldId, TItem> viewConfig={viewConfig} {...rest}>
+      <div className="space-y-6">
+          <div className="space-y-4">
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  <div className="flex-1">
+                      {rest.renderHeaderControls ? rest.renderHeaderControls() : (
+                          <>
+                              <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                              <p className="text-muted-foreground">
+                                  {isInitialLoading 
+                                      ? "Loading projects..." 
+                                      : `Showing ${items.length} of ${rest.totalItemCount} item(s)`}
+                              </p>
+                          </>
+                      )}
+                  </div>
+                  <ViewModeSelector />
+              </div>
+              <ViewControls />
+          </div>
+
+          {!isInitialLoading && statsData && statsData.length > 0 && (
+            <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+              {statsData.map((stat) => (
+                <StatCard
+                  className="w-64 md:w-72 flex-shrink-0"
+                  key={stat.title}
+                  title={stat.title}
+                  value={stat.value}
+                  change={stat.change}
+                  trend={stat.trend}
+                  icon={stat.icon}
+                  chartData={stat.chartData}
+                />
+              ))}
+            </div>
+          )}
+          
+          <div className="min-h-[500px]">
+              {renderContent()}
+          </div>
+
+          {/* Loader for infinite scroll */}
+          <div ref={rest.loaderRef} className="flex justify-center items-center py-6">
+            {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Loading more...</span>
+              </div>
+            )}
+            {!isLoading && !hasMore && items.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+              <p className="text-muted-foreground">You've reached the end.</p>
+            )}
+          </div>
+      </div>
+    </DynamicViewProvider>
+  );
 }
-```
-
-## File: src/pages/Messaging/components/TaskHeader.tsx
-```typescript
-import React from 'react';
-import { useMessagingStore } from '../store/messaging.store';
-import type { Task, TaskStatus, TaskPriority, Assignee, Contact } from '../types';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronDown, Inbox, Zap, Shield, Clock, Calendar, Plus, User, Eye } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-⋮----
-interface TaskHeaderProps {
-  task: (Task & { contact: Contact; assignee: Assignee | null; activeHandler: Assignee | null });
-}
-⋮----
-const currentUserId = 'user-1'; // Mock current user
-⋮----
-{/* Task Title & Contact */}
-⋮----
-{/* Properties Bar */}
-⋮----
-{/* Assignee Dropdown */}
-⋮----
-{/* Status Dropdown */}
-⋮----
-{/* Priority Dropdown */}
-⋮----
-{/* Due Date - for display, could be a popover trigger */}
-⋮----
-{/* Tags */}
-```
-
-## File: src/components/auth/LoginPage.tsx
-```typescript
-import { ChangeEvent } from 'react';
-import { Eye, EyeOff, Mail, ArrowLeft } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { AnimatedInput } from '../effects/AnimatedInput';
-import { BoxReveal } from '../effects/BoxReveal';
-import { Ripple } from '../effects/Ripple';
-import { TechOrbitDisplay } from '../effects/OrbitingCircles';
-import { BottomGradient } from '../effects/BottomGradient';
-import { useLoginForm } from './useLoginForm.hook';
-⋮----
-// ==================== Main LoginPage Component ====================
-⋮----
-{/* Left Side */}
-⋮----
-{/* Right Side */}
-```
-
-## File: src/components/global/CommandPalette.tsx
-```typescript
-import {
-  CommandDialog,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-  CommandShortcut,
-} from '@/components/ui/command';
-import { useCommandPaletteToggle } from '@/hooks/useCommandPaletteToggle.hook'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
-import { useAppShellStore } from '@/store/appShell.store';
-import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight, Maximize, Component, Bell } from 'lucide-react'
-⋮----
-const runCommand = (command: () => void) =>
-```
-
-## File: src/components/ui/animated-tabs.tsx
-```typescript
-import React, { useState, useRef, useEffect, useLayoutEffect, useId } from "react"
-import { gsap } from "gsap"
-import { cn } from "@/lib/utils"
-⋮----
-interface Tab {
-  id: string
-  label: React.ReactNode
-  count?: number
-}
-⋮----
-interface AnimatedTabsProps extends React.HTMLAttributes<HTMLDivElement> {
-  tabs: Tab[]
-  activeTab: string
-  onTabChange: (tabId: string) => void,
-  size?: 'default' | 'sm',
-  children?: React.ReactNode,
-  wrapperClassName?: string,
-  contentClassName?: string
-}
-⋮----
-// Update active index when controlled prop changes
-⋮----
-// Update active indicator position
-⋮----
-// Animate content track position
-⋮----
-// Set initial position of active indicator
-⋮----
-{/* Active Indicator */}
-⋮----
-{/* Tabs */}
-```
-
-## File: src/features/dynamic-view/components/views/KanbanView.tsx
-```typescript
-import { useState, useEffect, Fragment } from "react";
-import {
-  GripVertical,
-  Plus,
-} from "lucide-react";
-import type { GenericItem } from '../../types'
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { EmptyState } from "../shared/EmptyState";
-import { useDynamicView } from '../../DynamicViewContext'
-import { FieldRenderer } from '../shared/FieldRenderer'
-⋮----
-interface KanbanCardProps {
-  item: GenericItem;
-  isDragging: boolean;
-}
-⋮----
-const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) =>
-⋮----
-const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) =>
-⋮----
-const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) =>
-⋮----
-// Update local state for immediate feedback
-⋮----
-// Persist change to global store. The groupBy value tells us which property to update.
-⋮----
-const handleDragEnd = () =>
-⋮----
-const DropIndicator = ()
-⋮----
-className=
-⋮----
-onDragOver=
-onDrop=
-⋮----
-onDragStart=
 ```
 
 ## File: src/lib/utils.ts
@@ -2230,24 +935,82 @@ onDragStart=
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { formatDistanceToNow } from "date-fns"
-⋮----
-export function cn(...inputs: ClassValue[])
-⋮----
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export const SIDEBAR_STATES = {
+  HIDDEN: 'hidden',
+  COLLAPSED: 'collapsed', 
+  EXPANDED: 'expanded',
+  PEEK: 'peek'
+} as const
+
+export const BODY_STATES = {
+  NORMAL: 'normal',
+  FULLSCREEN: 'fullscreen',
+  SIDE_PANE: 'side_pane',
+  SPLIT_VIEW: 'split_view'
+} as const
+
 export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
 export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
-⋮----
-export function capitalize(str: string): string
-⋮----
-export function formatDistanceToNowShort(date: Date | string): string
-⋮----
-export const getStatusColor = (status: string) =>
-⋮----
+
+export function capitalize(str: string): string {
+  if (!str) return str
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+export function formatDistanceToNowShort(date: Date | string): string {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  const result = formatDistanceToNow(dateObj, { addSuffix: true });
+
+  if (result === 'less than a minute ago') return 'now';
+
+  return result
+    .replace('about ', '')
+    .replace(' minutes', 'm')
+    .replace(' minute', 'm')
+    .replace(' hours', 'h')
+    .replace(' hour', 'h')
+    .replace(' days', 'd')
+}
+
+export const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
+    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
+
 // A helper to get nested properties from an object, e.g., 'metrics.views'
-export function getNestedValue(obj: Record<string, any>, path: string): any
-⋮----
-export const getPrioritySolidColor = (priority: string) =>
-⋮----
-export const getPriorityColor = (priority: string) =>
+export function getNestedValue(obj: Record<string, any>, path: string): any {
+  return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), obj);
+}
+
+export const getPrioritySolidColor = (priority: string) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-500'
+    case 'high': return 'bg-orange-500'
+    case 'medium': return 'bg-blue-500'
+    case 'low': return 'bg-green-500'
+    default: return 'bg-gray-500'
+  }
+}
+
+export const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
+    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
+    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
+    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
+    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
+  }
+}
 ```
 
 ## File: src/pages/DataDemo/DataDemo.config.tsx
@@ -2258,515 +1021,188 @@ import type {
   FieldDefinition,
 } from "@/features/dynamic-view/types";
 import type { DataDemoItem } from "./data/DataDemoItem";
-⋮----
-// A custom field to replicate the composite "Project" column in the table view
-⋮----
+
+const fields: readonly FieldDefinition<string, DataDemoItem>[] = [
+  { id: "id", label: "ID", type: "string" },
+  { id: "title", label: "Title", type: "string" },
+  { id: "description", label: "Description", type: "longtext" },
+  { id: "thumbnail", label: "Thumbnail", type: "thumbnail" },
+  { id: "category", label: "Category", type: "badge" },
+  {
+    id: "status",
+    label: "Status",
+    type: "badge",
+    colorMap: {
+      active: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+      pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+      completed: "bg-emerald-600/10 text-emerald-700 border-emerald-600/20",
+      archived: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
+    },
+  },
+  {
+    id: "priority",
+    label: "Priority",
+    type: "badge",
+    colorMap: {
+      critical: "bg-red-600/10 text-red-700 border-red-600/20",
+      high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+      medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+      low: "bg-green-500/10 text-green-600 border-green-500/20",
+    },
+    indicatorColorMap: {
+      critical: "bg-red-500",
+      high: "bg-orange-500",
+      medium: "bg-blue-500",
+      low: "bg-green-500",
+    },
+  },
+  { id: "assignee", label: "Assignee", type: "avatar" },
+  { id: "tags", label: "Tags", type: "tags" },
+  { id: "metrics", label: "Engagement", type: "metrics" },
+  { id: "metrics.completion", label: "Progress", type: "progress" },
+  { id: "dueDate", label: "Due Date", type: "date" },
+  { id: "createdAt", label: "Created At", type: "date" },
+  { id: "updatedAt", label: "Last Updated", type: "date" },
+  // A custom field to replicate the composite "Project" column in the table view
+  {
+    id: "project_details",
+    label: "Project",
+    type: "custom",
+    render: (item: DataDemoItem) => (
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
+          <FieldRenderer item={item} fieldId="thumbnail" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h4 className="font-medium group-hover:text-primary transition-colors truncate">
+            <FieldRenderer item={item} fieldId="title" />
+          </h4>
+          <p className="text-sm text-muted-foreground truncate">
+            <FieldRenderer item={item} fieldId="category" />
+          </p>
+        </div>
+      </div>
+    ),
+  },
+] as const;
+
 // Infer the field IDs from the const-asserted array.
-⋮----
-// 1. Field Definitions
-⋮----
-// 2. Control Definitions
-⋮----
-// 3. View Layouts
-```
+type DataDemoFieldId = (typeof fields)[number]["id"];
 
-## File: src/pages/Messaging/components/ActivityFeed.tsx
-```typescript
-import React, { forwardRef } from 'react';
-import { useMessagingStore } from '../store/messaging.store';
-import type { Message, Contact, JourneyPointType } from '../types';
-import { cn, formatDistanceToNowShort } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { StickyNote, Info, MessageSquare, ShoppingCart, PackageCheck, AlertCircle, RefreshCw, MailQuestion, FileText, CreditCard, Truck, XCircle, Undo2, Star, type LucideIcon } from 'lucide-react';
-⋮----
-interface ActivityFeedProps {
-  messages: Message[];
-  contact: Contact;
-  searchTerm?: string;
-}
-⋮----
-<Icon className=
-<span className=
-<span className="text-xs text-muted-foreground font-normal whitespace-nowrap">
-⋮----
-// Default: 'comment' type
-```
-
-## File: src/index.ts
-```typescript
-// Context
-⋮----
-// Layout Components
-⋮----
-// Sidebar Primitives
-⋮----
-// Shared Components
-⋮----
-// Feature Components
-⋮----
-// UI Components
-⋮----
-// Effects Components
-⋮----
-// Global Components
-⋮----
-// Hooks
-⋮----
-// Lib
-⋮----
-// Store
-```
-
-## File: src/features/dynamic-view/components/controls/ViewControls.tsx
-```typescript
-import { Check, ListFilter, Search, SortAsc, ChevronsUpDown, Settings } from 'lucide-react'
-⋮----
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/components/ui/command'
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-⋮----
-import type { FilterConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, GenericItem, FilterableFieldConfig } from '../../types'
-import { useDynamicView } from '../../DynamicViewContext';
-⋮----
-export interface DataViewControlsProps {
-  // groupOptions will now come from config
-}
-⋮----
-// groupOptions will now come from config
-⋮----
-const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) =>
-⋮----
-{/* Search */}
-⋮----
-{/* Filters */}
-⋮----
-{/* Spacer */}
-⋮----
-{/* Sorter */}
-⋮----
-{/* Group By Dropdown */}
-⋮----
-const handleSelect = (fieldId: string, value: string) =>
-⋮----
-const clearFilters = () =>
-```
-
-## File: src/features/dynamic-view/components/views/CardView.tsx
-```typescript
-import { useRef, type ReactNode } from 'react'
-import { cn } from '@/lib/utils'
-import { ArrowUpRight } from 'lucide-react'
-import type { GenericItem } from '../../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from '../shared/EmptyState'
-import { useDynamicView } from '../../DynamicViewContext'
-import { FieldRenderer } from '../shared/FieldRenderer'
-⋮----
-className=
-⋮----
-{/* Card Header with Thumbnail */}
-⋮----
-{/* Header Fields (e.g., priority indicator) */}
-⋮----
-{/* Card Content */}
-⋮----
-{/* Status and Category */}
-⋮----
-{/* Tags, Progress, Assignee */}
-⋮----
-{/* Metrics and Date */}
-⋮----
-{/* Hover gradient overlay */}
-⋮----
-{/* Selection indicator */}
-```
-
-## File: src/features/dynamic-view/components/views/ListView.tsx
-```typescript
-import { useRef, type ReactNode } from 'react'
-import { cn } from '@/lib/utils'
-import type { GenericItem } from '../../types'
-import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook'
-import { EmptyState } from '../shared/EmptyState'
-import { useDynamicView } from '../../DynamicViewContext'
-import { FieldRenderer } from '../shared/FieldRenderer'
-⋮----
-{/* Left side: Icon and Title */}
-⋮----
-{/* Right side: Metadata */}
-```
-
-## File: src/hooks/useResizablePanes.hook.ts
-```typescript
-import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { useAppShellStore } from '@/store/appShell.store';
-import { BODY_STATES } from '@/lib/utils';
-⋮----
-export function useResizableSidebar(
-  sidebarRef: React.RefObject<HTMLDivElement>,
-  resizeHandleRef: React.RefObject<HTMLDivElement>
-)
-⋮----
-const handleMouseMove = (e: MouseEvent) =>
-⋮----
-const handleMouseUp = () =>
-⋮----
-export function useResizableRightPane(
-  rightPaneRef: React.RefObject<HTMLDivElement>
-)
-⋮----
-// This effect temporarily disables animations during resizing to prevent the
-// pane's enter/exit animation from firing incorrectly.
-⋮----
-// When resizing starts, store the original setting and disable animations.
-⋮----
-// When resizing ends, restore the original setting after a brief delay.
-// This ensures the final width is rendered before animations are re-enabled.
-⋮----
-// Use requestAnimationFrame to ensure we re-enable animations *after* the browser
-// has painted the new, non-animated pane width. This is more reliable than setTimeout(0).
-```
-
-## File: src/pages/Dashboard/index.tsx
-```typescript
-import { useRef, useCallback } from 'react'
-import {
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  DollarSign, 
-  Activity,
-  Calendar,
-  Clock,
-  MessageSquare,
-  FileText,
-  Star,
-  ChevronRight,
-  MoreVertical
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { DemoContent } from './DemoContent';
-import { useDashboardAnimations } from './hooks/useDashboardAnimations.motion.hook'
-import { useAutoAnimateTopBar } from '@/hooks/useAutoAnimateTopBar';
-import { useScrollToBottom } from '@/hooks/useScrollToBottom.hook';
-import { useAppShellStore } from '@/store/appShell.store'
-import { BODY_STATES } from '@/lib/utils'
-import { PageHeader } from '@/components/shared/PageHeader';
-import { ScrollToBottomButton } from '@/components/shared/ScrollToBottomButton';
-import { StatCard } from '@/components/shared/StatCard';
-import { Card } from '@/components/ui/card';
-import { PageLayout } from '@/components/shared/PageLayout';
-⋮----
-interface StatsCard {
-  title: string
-  value: string
-  change: string
-  trend: 'up' | 'down'
-  icon: React.ReactNode
-}
-⋮----
-interface ActivityItem {
-  id: string
-  type: 'comment' | 'file' | 'meeting' | 'task'
-  title: string
-  description: string
-  time: string
-  user: string
-}
-⋮----
-const getTypeIcon = (type: ActivityItem['type']) =>
-⋮----
-{/* Header */}
-⋮----
-{/* Stats Cards */}
-⋮----
-{/* Demo Content */}
-⋮----
-{/* Main Content Grid */}
-⋮----
-{/* Chart Area */}
-⋮----
-{/* Analytics Chart */}
-⋮----
-{/* Mock Chart */}
-⋮----
-{/* Recent Projects */}
-⋮----
-{/* Sidebar Content */}
-⋮----
-{/* Quick Actions */}
-⋮----
-<div className=
-⋮----
-{/* Recent Activity */}
-```
-
-## File: src/components/layout/AppShell.tsx
-```typescript
-import React, { useRef, type ReactElement, useEffect, useLayoutEffect } from 'react'
-import { useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils'
-import { gsap } from 'gsap';
-import { CommandPalette } from '@/components/global/CommandPalette';
-import { useAppShellStore } from '@/store/appShell.store';
-import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
-import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
-import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
-import { ViewModeSwitcher } from './ViewModeSwitcher';
-import { usePaneDnd } from '@/hooks/usePaneDnd.hook';
-⋮----
-interface AppShellProps {
-  sidebar: ReactElement;
-  topBar: ReactElement;
-  mainContent: ReactElement;
-  rightPane: ReactElement;
-  commandPalette?: ReactElement;
-  onOverlayClick?: () => void;
-}
-⋮----
-// Helper hook to get the previous value of a prop or state
-function usePrevious<T>(value: T): T | undefined
-⋮----
-// Custom hooks for logic
-⋮----
-// Animation for pane swapping
-⋮----
-// Check if a swap occurred by comparing current state with previous state
-⋮----
-// Animate main content FROM where right pane was TO its new place
-⋮----
-// Animate right pane FROM where main content was TO its new place
-⋮----
-}, 0); // Start at the same time
-⋮----
-className=
-⋮----
-{/* Enhanced Sidebar */}
-⋮----
-{/* Resize Handle */}
-⋮----
-e.preventDefault()
-⋮----
-{/* Main area wrapper */}
-⋮----
-{/* Invisible trigger area for top bar in split view */}
-⋮----
-{/* Side Pane Overlay */}
-⋮----
-{/* Left drop overlay */}
-⋮----
-{/* Right drop overlay (over main area, ONLY when NOT in split view) */}
-```
-
-## File: src/components/layout/RightPane.tsx
-```typescript
-import { forwardRef, useMemo, createElement, memo } from 'react'
-import {
-  ChevronRight,
-  X,
-} from 'lucide-react'
-import { cn, BODY_STATES } from '@/lib/utils';
-import { useAppShellStore } from '@/store/appShell.store';
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
-import { ViewModeSwitcher } from './ViewModeSwitcher';
-⋮----
-className=
-⋮----
-!isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card", // side pane overlay
-isFullscreen && fullscreenTarget === 'right' && "fixed inset-0 z-[60] bg-card", // fullscreen
-```
-
-## File: src/hooks/useAppShellAnimations.hook.ts
-```typescript
-import { useEffect, useRef } from 'react';
-import { gsap } from 'gsap';
-import { useSearchParams } from 'react-router-dom';
-import { useAppShellStore, useRightPaneWidth } from '@/store/appShell.store';
-import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils';
-⋮----
-function usePrevious<T>(value: T): T | undefined
-⋮----
-export function useSidebarAnimations(
-  sidebarRef: React.RefObject<HTMLDivElement>,
-  resizeHandleRef: React.RefObject<HTMLDivElement>
-)
-⋮----
-export function useBodyStateAnimations(
-  appRef: React.RefObject<HTMLDivElement>,
-  mainContentRef: React.RefObject<HTMLDivElement>,
-  rightPaneRef: React.RefObject<HTMLDivElement>,
-  topBarContainerRef: React.RefObject<HTMLDivElement>,
-  mainAreaRef: React.RefObject<HTMLDivElement>
-)
-⋮----
-// Kill any existing animations on the right pane to prevent conflicts
-⋮----
-// Right pane animation
-⋮----
-// Ensure correct width and position are set.
-⋮----
-// Animate entrance only when changing TO side pane view to prevent re-animation on resize.
-⋮----
-// SHOW AS SPLIT: Set transform immediately, animate width.
-⋮----
-// HIDE PANE: Determine how to hide based on the state we are coming FROM.
-⋮----
-// It was an overlay, so slide it out.
-⋮----
-} else { // Covers coming from SPLIT_VIEW, FULLSCREEN, or NORMAL
-// It was docked or fullscreen, so shrink its width.
-⋮----
-// Determine top bar position based on state
-⋮----
-if (bodyState === BODY_STATES.FULLSCREEN) { // Always hide in fullscreen
-⋮----
-} else if (bodyState === BODY_STATES.SPLIT_VIEW && !isTopBarHovered) { // Hide in split view unless hovered
-⋮----
-} else if (bodyState === BODY_STATES.NORMAL && !isTopBarVisible) { // Hide only in normal mode when scrolled
-⋮----
-// Add backdrop for side pane
-⋮----
-if (isSidePane) { // This is correct because isSidePane is false when bodyState is split_view
-```
-
-## File: src/pages/Messaging/components/JourneyScrollbar.tsx
-```typescript
-import React, { useState, useLayoutEffect, useRef, useCallback } from 'react';
-import type { Message, JourneyPointType } from '../types';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { gsap } from 'gsap';
-import { Info, MessageSquare, FileText, ShoppingCart, CreditCard, Truck, PackageCheck, XCircle, Undo2, AlertCircle, RefreshCw, MailQuestion, Star, type LucideIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
-⋮----
-interface JourneyScrollbarProps {
-  scrollContainerRef: React.RefObject<HTMLDivElement>;
-  journeyPoints: Message[];
-  onDotClick: (messageId: string) => void;
-  onHoverChange?: (isHovering: boolean) => void;
-  showAllTooltips?: boolean;
-}
-⋮----
-// Calculate proportional thumb height, but cap it at 10% of the container height
-// to prevent it from looking too long. A minimum of 20px is enforced for usability.
-⋮----
-// Active journey point logic
-⋮----
-const handleScroll = () =>
-⋮----
-const MIN_DOT_SPACING = 32; // Corresponds to h-8 in Tailwind
-⋮----
-const checkOverflow = () =>
-⋮----
-{/* Track Line */}
-⋮----
-{/* Thumb */}
-⋮----
-{/* Journey Dots */}
-⋮----
-// This container is click-through so the thumb and track can be interactive.
-// Individual dots will re-enable pointer events for themselves.
-⋮----
-// Dots are on top of the thumb and are clickable.
-```
-
-## File: src/pages/Messaging/components/TaskList.tsx
-```typescript
-import { useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
-import { useMessagingStore } from '../store/messaging.store';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
-import { cn, formatDistanceToNowShort } from '@/lib/utils';
-import { AnimatedTabs } from '@/components/ui/animated-tabs';
-import type { TaskStatus, TaskPriority, TaskView } from '../types';
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
-import { useMessagingTaskCounts } from '../store/messaging.store';
-⋮----
-// Local helpers for styling based on task properties
-const getStatusIcon = (status: TaskStatus) =>
-⋮----
-const getPriorityIcon = (priority: TaskPriority) =>
-⋮----
-const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
-⋮----
-{/* Header */}
-⋮----
-onTabChange=
-⋮----
-{/* Task List */}
-⋮----
-className=
-⋮----
-) : <div className="h-5 w-5" /> /* Spacer to maintain alignment */ }
-⋮----
-// Filter component for popover
-⋮----
-const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) =>
-```
-
-## File: src/components/layout/TopBar.tsx
-```typescript
-import React from 'react';
-import {
-  Moon, 
-  Sun,
-  Settings,
-  Command,
-  Zap,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { BODY_STATES } from '@/lib/utils'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { UserDropdown } from './UserDropdown'
-import { ViewModeSwitcher } from './ViewModeSwitcher'
-import { useAppShellStore } from '@/store/appShell.store'
-⋮----
-interface TopBarProps {
-  breadcrumbs?: React.ReactNode
-  pageControls?: React.ReactNode
-}
-⋮----
-{/* Left Section - Sidebar Controls & Breadcrumbs */}
-⋮----
-{/* Right Section - page controls, and global controls */}
-⋮----
-{/* Separator */}
-⋮----
-{/* Quick Actions */}
-⋮----
-{/* Theme and Settings */}
+export const dataDemoViewConfig: ViewConfig<DataDemoFieldId, DataDemoItem> = {
+  // 1. Field Definitions
+  fields,
+  // 2. Control Definitions
+  sortableFields: [
+    { id: "updatedAt", label: "Last Updated" },
+    { id: "title", label: "Title" },
+    { id: "status", label: "Status" },
+    { id: "priority", label: "Priority" },
+    { id: "metrics.completion", label: "Progress" },
+  ],
+  groupableFields: [
+    { id: "none", label: "None" },
+    { id: "status", label: "Status" },
+    { id: "priority", label: "Priority" },
+    { id: "category", label: "Category" },
+  ],
+  filterableFields: [
+    {
+      id: "status",
+      label: "Status",
+      options: [
+        { id: "active", label: "Active" },
+        { id: "pending", label: "Pending" },
+        { id: "completed", label: "Completed" },
+        { id: "archived", label: "Archived" },
+      ],
+    },
+    {
+      id: "priority",
+      label: "Priority",
+      options: [
+        { id: "critical", label: "Critical" },
+        { id: "high", label: "High" },
+        { id: "medium", label: "Medium" },
+        { id: "low", label: "Low" },
+      ],
+    },
+  ],
+  // 3. View Layouts
+  listView: {
+    iconField: "thumbnail",
+    titleField: "title",
+    metaFields: [
+      { fieldId: "status", className: "hidden sm:flex" },
+      { fieldId: "tags", className: "hidden lg:flex" },
+      { fieldId: "updatedAt", className: "hidden md:flex" },
+      { fieldId: "assignee" },
+      { fieldId: "priority", className: "hidden xs:flex" },
+    ],
+  },
+  cardView: {
+    thumbnailField: "thumbnail",
+    titleField: "title",
+    descriptionField: "description",
+    headerFields: ["priority"],
+    statusField: "status",
+    categoryField: "category",
+    tagsField: "tags",
+    progressField: "metrics.completion",
+    assigneeField: "assignee",
+    metricsField: "metrics",
+    dateField: "updatedAt",
+  },
+  tableView: {
+    columns: [
+      { fieldId: "project_details", label: "Project", isSortable: true },
+      { fieldId: "status", label: "Status", isSortable: true },
+      { fieldId: "priority", label: "Priority", isSortable: true },
+      { fieldId: "assignee", label: "Assignee", isSortable: true },
+      { fieldId: "metrics.completion", label: "Progress", isSortable: true },
+      { fieldId: "metrics", label: "Engagement", isSortable: true },
+      { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
+    ],
+  },
+  kanbanView: {
+    groupByField: "status",
+    cardFields: {
+      titleField: "title",
+      descriptionField: "description",
+      priorityField: "priority",
+      tagsField: "tags",
+      dateField: "dueDate",
+      metricsField: "metrics",
+      assigneeField: "assignee",
+    },
+  },
+  calendarView: {
+    dateField: "dueDate",
+    titleField: "title",
+    displayFields: ["tags", "priority", "assignee"],
+    colorByField: "priority",
+  },
+  detailView: {
+    header: {
+      thumbnailField: "thumbnail",
+      titleField: "title",
+      descriptionField: "description",
+      badgeFields: ["status", "priority", "category"],
+      progressField: "metrics.completion",
+    },
+    body: {
+      sections: [
+        { title: "Assigned to", fields: ["assignee"] },
+        { title: "Engagement Metrics", fields: ["metrics"] },
+        { title: "Tags", fields: ["tags"] },
+        {
+          title: "Timeline",
+          fields: ["createdAt", "updatedAt", "dueDate"],
+        },
+      ],
+    },
+  },
+};
 ```
 
 ## File: src/features/dynamic-view/components/views/CalendarView.tsx
@@ -2775,7 +1211,7 @@ import { useState, useMemo, useRef, useLayoutEffect } from "react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { gsap } from "gsap";
-⋮----
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { GenericItem } from '../../types';
@@ -2783,84 +1219,429 @@ import type { CalendarDateProp, CalendarColorProp, Status, Priority } from '../.
 import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
-⋮----
+
 interface CalendarViewProps {
   data: GenericItem[];
 }
-⋮----
-const getCategoryBgColor = (category: string) =>
-⋮----
-onDragStart=
-⋮----
-calendarDateProp = 'dueDate', // Provide default
-calendarItemLimit = 3, // Provide default
-calendarColorProp = 'none', // Provide default
-⋮----
-// Drag & Drop State
-⋮----
-// GSAP animation state
-const [direction, setDirection] = useState(0); // 0: initial, 1: next, -1: prev
-⋮----
-// Responsive Calendar State
-⋮----
-const MIN_DAY_WIDTH = 160; // px
-⋮----
-const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
-⋮----
-// D&D Handlers
-const handleDragStart = (e: React.DragEvent, itemId: string) =>
-⋮----
-const handleDragEnd = () =>
-⋮----
-const handleMonthChange = (direction: 'prev' | 'next') =>
-⋮----
-// Safety check: ensure user is still hovering on the correct edge
-⋮----
-// Schedule next accelerated change
-⋮----
-const handleDragOver = (e: React.DragEvent, day: Date) =>
-⋮----
-const edgeZoneWidth = 80; // 80px hotzone on each side
-⋮----
-const clearTimer = () =>
-⋮----
-// Check left edge
-⋮----
-// Check right edge
-⋮----
-// If not in an edge zone
-⋮----
-const handleDragLeave = () =>
-⋮----
-const handleDrop = (e: React.DragEvent, day: Date) =>
-⋮----
-// Preserve the time, only change the date part
-⋮----
-handleDragEnd(); // Reset state
-⋮----
-const handlePrevMonth = () =>
-const handleNextMonth = () =>
-const handleToday = () =>
-⋮----
-setDirection(0); // No animation for 'Today'
-⋮----
-{/* Left edge cue */}
-⋮----
-{/* Right edge cue */}
-⋮----
-key=
-onDragOver=
-⋮----
-onDrop=
+
+const PRIORITY_BG_COLORS: Record<Priority, string> = {
+  low: 'bg-blue-500/80 border-blue-600/80 text-white',
+  medium: 'bg-yellow-500/80 border-yellow-600/80 text-yellow-950',
+  high: 'bg-orange-500/80 border-orange-600/80 text-white',
+  critical: 'bg-red-600/80 border-red-700/80 text-white',
+};
+
+const STATUS_BG_COLORS: Record<Status, string> = {
+  active: 'bg-sky-500/80 border-sky-600/80 text-white',
+  pending: 'bg-amber-500/80 border-amber-600/80 text-amber-950',
+  completed: 'bg-emerald-600/80 border-emerald-700/80 text-white',
+  archived: 'bg-zinc-500/80 border-zinc-600/80 text-white',
+};
+
+const CATEGORY_BG_COLORS = [
+  'bg-rose-500/80 border-rose-600/80 text-white',
+  'bg-fuchsia-500/80 border-fuchsia-600/80 text-white',
+  'bg-indigo-500/80 border-indigo-600/80 text-white',
+  'bg-teal-500/80 border-teal-600/80 text-white',
+  'bg-lime-500/80 border-lime-600/80 text-lime-950',
+];
+
+const getCategoryBgColor = (category: string) => {
+  let hash = 0;
+  for (let i = 0; i < category.length; i++) {
+    hash = category.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash % CATEGORY_BG_COLORS.length);
+  return CATEGORY_BG_COLORS[index];
+};
+
+function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
+  currentDate: Date;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  onToday: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 mb-6">
+      <h2 className="text-xl font-bold md:text-2xl tracking-tight">
+        {format(currentDate, "MMMM yyyy")}
+      </h2>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
+        <div className="flex items-center">
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={onNextMonth}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CalendarEvent({ item, isSelected, isDragging, onDragStart, colorProp }: { 
+    item: GenericItem; 
+    isSelected: boolean;
+    isDragging: boolean;
+    onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void
+    colorProp: CalendarColorProp<string>;
+  }) {
+  const { config, onItemSelect } = useDynamicView<string, GenericItem>();
+  const { calendarView: viewConfig } = config;
+
+    const colorClass = useMemo(() => {
+      switch (colorProp) {
+        case 'priority': return PRIORITY_BG_COLORS[item.priority as Priority];
+        case 'status': return STATUS_BG_COLORS[item.status as Status];
+        case 'category': return getCategoryBgColor(item.category as string);
+        default: return null;
+      }
+    }, [colorProp, item]);
+
+    return (
+        <div
+            draggable
+            onDragStart={(e) => onDragStart(e, item.id)}
+            onClick={() => onItemSelect(item)}
+            className={cn(
+                "p-2 rounded-lg cursor-grab transition-all duration-200 border space-y-1",
+                isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2",
+                isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing",
+                colorClass 
+                  ? `${colorClass} hover:brightness-95 dark:hover:brightness-110`
+                  : "bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/80 dark:hover:bg-neutral-700/70"
+            )}
+        >
+            <div className={cn(
+              "font-semibold text-sm leading-tight line-clamp-2",
+              colorClass ? "text-inherit" : "text-card-foreground/90"
+            )}>
+              <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+            </div>
+
+            {viewConfig.displayFields.includes('tags') && <FieldRenderer item={item} fieldId="tags" />}
+
+            {(viewConfig.displayFields.includes('priority') || viewConfig.displayFields.includes('assignee')) && (
+                <div className={cn(
+                    "flex items-center justify-between pt-1 border-t",
+                    colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
+                )}>
+                    <div>
+                      {viewConfig.displayFields.includes('priority') && <FieldRenderer item={item} fieldId="priority" />}
+                    </div>
+                    <div>
+                      {viewConfig.displayFields.includes('assignee') && <FieldRenderer item={item} fieldId="assignee" options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+const datePropLabels: Record<CalendarDateProp<string>, string> = {
+  dueDate: 'due dates',
+  createdAt: 'creation dates',
+  updatedAt: 'update dates',
+};
+
+export function CalendarView({ data }: CalendarViewProps) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const {
+    onItemUpdate,
+    calendarDateProp = 'dueDate', // Provide default
+    calendarItemLimit = 3, // Provide default
+    calendarColorProp = 'none', // Provide default
+    selectedItemId,
+  } = useDynamicView<string, GenericItem>();
+  
+  // Drag & Drop State
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
+  const [activeEdge, setActiveEdge] = useState<'left' | 'right' | null>(null);
+  const edgeHoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const currentEdgeRef = useRef<'left' | 'right' | null>(null);
+  const consecutiveMonthChangesRef = useRef(0);
+
+  // GSAP animation state
+  const [direction, setDirection] = useState(0); // 0: initial, 1: next, -1: prev
+
+  // Responsive Calendar State
+  const calendarContainerRef = useRef<HTMLDivElement>(null);
+  const { width } = useResizeObserver(calendarContainerRef);
+  const MIN_DAY_WIDTH = 160; // px
+  const numColumns = useMemo(() => {
+    if (width === 0) return 7;
+    const cols = Math.floor(width / MIN_DAY_WIDTH);
+    return Math.max(3, Math.min(7, cols));
+  }, [width]);
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  const itemsByDateProp = useMemo(() => data.filter(item => !!item[calendarDateProp]), [data, calendarDateProp]);
+
+  const eventsByDate = useMemo(() => {
+    const eventsMap = new Map<string, GenericItem[]>();
+    itemsByDateProp.forEach(item => {
+      const dateValue = item[calendarDateProp];
+      if (!dateValue) return;
+      const date = new Date(dateValue as string);
+      const dateKey = format(date, "yyyy-MM-dd");
+      if (!eventsMap.has(dateKey)) {
+        eventsMap.set(dateKey, []);
+      }
+      eventsMap.get(dateKey)?.push(item);
+    });
+    return eventsMap;
+  }, [itemsByDateProp, calendarDateProp]);
+
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(monthStart);
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+  const days = eachDayOfInterval({ start: startDate, end: endDate });
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  
+  // D&D Handlers
+  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', itemId);
+    setDraggedItemId(itemId);
+  };
+  
+  const handleDragEnd = () => {
+    if (edgeHoverTimerRef.current) {
+      clearTimeout(edgeHoverTimerRef.current);
+      edgeHoverTimerRef.current = null;
+    }
+    currentEdgeRef.current = null;
+    consecutiveMonthChangesRef.current = 0;
+    setActiveEdge(null);
+    setDraggedItemId(null);
+    setDropTargetDate(null);
+  };
+
+  const handleMonthChange = (direction: 'prev' | 'next') => {
+    // Safety check: ensure user is still hovering on the correct edge
+    if ((direction === 'prev' && currentEdgeRef.current !== 'left') || (direction === 'next' && currentEdgeRef.current !== 'right')) {
+      return;
+    }
+
+    if (direction === 'prev') {
+      setDirection(-1);
+      setCurrentDate(current => subMonths(current, 1));
+    } else {
+      setDirection(1);
+      setCurrentDate(current => addMonths(current, 1));
+    }
+
+    consecutiveMonthChangesRef.current += 1;
+
+    // Schedule next accelerated change
+    const nextDelay = consecutiveMonthChangesRef.current >= 2 ? 150 : 300;
+    edgeHoverTimerRef.current = setTimeout(() => handleMonthChange(direction), nextDelay);
+  };
+
+  const handleDragOver = (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    if (!gridRef.current) return;
+
+    const rect = gridRef.current.getBoundingClientRect();
+    const edgeZoneWidth = 80; // 80px hotzone on each side
+
+    const clearTimer = () => {
+      if (edgeHoverTimerRef.current) {
+        clearTimeout(edgeHoverTimerRef.current);
+        edgeHoverTimerRef.current = null;
+      }
+    };
+
+    // Check left edge
+    if (e.clientX < rect.left + edgeZoneWidth) {
+      if (currentEdgeRef.current !== 'left') {
+        clearTimer();
+        currentEdgeRef.current = 'left';
+        consecutiveMonthChangesRef.current = 0;
+        setDropTargetDate(null);
+        edgeHoverTimerRef.current = setTimeout(() => handleMonthChange('prev'), 600);
+      }
+      setActiveEdge('left');
+      return;
+    }
+
+    // Check right edge
+    if (e.clientX > rect.right - edgeZoneWidth) {
+      if (currentEdgeRef.current !== 'right') {
+        clearTimer();
+        currentEdgeRef.current = 'right';
+        consecutiveMonthChangesRef.current = 0;
+        setDropTargetDate(null);
+        edgeHoverTimerRef.current = setTimeout(() => handleMonthChange('next'), 600);
+      }
+      setActiveEdge('right');
+      return;
+    }
+
+    // If not in an edge zone
+    clearTimer();
+    setActiveEdge(null);
+    currentEdgeRef.current = null;
+    
+    if (dropTargetDate === null || !isSameDay(day, dropTargetDate)) {
+      setDropTargetDate(day);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDropTargetDate(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    const itemIdToUpdate = e.dataTransfer.getData('text/plain');
+    if (itemIdToUpdate) {
+        const originalItem = itemsByDateProp.find(i => i.id === itemIdToUpdate);
+        if (originalItem && originalItem[calendarDateProp]) {
+            const originalDate = new Date(originalItem[calendarDateProp] as string);
+            // Preserve the time, only change the date part
+            const newDueDate = new Date(day);
+            newDueDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), originalDate.getMilliseconds());
+            onItemUpdate?.(itemIdToUpdate, { [calendarDateProp]: newDueDate.toISOString() });
+        }
+    }
+    handleDragEnd(); // Reset state
+  };
+  
+  const handlePrevMonth = () => {
+    setDirection(-1);
+    setCurrentDate(subMonths(currentDate, 1));
+  };
+  const handleNextMonth = () => {
+    setDirection(1);
+    setCurrentDate(addMonths(currentDate, 1));
+  };
+  const handleToday = () => {
+    setDirection(0); // No animation for 'Today'
+    setCurrentDate(new Date());
+  };
+
+  useLayoutEffect(() => {
+    if (direction === 0 || !gridRef.current) return;
+    gsap.fromTo(gridRef.current, 
+      { opacity: 0, x: 30 * direction }, 
+      { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out' }
+    );
+  }, [currentDate]);
+
+  return (
+    <div ref={calendarContainerRef} className="-mx-4 md:-mx-6">
+      <div className="px-4 md:px-6 pb-2">
+        <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
+      </div>
+      {itemsByDateProp.length === 0 ? (
+        <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
+          No items with {datePropLabels[calendarDateProp]} to display on the calendar.
+        </div>
+      ) : (
+        <div className="px-2 relative" onDragEnd={handleDragEnd}>
+          {/* Left edge cue */}
+          <div className={cn(
+              "absolute top-0 left-2 bottom-0 w-20 bg-gradient-to-r from-primary/20 to-transparent pointer-events-none transition-opacity duration-300 z-10",
+              activeEdge === 'left' ? "opacity-100" : "opacity-0"
+          )} />
+          {/* Right edge cue */}
+          <div className={cn(
+              "absolute top-0 right-2 bottom-0 w-20 bg-gradient-to-l from-primary/20 to-transparent pointer-events-none transition-opacity duration-300 z-10",
+              activeEdge === 'right' ? "opacity-100" : "opacity-0"
+          )} />
+
+          {numColumns === 7 && (
+            <div className="grid grid-cols-7">
+              {weekdays.map(day => (
+                <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
+                  {day}
+                </div>
+              ))}
+            </div>
+          )}
+
+            <div
+              ref={gridRef}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))`,
+                gap: '0.5rem',
+              }}
+            >
+              {days.map(day => {
+                const dateKey = format(day, "yyyy-MM-dd");
+                const dayEvents = eventsByDate.get(dateKey) || [];
+                const visibleEvents = calendarItemLimit === 'all' 
+                    ? dayEvents 
+                    : dayEvents.slice(0, calendarItemLimit as number);
+                const hiddenEventsCount = dayEvents.length - visibleEvents.length;
+                const isCurrentMonthDay = isSameMonth(day, currentDate);
+                const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
+                return (
+                  <div
+                    key={day.toString()}
+                    onDragOver={(e) => handleDragOver(e, day)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, day)}
+                    className={cn(
+                      "relative min-h-[150px] rounded-2xl p-2 flex flex-col gap-2 transition-all duration-300 border",
+                      isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
+                      isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
+                    )}
+                  >
+                    <div className="font-semibold text-sm">
+                      {isToday(day) ? (
+                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground">
+                          {format(day, 'd')}
+                        </div>
+                      ) : (
+                        <div className="flex items-baseline gap-1.5 px-1 py-0.5">
+                          {numColumns < 7 && <span className="text-xs opacity-70">{format(day, 'eee')}</span>}
+                          <span>{format(day, 'd')}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
+                      {visibleEvents.map(item => (
+                        <CalendarEvent
+                          key={item.id} 
+                          item={item} 
+                          isSelected={!!selectedItemId && selectedItemId === item.id}
+                          isDragging={!!draggedItemId && draggedItemId === item.id}
+                          onDragStart={handleDragStart}
+                          colorProp={calendarColorProp}
+                        />
+                      ))}
+                    </div>
+                    {hiddenEventsCount > 0 && (
+                      <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
+                        +{hiddenEventsCount} more
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+        </div>
+      )}
+    </div>
+  );
+}
 ```
 
 ## File: src/features/dynamic-view/types.ts
 ```typescript
 import type { ReactNode } from 'react';
-⋮----
+
 // --- GENERIC DATA & ITEM ---
 export type GenericItem = Record<string, any> & { id: string };
-⋮----
+
 // --- FIELD DEFINITIONS ---
 // Describes a single piece of data within a GenericItem.
 export type FieldType =
@@ -2874,7 +1655,7 @@ export type FieldType =
   | 'metrics'
   | 'thumbnail'
   | 'custom';
-⋮----
+
 export interface BaseFieldDefinition<TFieldId extends string, TItem extends GenericItem> {
   id: TFieldId; // Corresponds to a key in GenericItem
   label: string;
@@ -2882,33 +1663,26 @@ export interface BaseFieldDefinition<TFieldId extends string, TItem extends Gene
   // Optional custom render function for ultimate flexibility.
   render?: (item: TItem, options?: Record<string, any>) => ReactNode;
 }
-⋮----
-id: TFieldId; // Corresponds to a key in GenericItem
-⋮----
-// Optional custom render function for ultimate flexibility.
-⋮----
+
 export interface BadgeFieldDefinition<TFieldId extends string, TItem extends GenericItem>
   extends BaseFieldDefinition<TFieldId, TItem> {
   type: 'badge';
   colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
   indicatorColorMap?: Record<string, string>; // e.g., { 'critical': 'bg-red-500' }
 }
-⋮----
-colorMap?: Record<string, string>; // e.g., { 'active': 'bg-green-500', 'pending': 'bg-yellow-500' }
-indicatorColorMap?: Record<string, string>; // e.g., { 'critical': 'bg-red-500' }
-⋮----
+
 // Add other specific field types if they need unique properties
 // For now, most can be handled by the base definition.
-⋮----
+
 export type FieldDefinition<TFieldId extends string, TItem extends GenericItem> =
   | BaseFieldDefinition<TFieldId, TItem>
   | BadgeFieldDefinition<TFieldId, TItem>;
-⋮----
+
 // --- VIEW CONFIGURATION ---
 // The master configuration object that defines the entire view.
-⋮----
+
 export type ViewMode = 'list' | 'cards' | 'grid' | 'table' | 'kanban' | 'calendar';
-⋮----
+
 export interface ListViewConfig<TFieldId extends string> {
   iconField: TFieldId;
   titleField: TFieldId;
@@ -2917,7 +1691,7 @@ export interface ListViewConfig<TFieldId extends string> {
     className?: string;
   }[];
 }
-⋮----
+
 export interface CardViewConfig<TFieldId extends string> {
   thumbnailField: TFieldId;
   titleField: TFieldId;
@@ -2932,19 +1706,17 @@ export interface CardViewConfig<TFieldId extends string> {
   metricsField: TFieldId;
   dateField: TFieldId;
 }
-⋮----
-// Specific fields to recreate the original layout
-⋮----
+
 export interface TableColumnConfig<TFieldId extends string> {
   fieldId: TFieldId;
   label: string;
   isSortable: boolean;
 }
-⋮----
+
 export interface TableViewConfig<TFieldId extends string> {
   columns: readonly TableColumnConfig<TFieldId>[];
 }
-⋮----
+
 export interface KanbanViewConfig<TFieldId extends string> {
   groupByField: TFieldId; // Field ID to group by (e.g., 'status')
   cardFields: {
@@ -2958,35 +1730,25 @@ export interface KanbanViewConfig<TFieldId extends string> {
     assigneeField: TFieldId;
   };
 }
-⋮----
-groupByField: TFieldId; // Field ID to group by (e.g., 'status')
-⋮----
-// footer fields
-⋮----
-metricsField: TFieldId; // for comments/attachments
-⋮----
+
 export interface CalendarViewConfig<TFieldId extends string> {
   dateField: TFieldId;
   titleField: TFieldId;
   displayFields: readonly TFieldId[];
   colorByField?: TFieldId; // Field ID to color events by (e.g., 'priority', 'status')
 }
-⋮----
-colorByField?: TFieldId; // Field ID to color events by (e.g., 'priority', 'status')
-⋮----
+
 export interface ControlOption<TId extends string> {
   id: TId;
   label: string;
 }
-⋮----
+
 export interface FilterableFieldConfig<TFieldId extends string> {
   id: TFieldId; // fieldId
   label: string;
   options: readonly ControlOption<string>[];
 }
-⋮----
-id: TFieldId; // fieldId
-⋮----
+
 export interface ViewConfig<
   TFieldId extends string,
   TItem extends GenericItem,
@@ -3004,15 +1766,13 @@ export interface ViewConfig<
   calendarView: CalendarViewConfig<TFieldId>;
   detailView: DetailViewConfig<TFieldId>;
 }
-⋮----
-// Layouts for each view mode
-⋮----
+
 // --- DETAIL VIEW ---
 export interface DetailViewSection<TFieldId extends string> {
   title: string;
   fields: readonly TFieldId[];
 }
-⋮----
+
 export interface DetailViewConfig<TFieldId extends string> {
   header: {
     thumbnailField: TFieldId;
@@ -3025,30 +1785,28 @@ export interface DetailViewConfig<TFieldId extends string> {
     sections: readonly DetailViewSection<TFieldId>[];
   };
 }
-⋮----
+
 // --- GENERIC CONTROL & DATA TYPES ---
-⋮----
+
 export type Status = 'active' | 'pending' | 'completed' | 'archived';
 export type Priority = 'low' | 'medium' | 'high' | 'critical';
-⋮----
+
 export interface FilterConfig {
   searchTerm: string;
   [key: string]: any; // For dynamic filter keys like status, priority
 }
-⋮----
-[key: string]: any; // For dynamic filter keys like status, priority
-⋮----
+
 export interface SortConfig<TFieldId extends string> {
   key: TFieldId;
   direction: 'asc' | 'desc';
 }
-⋮----
+
 export type GroupableField<TFieldId extends string> = TFieldId | 'none';
-⋮----
+
 export type CalendarDateProp<TFieldId extends string> = TFieldId;
 export type CalendarDisplayProp<TFieldId extends string> = TFieldId;
 export type CalendarColorProp<TFieldId extends string> = TFieldId | 'none';
-⋮----
+
 // --- STATS ---
 export type StatItem = {
   title: string;
@@ -3058,41 +1816,6 @@ export type StatItem = {
   trend: 'up' | 'down';
   chartData?: number[];
 };
-```
-
-## File: src/pages/Messaging/data/mockData.ts
-```typescript
-import type { Contact, Task, Message, ActivityEvent, Note, Assignee, TaskStatus, TaskPriority, Channel, JourneyPointType } from '../types';
-import { faker } from '@faker-js/faker';
-⋮----
-// --- ASSIGNEES ---
-⋮----
-// --- HELPERS ---
-const generateNotes = (contactName: string): Note[]
-⋮----
-const generateActivity = (contactName: string): ActivityEvent[]
-⋮----
-// --- COMPANIES ---
-⋮----
-// --- CONTACTS ---
-⋮----
-// --- MESSAGE GENERATOR ---
-const generateMessages = (messageCount: number, contactName: string, journeyPath: JourneyPointType[]): Message[] =>
-⋮----
-if (random > 0.85) { // Internal Note
-⋮----
-} else if (random > 0.7) { // System message
-⋮----
-} else if (random > 0.35) { // User comment
-⋮----
-userId = 'user-1'; // "You"
-⋮----
-// Ensure the last message is from the contact for preview purposes
-⋮----
-// --- TASK GENERATOR ---
-const generateTasks = (count: number): Task[] =>
-⋮----
-get lastActivity()
 ```
 
 ## File: package.json
@@ -3179,586 +1902,6 @@ get lastActivity()
 }
 ```
 
-## File: src/components/layout/ViewModeSwitcher.tsx
-```typescript
-import { useState, useRef, useEffect } from 'react';
-import { gsap } from 'gsap';
-import { cn } from '@/lib/utils'
-import { useAppShellStore, type AppShellState } from '@/store/appShell.store'
-import { BODY_STATES } from '@/lib/utils'
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import {
-  Columns,
-  PanelRightOpen,
-  SplitSquareHorizontal,
-  Maximize,
-  Minimize,
-  Layers,
-  X,
-  ArrowLeftRight
-} from 'lucide-react'
-⋮----
-(!pane && !fullscreenTarget) // Global switcher, global fullscreen
-⋮----
-width: 32, // h-8 w-8
-⋮----
-marginLeft: 4, // from gap-1 in original
-⋮----
-}, [isExpanded, bodyState]); // re-run if bodyState changes to recalc buttons
-⋮----
-const handlePaneClick = (type: 'side-pane' | 'split-view') =>
-⋮----
-const handleNormalViewClick = () =>
-⋮----
-className=
-```
-
-## File: src/pages/DataDemo/store/dataDemo.store.tsx
-```typescript
-import { create } from "zustand";
-import { mockDataItems } from "@/pages/DataDemo/data/mockData";
-import type {
-  GroupableField,
-  FilterConfig,
-  SortConfig,
-} from "@/features/dynamic-view/types";
-⋮----
-import type { DataDemoItem } from "../data/DataDemoItem";
-// --- State and Actions ---
-interface DataDemoState {
-  items: DataDemoItem[];
-  hasMore: boolean;
-  isLoading: boolean;
-  isInitialLoading: boolean;
-  totalItemCount: number;
-}
-⋮----
-interface DataDemoActions {
-  loadData: (params: {
-    page: number;
-    groupBy: GroupableField<string> | "none";
-    filters: FilterConfig;
-    sortConfig: SortConfig<string> | null;
-    isFullLoad?: boolean;
-  }) => void;
-  updateItem: (itemId: string, updates: Partial<DataDemoItem>) => void;
-}
-⋮----
-// Cast the mock data to our strict type to satisfy the store's requirements
-⋮----
-// --- Store Implementation ---
-⋮----
-const getNestedValue = (obj: DataDemoItem, path: string): unknown
-⋮----
-// In a real app, this would be an API call. Here we update the mock source.
-⋮----
-// Also update the currently loaded items in the store's state for UI consistency
-⋮----
-export const useSelectedItem = (itemId?: string) =>
-```
-
-## File: src/pages/Messaging/components/TaskDetail.tsx
-```typescript
-import React, { useRef, useEffect, useLayoutEffect, useState, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
-import { useMessagingStore } from '../store/messaging.store';
-import { ActivityFeed } from './ActivityFeed';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Paperclip, Search, SendHorizontal, Smile, StickyNote, X } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from '@/components/ui/input';
-import { TakeoverBanner } from './TakeoverBanner';
-import { useToast } from '@/components/ui/toast';
-import { gsap } from 'gsap';
-import { cn } from '@/lib/utils';
-import { useAppShellStore } from '@/store/appShell.store';
-import { JourneyScrollbar } from './JourneyScrollbar';
-⋮----
-// In a real app, this would come from the auth store
-⋮----
-// Hooks and memoized values must be called unconditionally at the top level.
-// Moved from below the early return to fix "rendered more hooks" error.
-⋮----
-// On conversation change, scroll to the bottom of the message list.
-// This ensures the user sees the latest message and that the scrollbar
-// component has the correct scrollHeight to calculate its visibility.
-⋮----
-const handleKeyDown = (event: KeyboardEvent) =>
-⋮----
-// Timeout to allow for the element to be rendered and transitioned
-⋮----
-const initialBorderWidth = '1px'; // from 'border-t'
-const initialPadding = '1rem';    // from 'p-4'
-⋮----
-maxHeight: 500, // Ample room for the input
-⋮----
-const handleDotClick = (messageId: string) =>
-⋮----
-// Using 'center' to avoid the message being at the very top/bottom of the view
-⋮----
-const handleTakeOver = () =>
-⋮----
-const handleRequestTakeover = () =>
-⋮----
-onMouseLeave=
-⋮----
-onChange=
-⋮----
-className=
-⋮----
-{/* Input Form */}
-```
-
-## File: src/pages/Messaging/index.tsx
-```typescript
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
-import { usePageViewConfig } from "@/hooks/usePageViewConfig.hook";
-import { useAppShellStore } from "@/store/appShell.store";
-import { TaskList } from "./components/TaskList";
-import { TaskDetail } from "./components/TaskDetail";
-import { cn } from "@/lib/utils";
-⋮----
-const useResizableMessagingPanes = (
-  containerRef: React.RefObject<HTMLDivElement>,
-  initialWidth: number = 320
-) =>
-⋮----
-const handleMouseMove = (e: MouseEvent) =>
-⋮----
-// Constraints for the conversation list pane
-⋮----
-const handleMouseUp = () =>
-⋮----
-// When a conversation is selected (split view), reset the pane width to default.
-// When no conversation is selected, we don't want to manage the width, so pass undefined.
-⋮----
-className=
-```
-
-## File: src/pages/Messaging/types.ts
-```typescript
-import type { LucideIcon } from "lucide-react";
-⋮----
-export type Channel = 'whatsapp' | 'instagram' | 'facebook' | 'email';
-⋮----
-export interface ChannelIcon {
-  Icon: LucideIcon;
-  color: string;
-}
-⋮----
-export interface Contact {
-  id: string;
-  name:string;
-  avatar: string;
-  online: boolean;
-  tags: string[];
-  email: string;
-  phone: string;
-  lastSeen: string;
-  company: string;
-  role: string;
-  activity: ActivityEvent[];
-  notes: Note[];
-}
-⋮----
-export interface Assignee {
-  id: string;
-  name: string;
-  avatar: string;
-  type: 'human' | 'ai';
-}
-⋮----
-export type ActivityEventType = 'note' | 'call' | 'email' | 'meeting';
-⋮----
-export interface ActivityEvent {
-  id: string;
-  type: ActivityEventType;
-  content: string;
-  timestamp: string;
-}
-export interface Note {
-  id: string;
-  content: string;
-  createdAt: string;
-}
-⋮----
-export type JourneyPointType = 'Inquiry' | 'Consult' | 'Quote' | 'Order' | 'Payment' | 'Shipped' | 'Delivered' | 'Canceled' | 'Refund' | 'Complain' | 'Reorder' | 'Follow-up' | 'Review';
-⋮----
-export interface Message {
-  id: string;
-  text: string;
-  timestamp: string;
-  sender: 'user' | 'contact' | 'system';
-  type: 'comment' | 'note' | 'system';
-  read: boolean;
-  userId?: string; // for notes or system messages from users
-  journeyPoint?: JourneyPointType;
-}
-⋮----
-userId?: string; // for notes or system messages from users
-⋮----
-export interface AISummary {
-  sentiment: 'positive' | 'negative' | 'neutral';
-  summaryPoints: string[];
-  suggestedReplies: string[];
-}
-⋮----
-export type TaskStatus = 'open' | 'in-progress' | 'done' | 'snoozed';
-export type TaskPriority = 'none' | 'low' | 'medium' | 'high';
-⋮----
-export interface Task {
-  id: string;
-  title: string;
-  contactId: string;
-  channel: Channel;
-  unreadCount: number;
-  lastActivity: Message;
-  messages: Message[];
-  status: TaskStatus;
-  assigneeId: string | null;
-  dueDate: string | null;
-  priority: TaskPriority;
-  tags: string[];
-  aiSummary: AISummary;
-  activeHandlerId: string | null;
-  takeoverRequested?: boolean;
-}
-⋮----
-export type TaskView = 'all_open' | 'unassigned' | 'me' | 'done';
-```
-
-## File: src/pages/Messaging/store/messaging.store.ts
-```typescript
-import { useState, useEffect } from 'react';
-import { create } from 'zustand';
-import { mockTasks, mockContacts, mockAssignees } from '../data/mockData';
-import type { Task, Contact, Channel, Assignee, TaskStatus, TaskPriority, TaskView } from '../types';
-⋮----
-const currentUserId = 'user-1'; // Mock current user
-⋮----
-interface MessagingState {
-  tasks: Task[];
-  contacts: Contact[];
-  assignees: Assignee[];
-  searchTerm: string;
-  activeFilters: {
-    channels: Channel[];
-    tags: string[];
-    status: TaskStatus[];
-    priority: TaskPriority[];
-    assigneeId: string[];
-  };
-  activeTaskView: TaskView;
-}
-⋮----
-interface MessagingActions {
-  getTaskById: (id: string) => (Task & { contact: Contact, assignee: Assignee | null, activeHandler: Assignee | null }) | undefined;
-  getFilteredTasks: () => (Task & { contact: Contact, assignee: Assignee | null })[];
-  setSearchTerm: (term: string) => void;
-  setActiveTaskView: (view: TaskView) => void;
-  setFilters: (filters: Partial<MessagingState['activeFilters']>) => void;
-  updateTask: (taskId: string, updates: Partial<Omit<Task, 'id'>>) => void;
-  takeOverTask: (taskId: string, userId: string) => void;
-  requestAndSimulateTakeover: (taskId: string, requestedByUserId: string) => void;
-  getAssigneeById: (assigneeId: string) => Assignee | undefined;
-  getContactsByCompany: (companyName: string, currentContactId: string) => Contact[];
-  getAvailableTags: () => string[];
-}
-⋮----
-// Simulate a 2-second delay for the other user to "approve"
-⋮----
-export const useMessagingTaskCounts = () =>
-⋮----
-// Deferring the count calculation until after the first paint.
-// This frees up the main thread for initial animations to run smoothly.
-```
-
-## File: src/store/appShell.store.ts
-```typescript
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { type ReactElement } from 'react';
-import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
-⋮----
-export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging';
-⋮----
-// --- State and Action Types ---
-⋮----
-export interface AppShellState {
-  sidebarState: SidebarState;
-  bodyState: BodyState;
-  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
-  sidebarWidth: number;
-  sidePaneWidth: number;
-  splitPaneWidth: number;
-  defaultSidePaneWidth: number;
-  defaultSplitPaneWidth: number;
-  defaultWidthsSet: boolean;
-  previousBodyState: BodyState;
-  fullscreenTarget: 'main' | 'right' | null;
-  isResizing: boolean;
-  isResizingRightPane: boolean;
-  isTopBarVisible: boolean;
-  isTopBarHovered: boolean;
-  autoExpandSidebar: boolean;
-  reducedMotion: boolean;
-  compactMode: boolean;
-  primaryColor: string;
-  isCommandPaletteOpen: boolean;
-  isDarkMode: boolean;
-  appName?: string;
-  appLogo?: ReactElement;
-  draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
-  dragHoverTarget: 'left' | 'right' | null;
-  hoveredPane: 'left' | 'right' | null;
-}
-⋮----
-export interface AppShellActions {
-    // Initialization
-    init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
-    
-    // Direct state setters
-    setSidebarState: (payload: SidebarState) => void;
-    setBodyState: (payload: BodyState) => void;
-    setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
-    setSidebarWidth: (payload: number) => void;
-    setSidePaneWidth: (payload: number) => void;
-    setDefaultPaneWidths: () => void;
-    resetPaneWidths: () => void;
-    setSplitPaneWidth: (payload: number) => void;
-    setIsResizing: (payload: boolean) => void;
-    setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
-    setIsResizingRightPane: (payload: boolean) => void;
-    setTopBarVisible: (payload: boolean) => void;
-    setAutoExpandSidebar: (payload: boolean) => void;
-    setReducedMotion: (payload: boolean) => void;
-    setCompactMode: (payload: boolean) => void;
-    setPrimaryColor: (payload: string) => void;
-    setDraggedPage: (payload: AppShellState['draggedPage']) => void;
-    setCommandPaletteOpen: (open: boolean) => void;
-    toggleDarkMode: () => void;
-    setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
-    setTopBarHovered: (isHovered: boolean) => void;
-    setHoveredPane: (payload: 'left' | 'right' | null) => void;
-    
-    // Composite actions
-    toggleSidebar: () => void;
-    hideSidebar: () => void;
-    showSidebar: () => void;
-    peekSidebar: () => void;
-    toggleFullscreen: (target?: 'main' | 'right' | null) => void;
-    resetToDefaults: () => void;
-}
-⋮----
-// Initialization
-⋮----
-// Direct state setters
-⋮----
-// Composite actions
-⋮----
-// If we're leaving fullscreen, reset the target and previous state
-⋮----
-// Preserve props passed to provider and session defaults
-⋮----
-// Also reset current widths to the defaults
-⋮----
-// Add a selector for the derived rightPaneWidth
-export const useRightPaneWidth = ()
-```
-
-## File: src/components/layout/EnhancedSidebar.tsx
-```typescript
-import React from 'react';
-import {
-  Home,
-  Settings,
-  HelpCircle,
-  Component,
-  Rocket,
-  MoreHorizontal,
-  Bell,
-  Search,
-  FileText,
-  Star,
-  Trash2,
-  FolderOpen,
-  Mail,
-  Bookmark,
-  Download,
-  User,
-  Plus,
-  Database,
-  PanelLeftClose,
-  Inbox,
-  UserX,
-  CheckCircle2,
-} from 'lucide-react';
-import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
-import {
-  Workspaces,
-  WorkspaceTrigger,
-  WorkspaceContent,
-  type Workspace,
-} from './WorkspaceSwitcher';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarTitle,
-  SidebarBody,
-  SidebarFooter,
-  SidebarSection,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarLabel,
-  SidebarBadge,
-  SidebarTooltip,
-  SidebarIcon,
-  useSidebar,
-} from './Sidebar';
-import { ViewModeSwitcher } from './ViewModeSwitcher';
-import { cn } from '@/lib/utils';
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
-⋮----
-interface MyWorkspace extends Workspace {
-  logo: string;
-  plan: string;
-}
-⋮----
-interface SidebarProps {
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
-}
-⋮----
-// Example of a reusable menu item component built with the new Sidebar primitives
-⋮----
-// The only item using this is Notifications
-⋮----
-// set dragged page in AppShell store
-⋮----
-{page && !isCollapsed && ( // Always render switcher if there's a page
-⋮----
-// If there are actions, move left to make space for the action button
-⋮----
-const MessagingSidebarItems = () =>
-⋮----
-const totalUnread = 7; // Mock data, could come from a store
-⋮----
-onClick=
-```
-
-## File: src/hooks/useRightPaneContent.hook.tsx
-```typescript
-import { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  Settings,
-  Component,
-  Bell,
-  SlidersHorizontal,
-  Database,
-  MessageSquare,
-  ExternalLink,
-  Share,
-} from 'lucide-react';
-⋮----
-import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext';
-import { Button } from '@/components/ui/button';
-import { DashboardContent } from "@/pages/Dashboard";
-import { SettingsContent } from "@/features/settings/SettingsContent";
-import { ToasterDemo } from "@/pages/ToasterDemo";
-import { NotificationsPage } from "@/pages/Notifications";
-import DataDemoPage from "@/pages/DataDemo/index";
-import { DetailPanel } from '@/features/dynamic-view/components/shared/DetailPanel';
-import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
-import { mockDataItems } from "@/pages/DataDemo/data/mockData";
-import type { DataDemoItem } from '@/pages/DataDemo/data/DataDemoItem';
-import { MessagingContent } from "@/pages/Messaging/components/MessagingContent";
-import type { AppShellState } from '@/store/appShell.store';
-⋮----
-{/* Application-specific actions can be composed here */}
-```
-
-## File: src/App.tsx
-```typescript
-import React, { useEffect } from "react";
-import {
-  createBrowserRouter,
-  RouterProvider,
-  Outlet,
-  Navigate,
-  useNavigate, // used in LoginPageWrapper
-  useLocation,
-} from "react-router-dom";
-⋮----
-useNavigate, // used in LoginPageWrapper
-⋮----
-import { AppShell } from "./components/layout/AppShell";
-import { AppShellProvider } from "./providers/AppShellProvider";
-import { useAppShellStore } from "./store/appShell.store";
-import { useAuthStore } from "./store/authStore";
-⋮----
-// Import library components
-import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
-import { MainContent } from "./components/layout/MainContent";
-import { RightPane } from "./components/layout/RightPane";
-import { TopBar } from "./components/layout/TopBar";
-import { CommandPalette } from "./components/global/CommandPalette";
-import { ToasterProvider } from "./components/ui/toast";
-import { Input } from "./components/ui/input";
-import { Button } from "./components/ui/button";
-⋮----
-// --- Page/Content Components for Pages and Panes ---
-import { DashboardContent } from "./pages/Dashboard";
-import { SettingsPage } from "./pages/Settings";
-import { ToasterDemo } from "./pages/ToasterDemo";
-import { NotificationsPage } from "./pages/Notifications";
-import DataDemoPage from "./pages/DataDemo";
-import MessagingPage from "./pages/Messaging";
-import { LoginPage } from "./components/auth/LoginPage";
-⋮----
-// --- Icons ---
-import {
-  Search,
-  Filter,
-  Plus,
-  ChevronRight,
-  Rocket,
-} from "lucide-react";
-⋮----
-// --- Utils & Hooks ---
-import { cn } from "./lib/utils";
-import { useAppViewManager } from "./hooks/useAppViewManager.hook";
-import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
-import { BODY_STATES } from "./lib/utils";
-⋮----
-// Checks for authentication and redirects to login if needed
-⋮----
-// A root component to apply global styles and effects
-⋮----
-// The main layout for authenticated parts of the application
-⋮----
-// Breadcrumbs for the Top Bar
-⋮----
-// Page-specific controls for the Top Bar
-⋮----
-// The main App component that composes the shell
-⋮----
-// Sync URL state with AppShellStore
-⋮----
-function App()
-```
-
 ## File: src/hooks/useAppViewManager.hook.ts
 ```typescript
 import { useMemo, useCallback, useEffect, useRef } from 'react';
@@ -3767,75 +1910,349 @@ import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/a
 import type { GenericItem, ViewMode, SortConfig, GroupableField, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';
 import type { TaskView } from '@/pages/Messaging/types';
 import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
-⋮----
-function usePrevious<T>(value: T): T | undefined
-⋮----
+
+const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
+  dashboard: 'main',
+  settings: 'settings',
+  toaster: 'toaster',
+  notifications: 'notifications',
+  'data-demo': 'dataDemo',
+  messaging: 'messaging',
+};
+
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
+}
+
 /**
  * A centralized hook to manage and synchronize all URL-based view states.
  * This is the single source of truth for view modes, side panes, split views,
  * and page-specific parameters.
  */
-export function useAppViewManager()
-⋮----
-// --- DERIVED STATE FROM URL ---
-⋮----
-// 1. Priority: Explicit side pane overlay via URL param
-⋮----
-// 2. Data item detail view (can be overlay or split)
-⋮----
-// 3. Messaging conversation view (always split)
-⋮----
-// 4. Generic split view via URL param
-⋮----
-// --- SIDE EFFECTS ---
-⋮----
-// On navigating to messaging page, collapse sidebar if it's expanded.
-// This ensures a good default view but allows the user to expand it again if they wish.
-⋮----
-// DataDemo specific state
-⋮----
-// Kanban view should default to grouping by status if no group is specified
-⋮----
-if (viewMode === 'kanban') return null; // Kanban is manually sorted
-⋮----
-if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
-⋮----
-if (calDisplay === null) return []; // Default is now nothing
-if (calDisplay === '') return []; // Explicitly empty is also nothing
-⋮----
-// --- MUTATOR ACTIONS ---
-⋮----
-} else { // From normal
-⋮----
-} else { // Closing main pane
-⋮----
-// DataDemo actions
-const setViewMode = (mode: ViewMode) => handleParamsChange(
-const setGroupBy = (val: string) => handleParamsChange(
-const setActiveGroupTab = (tab: string) => handleParamsChange(
-const setFilters = (newFilters: FilterConfig) =>
-const setSort = (config: SortConfig<string> | null) =>
-const setTableSort = (field: string) =>
-const setPage = (newPage: number) => handleParamsChange(
-⋮----
-// Calendar specific actions
-const setCalendarDateProp = (prop: CalendarDateProp<string>) => handleParamsChange(
-const setCalendarDisplayProps = (props: CalendarDisplayProp<string>[]) =>
-⋮----
-// Check for default state to keep URL clean
-⋮----
-const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange(
-const setCalendarColorProp = (prop: CalendarColorProp<string>) => handleParamsChange(
-⋮----
-const setMessagingView = (view: TaskView) => handleParamsChange(
-⋮----
-// State
-⋮----
-// DataDemo State
-⋮----
-// Actions
-⋮----
-// DataDemo Actions
+export function useAppViewManager() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { itemId: pathItemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
+  const { setSidebarState, sidebarState } = useAppShellStore();
+
+  // --- DERIVED STATE FROM URL ---
+
+  const view = searchParams.get('view');
+  const sidePane = searchParams.get('sidePane');
+  const sidePaneItemId = searchParams.get('itemId');
+  const right = searchParams.get('right');
+  const messagingView = searchParams.get('messagingView') as TaskView | null;
+  const q = searchParams.get('q');
+  const status = searchParams.get('status');
+  const priority = searchParams.get('priority');
+  const sort = searchParams.get('sort');
+  const calDate = searchParams.get('calDate');
+  const calDisplay = searchParams.get('calDisplay');
+  const calLimit = searchParams.get('calLimit');
+  const calColor = searchParams.get('calColor');
+
+  const { bodyState, sidePaneContent } = useMemo(() => {
+    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
+    
+    // 1. Priority: Explicit side pane overlay via URL param
+    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
+      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
+    }
+
+    // 2. Data item detail view in a pane, triggered by search param
+    if (sidePaneItemId) {
+      if (view === 'split') {
+        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
+      }
+      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
+    }
+
+    // 3. Messaging conversation view (always split)
+    if (conversationId) {
+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
+    }
+
+    // 4. Generic split view via URL param
+    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
+      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
+    }
+
+    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
+  }, [sidePaneItemId, conversationId, view, sidePane, right]);
+  
+  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
+  const prevActivePage = usePrevious(currentActivePage);
+
+  // --- SIDE EFFECTS ---
+  useEffect(() => {
+    // On navigating to messaging page, collapse sidebar if it's expanded.
+    // This ensures a good default view but allows the user to expand it again if they wish.
+    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {
+      setSidebarState(SIDEBAR_STATES.COLLAPSED);
+    }
+  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
+
+  // DataDemo specific state
+  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
+  const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
+  const groupBy = useMemo(() => {
+    const groupByParam = (searchParams.get('groupBy') as GroupableField<string> | 'none') || 'none';
+    // Kanban view should default to grouping by status if no group is specified
+    if (viewMode === 'kanban' && groupByParam === 'none') {
+      return 'status';
+    }
+    return groupByParam;
+  }, [searchParams, viewMode]);
+  const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
+  const filters = useMemo<FilterConfig>(
+		() => ({
+			searchTerm: q || '',
+			status: (status?.split(',') || []).filter(Boolean),
+			priority: (priority?.split(',') || []).filter(Boolean),
+		}),
+		[q, status, priority],
+	);
+  const sortConfig = useMemo<SortConfig<string> | null>(() => {
+    if (viewMode === 'kanban') return null; // Kanban is manually sorted
+		const sortParam = sort;
+		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
+		if (sortParam === 'default') return null;
+
+		const [key, direction] = sortParam.split('-');
+		return { key, direction: direction as 'asc' | 'desc' };
+  }, [sort, viewMode]);
+  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp<string>, [calDate]);
+  const calendarDisplayProps = useMemo(
+    () => {
+      if (calDisplay === null) return []; // Default is now nothing
+      if (calDisplay === '') return []; // Explicitly empty is also nothing
+      return calDisplay.split(',') as CalendarDisplayProp<string>[];
+    },
+    [calDisplay]
+  );
+  const calendarItemLimit = useMemo(() => {
+    const limit = parseInt(calLimit || '3', 10);
+    if (calLimit === 'all') return 'all';
+    return isNaN(limit) ? 3 : limit;
+  }, [calLimit]);
+  const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp<string>, [calColor]);
+
+  // --- MUTATOR ACTIONS ---
+
+  const handleParamsChange = useCallback(
+		(newParams: Record<string, string | number | string[] | null | undefined>, resetPage = false) => {
+			setSearchParams(
+				(prev) => {
+					const updated = new URLSearchParams(prev);
+					
+					for (const [key, value] of Object.entries(newParams)) {
+						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
+							updated.delete(key);
+						} else if (Array.isArray(value)) {
+							updated.set(key, value.join(','));
+						} else {
+							updated.set(key, String(value));
+						}
+					}
+
+					if (resetPage) {
+						updated.delete('page');
+					}
+					if ('groupBy' in newParams) {
+						updated.delete('tab');
+					}
+
+					return updated;
+				},
+				{ replace: true },
+			);
+		},
+		[setSearchParams],
+	);
+
+  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {
+    const targetPath = page.startsWith('/') ? page : `/${page}`;
+    const isSamePage = location.pathname === targetPath;
+    
+    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);
+
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        if (value === null || value === undefined) {
+          newSearchParams.delete(key);
+        } else {
+          newSearchParams.set(key, value);
+        }
+      }
+    }
+
+    navigate({ pathname: targetPath, search: newSearchParams.toString() });
+  }, [navigate, location.pathname, searchParams]);
+
+  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
+    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
+        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });
+    } else {
+        handleParamsChange({ sidePane: pane, view: null, right: null });
+    }
+  }, [handleParamsChange, navigate, location.pathname]);
+
+  const closeSidePane = useCallback(() => {
+    // This should close any kind of side pane, including dataItem
+    handleParamsChange({ sidePane: null, view: null, right: null, itemId: null });
+  }, [handleParamsChange]);
+
+  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
+    if (sidePane === pane) {
+      closeSidePane();
+    } else {
+      openSidePane(pane);
+    }
+  }, [sidePane, openSidePane, closeSidePane]);
+
+  const toggleSplitView = useCallback(() => {
+    if (bodyState === BODY_STATES.SIDE_PANE) {
+      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
+    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
+      handleParamsChange({ sidePane: right, view: null, right: null });
+    } else { // From normal
+      const paneContent = pageToPaneMap[currentActivePage] || 'details';
+      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
+    }
+  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
+  
+  const setNormalView = useCallback(() => {
+      handleParamsChange({ sidePane: null, view: null, right: null });
+  }, [handleParamsChange]);
+
+  const switchSplitPanes = useCallback(() => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    const newSidePaneContent = pageToPaneMap[currentActivePage];
+    const newActivePage = Object.entries(pageToPaneMap).find(
+      ([, value]) => value === sidePaneContent
+    )?.[0] as ActivePage | undefined;
+
+    if (newActivePage && newSidePaneContent) {
+      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
+    }
+  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
+  
+  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {
+    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
+    if (paneToClose === 'right') {
+      navigate(`/${currentActivePage}`, { replace: true });
+    } else { // Closing main pane
+      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
+        ([, value]) => value === sidePaneContent
+      )?.[0] as ActivePage | undefined;
+      
+      if (pageToBecomeActive) {
+        navigate(`/${pageToBecomeActive}`, { replace: true });
+      } else {
+        navigate(`/dashboard`, { replace: true });
+      }
+    }
+  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
+  
+  // DataDemo actions
+  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
+  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
+  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
+  const setFilters = (newFilters: FilterConfig) => {
+    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
+  }
+  const setSort = (config: SortConfig<string> | null) => {
+    if (!config) {
+      handleParamsChange({ sort: null }, true);
+    } else {
+      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
+    }
+  }
+  const setTableSort = (field: string) => {
+    let newSort: string | null = `${field}-desc`;
+    if (sortConfig && sortConfig.key === field) {
+      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
+      else if (sortConfig.direction === 'asc') newSort = null;
+    }
+    handleParamsChange({ sort: newSort }, true);
+  };
+  const setPage = (newPage: number) => handleParamsChange({ page: newPage > 1 ? newPage.toString() : null });
+
+  // Calendar specific actions
+  const setCalendarDateProp = (prop: CalendarDateProp<string>) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
+  const setCalendarDisplayProps = (props: CalendarDisplayProp<string>[]) => {
+    // Check for default state to keep URL clean
+    const isDefault = props.length === 0;
+    handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });
+  };
+  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
+  const setCalendarColorProp = (prop: CalendarColorProp<string>) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
+
+  const onItemSelect = useCallback((item: GenericItem) => {
+		handleParamsChange({ itemId: item.id, sidePane: null });
+	}, [handleParamsChange]);
+
+  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
+
+  // The final active item ID is either from the path (main view) or a search param (pane view)
+  const itemId = pathItemId || sidePaneItemId;
+
+  return useMemo(() => ({
+    // State
+    bodyState,
+    sidePaneContent,
+    currentActivePage,
+    pathItemId, // Expose for main content decisions
+    itemId,
+    messagingView,
+    // DataDemo State
+    viewMode,
+    page,
+    groupBy,
+    activeGroupTab,
+    filters,
+    sortConfig,
+    calendarDateProp,
+    calendarDisplayProps,
+    calendarItemLimit,
+    calendarColorProp,
+    // Actions
+    navigateTo,
+    openSidePane,
+    closeSidePane,
+    toggleSidePane,
+    toggleSplitView,
+    setNormalView,
+    switchSplitPanes,
+    setMessagingView,
+    closeSplitPane,
+    // DataDemo Actions
+    onItemSelect,
+    setViewMode,
+    setGroupBy,
+    setActiveGroupTab,
+    setFilters,
+    setSort,
+    setTableSort,
+    setPage,
+    setCalendarDateProp,
+    setCalendarDisplayProps,
+    setCalendarItemLimit,
+    setCalendarColorProp,
+  }), [
+    bodyState, sidePaneContent, currentActivePage, pathItemId, itemId, messagingView, viewMode,
+    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
+    calendarDisplayProps, calendarItemLimit, calendarColorProp,
+    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
+    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
+    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp
+  ]);
+}
 ```
 
 ## File: src/pages/DataDemo/index.tsx
@@ -3857,23 +2274,211 @@ import { useScrollToBottom } from "@/hooks/useScrollToBottom.hook";
 import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton";
 import { mockDataItems } from "./data/mockData";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
-import { useDataDemoStore } from "./store/dataDemo.store";
+import { useDataDemoStore, useSelectedItem } from "./store/dataDemo.store";
 import { AddDataItemCta } from "@/features/dynamic-view/components/shared/AddDataItemCta";
-⋮----
+import { DataDetailContent } from "./components/DataDetailContent";
+
 import { dataDemoViewConfig } from "./DataDemo.config";
 import type { StatItem } from "@/features/dynamic-view/types";
-⋮----
-export default function DataDemoPage()
-⋮----
-// Note: The `DynamicViewProvider` needs `GenericItem[]`.
-// Our store uses `GenericItem` so no cast is needed.
-⋮----
-// Calculate stats from data
-⋮----
-// Controlled state
-⋮----
-// Callbacks
-⋮----
-// Custom Renderers
-renderCta=
+
+export default function DataDemoPage() {
+  const {
+    viewMode,
+    groupBy,
+    activeGroupTab,
+    setGroupBy,
+    setSort,
+    setActiveGroupTab,
+    page,
+    filters,
+    sortConfig,
+    setPage,
+    setFilters,
+    setViewMode,
+    onItemSelect,
+    pathItemId,
+  } = useAppViewManager();
+
+  const selectedItem = useSelectedItem(pathItemId);
+
+  const {
+    items: allItems,
+    hasMore,
+    isLoading,
+    isInitialLoading,
+    totalItemCount,
+    loadData,
+    updateItem,
+  } = useDataDemoStore((state) => ({
+    items: state.items,
+    hasMore: state.hasMore,
+    isLoading: state.isLoading,
+    isInitialLoading: state.isInitialLoading,
+    totalItemCount: state.totalItemCount,
+    loadData: state.loadData,
+    updateItem: state.updateItem,
+  }));
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Note: The `DynamicViewProvider` needs `GenericItem[]`.
+  // Our store uses `GenericItem` so no cast is needed.
+
+  // Calculate stats from data
+  const totalItems = mockDataItems.length;
+  const { showScrollToBottom, scrollToBottom, handleScroll } =
+    useScrollToBottom(scrollRef);
+
+  const activeItems = mockDataItems.filter(
+    (item) => item.status === "active",
+  ).length;
+  const highPriorityItems = mockDataItems.filter(
+    (item) => item.priority === "high" || item.priority === "critical",
+  ).length;
+  const avgCompletion =
+    totalItems > 0
+      ? Math.round(
+          mockDataItems.reduce(
+            (acc, item) => acc + item.metrics.completion,
+            0,
+          ) / totalItems,
+        )
+      : 0;
+
+  const stats: StatItem[] = [
+    {
+      title: "Total Projects",
+      value: totalItems.toString(),
+      icon: <Layers className="w-5 h-5" />,
+      change: "+5.2% this month",
+      trend: "up" as const,
+      chartData: [120, 125, 122, 130, 135, 138, 142],
+    },
+    {
+      title: "Active Projects",
+      value: activeItems.toString(),
+      icon: <PlayCircle className="w-5 h-5" />,
+      change: "+2 this week",
+      trend: "up" as const,
+      chartData: [45, 50, 48, 55, 53, 60, 58],
+    },
+    {
+      title: "High Priority",
+      value: highPriorityItems.toString(),
+      icon: <AlertTriangle className="w-5 h-5" />,
+      change: "-1 from last week",
+      trend: "down" as const,
+      chartData: [25, 26, 28, 27, 26, 24, 23],
+    },
+    {
+      title: "Avg. Completion",
+      value: `${avgCompletion}%`,
+      icon: <TrendingUp className="w-5 h-5" />,
+      change: "+3.2%",
+      trend: "up" as const,
+      chartData: [65, 68, 70, 69, 72, 75, 78],
+    },
+    {
+      title: "Completion Rate",
+      value: "88%",
+      icon: <CheckCircle className="w-5 h-5" />,
+      change: "+1.5% this month",
+      trend: "up" as const,
+      chartData: [80, 82, 81, 84, 85, 87, 88],
+    },
+    {
+      title: "Overdue Items",
+      value: "8",
+      icon: <Clock className="w-5 h-5" />,
+      change: "-3 this week",
+      trend: "down" as const,
+    },
+    {
+      title: "New This Week",
+      value: "12",
+      icon: <PlusCircle className="w-5 h-5" />,
+      change: "+2 from last week",
+      trend: "up" as const,
+    },
+    {
+      title: "Archived Projects",
+      value: "153",
+      icon: <Archive className="w-5 h-5" />,
+      change: "+20 this month",
+      trend: "up" as const,
+    },
+  ];
+
+  useEffect(() => {
+    loadData({
+      page,
+      groupBy,
+      filters,
+      sortConfig,
+      isFullLoad: viewMode === "calendar" || viewMode === "kanban",
+    });
+  }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+  const observer = useRef<IntersectionObserver>();
+  const loaderRef = useCallback(
+    (node: Element | null) => {
+      if (isLoading) return;
+      if (observer.current) observer.current.disconnect();
+
+      observer.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setPage(page + 1);
+        }
+      });
+      if (node) observer.current.observe(node);
+    },
+    [isLoading, hasMore, page, setPage],
+  );
+
+  if (pathItemId && selectedItem) {
+    // Render detail view as the main content
+    return <DataDetailContent item={selectedItem} />;
+  }
+
+  return (
+    <PageLayout scrollRef={scrollRef} onScroll={handleScroll}>
+      <DynamicView
+        viewConfig={dataDemoViewConfig}
+        items={allItems}
+        isLoading={isLoading}
+        isInitialLoading={isInitialLoading}
+        totalItemCount={totalItemCount}
+        hasMore={hasMore}
+        // Controlled state
+        viewMode={viewMode}
+        filters={filters}
+        sortConfig={sortConfig}
+        groupBy={groupBy}
+        activeGroupTab={activeGroupTab}
+        page={page}
+        // Callbacks
+        onViewModeChange={setViewMode}
+        onFiltersChange={setFilters}
+        onSortChange={setSort}
+        onGroupByChange={setGroupBy}
+        onActiveGroupTabChange={setActiveGroupTab}
+        onPageChange={setPage}
+        onItemUpdate={updateItem}
+        onItemSelect={onItemSelect}
+        loaderRef={loaderRef}
+        scrollContainerRef={scrollRef}
+        statsData={stats}
+        // Custom Renderers
+        renderCta={(viewMode, ctaProps) => (
+          <AddDataItemCta viewMode={viewMode} colSpan={ctaProps.colSpan} />
+        )}
+      />
+
+      <ScrollToBottomButton
+        isVisible={showScrollToBottom}
+        onClick={scrollToBottom}
+      />
+    </PageLayout>
+  );
+}
 ```

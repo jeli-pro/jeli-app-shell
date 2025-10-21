@@ -12,7 +12,7 @@
     "files": true,
     "removeComments": false,
     "removeEmptyLines": false,
-    "compress": true,
+    "compress": false,
     "topFilesLength": 5,
     "showLineNumbers": false,
     "copyToClipboard": true,
@@ -32,7 +32,7 @@
     "postcss.config.js",
     "index.html",
     "src/index.css",
-    "src"
+    // "src"
     // "src/components/shared/PageLayout.tsx",
     // "src/features/dynamic-view/DynamicView.tsx",
     // "src/features/dynamic-view/DynamicViewContext.tsx",
@@ -62,6 +62,20 @@
     // "src/pages/DataDemo/DataDemo.config.tsx",
     // "src/pages/DataDemo/index.tsx",
     // "src/pages/DataDemo/store/dataDemo.store.tsx"
+    //
+    //
+
+    "src/components/ui/tooltip.tsx",
+    "src/features/dynamic-view/DynamicView.tsx",
+    "src/features/dynamic-view/DynamicViewContext.tsx",
+    "src/features/dynamic-view/components/shared/FieldRenderer.tsx",
+    "src/features/dynamic-view/components/views/CalendarView.tsx",
+    "src/features/dynamic-view/types.ts",
+    "src/hooks/useAppViewManager.hook.ts",
+    "src/lib/utils.ts",
+    "src/pages/DataDemo/DataDemo.config.tsx",
+    "src/pages/DataDemo/data/DataDemoItem.ts",
+    "src/pages/DataDemo/index.tsx"
   ],
   "ignore": {
     "useGitignore": true,

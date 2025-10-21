@@ -26,6 +26,8 @@ export interface DynamicViewContextProps<TFieldId extends string, TItem extends 
   calendarDisplayProps?: CalendarDisplayProp<TFieldId>[];
   calendarItemLimit?: 'all' | number;
   calendarColorProp?: CalendarColorProp<TFieldId>;
+  calendarDate?: Date;
+
 
   // Callbacks to parent
   onViewModeChange: (mode: ViewMode) => void;
@@ -41,6 +43,7 @@ export interface DynamicViewContextProps<TFieldId extends string, TItem extends 
   onCalendarDisplayPropsChange?: (props: CalendarDisplayProp<TFieldId>[]) => void;
   onCalendarItemLimitChange?: (limit: 'all' | number) => void;
   onCalendarColorPropChange?: (prop: CalendarColorProp<TFieldId>) => void;
+  onCalendarDateChange?: (date: Date) => void;
 }
 
 const DynamicViewContext = createContext<DynamicViewContextProps<any, any> | null>(null);

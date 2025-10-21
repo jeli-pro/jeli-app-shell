@@ -1,15 +1,17 @@
 import { useState, useMemo, useRef, useLayoutEffect } from "react";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { gsap } from "gsap";
 
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { GenericItem } from '../../types';
 import type { CalendarDateProp, CalendarColorProp, Status, Priority } from '../../types';
 import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
 import { useDynamicView } from '../../DynamicViewContext'
 import { FieldRenderer } from '../shared/FieldRenderer'
+import { EventTooltipContent } from "../shared/EventTooltipContent";
 
 interface CalendarViewProps {
   data: GenericItem[];
@@ -138,14 +140,16 @@ const datePropLabels: Record<CalendarDateProp<string>, string> = {
 };
 
 export function CalendarView({ data }: CalendarViewProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
   const {
     onItemUpdate,
     calendarDateProp = 'dueDate', // Provide default
     calendarItemLimit = 3, // Provide default
     calendarColorProp = 'none', // Provide default
     selectedItemId,
+    calendarDate,
+    onCalendarDateChange,
   } = useDynamicView<string, GenericItem>();
+  const currentDate = calendarDate ?? new Date();
   
   // Drag & Drop State
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
@@ -221,10 +225,10 @@ export function CalendarView({ data }: CalendarViewProps) {
 
     if (direction === 'prev') {
       setDirection(-1);
-      setCurrentDate(current => subMonths(current, 1));
+      onCalendarDateChange?.(subMonths(currentDate, 1));
     } else {
       setDirection(1);
-      setCurrentDate(current => addMonths(current, 1));
+      onCalendarDateChange?.(addMonths(currentDate, 1));
     }
 
     consecutiveMonthChangesRef.current += 1;
@@ -306,15 +310,15 @@ export function CalendarView({ data }: CalendarViewProps) {
   
   const handlePrevMonth = () => {
     setDirection(-1);
-    setCurrentDate(subMonths(currentDate, 1));
+    onCalendarDateChange?.(subMonths(currentDate, 1));
   };
   const handleNextMonth = () => {
     setDirection(1);
-    setCurrentDate(addMonths(currentDate, 1));
+    onCalendarDateChange?.(addMonths(currentDate, 1));
   };
   const handleToday = () => {
     setDirection(0); // No animation for 'Today'
-    setCurrentDate(new Date());
+    onCalendarDateChange?.(new Date());
   };
 
   useLayoutEffect(() => {
@@ -323,7 +327,7 @@ export function CalendarView({ data }: CalendarViewProps) {
       { opacity: 0, x: 30 * direction }, 
       { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out' }
     );
-  }, [currentDate]);
+  }, [currentDate, direction]);
 
   return (
     <div ref={calendarContainerRef} className="-mx-4 md:-mx-6">
@@ -335,91 +339,99 @@ export function CalendarView({ data }: CalendarViewProps) {
           No items with {datePropLabels[calendarDateProp]} to display on the calendar.
         </div>
       ) : (
-        <div className="px-2 relative" onDragEnd={handleDragEnd}>
-          {/* Left edge cue */}
-          <div className={cn(
-              "absolute top-0 left-2 bottom-0 w-20 bg-gradient-to-r from-primary/20 to-transparent pointer-events-none transition-opacity duration-300 z-10",
-              activeEdge === 'left' ? "opacity-100" : "opacity-0"
-          )} />
-          {/* Right edge cue */}
-          <div className={cn(
-              "absolute top-0 right-2 bottom-0 w-20 bg-gradient-to-l from-primary/20 to-transparent pointer-events-none transition-opacity duration-300 z-10",
-              activeEdge === 'right' ? "opacity-100" : "opacity-0"
-          )} />
+        <TooltipProvider delayDuration={200}>
+          <div className="px-2 relative" onDragEnd={handleDragEnd}>
+            {/* Left edge cue */}
+            <div className={cn(
+                "absolute top-0 left-2 bottom-0 w-20 bg-gradient-to-r from-primary/20 to-transparent pointer-events-none transition-opacity duration-300 z-10",
+                activeEdge === 'left' ? "opacity-100" : "opacity-0"
+            )} />
+            {/* Right edge cue */}
+            <div className={cn(
+                "absolute top-0 right-2 bottom-0 w-20 bg-gradient-to-l from-primary/20 to-transparent pointer-events-none transition-opacity duration-300 z-10",
+                activeEdge === 'right' ? "opacity-100" : "opacity-0"
+            )} />
 
-          {numColumns === 7 && (
-            <div className="grid grid-cols-7">
-              {weekdays.map(day => (
-                <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
-                  {day}
-                </div>
-              ))}
-            </div>
-          )}
+            {numColumns === 7 && (
+              <div className="grid grid-cols-7">
+                {weekdays.map(day => (
+                  <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
+                    {day}
+                  </div>
+                ))}
+              </div>
+            )}
 
-            <div
-              ref={gridRef}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))`,
-                gap: '0.5rem',
-              }}
-            >
-              {days.map(day => {
-                const dateKey = format(day, "yyyy-MM-dd");
-                const dayEvents = eventsByDate.get(dateKey) || [];
-                const visibleEvents = calendarItemLimit === 'all' 
-                    ? dayEvents 
-                    : dayEvents.slice(0, calendarItemLimit as number);
-                const hiddenEventsCount = dayEvents.length - visibleEvents.length;
-                const isCurrentMonthDay = isSameMonth(day, currentDate);
-                const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
-                return (
-                  <div
-                    key={day.toString()}
-                    onDragOver={(e) => handleDragOver(e, day)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, day)}
-                    className={cn(
-                      "relative min-h-[150px] rounded-2xl p-2 flex flex-col gap-2 transition-all duration-300 border",
-                      isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
-                      isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
-                    )}
-                  >
-                    <div className="font-semibold text-sm">
-                      {isToday(day) ? (
-                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground">
-                          {format(day, 'd')}
-                        </div>
-                      ) : (
-                        <div className="flex items-baseline gap-1.5 px-1 py-0.5">
-                          {numColumns < 7 && <span className="text-xs opacity-70">{format(day, 'eee')}</span>}
-                          <span>{format(day, 'd')}</span>
+              <div
+                ref={gridRef}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))`,
+                  gap: '0.5rem',
+                }}
+              >
+                {days.map(day => {
+                  const dateKey = format(day, "yyyy-MM-dd");
+                  const dayEvents = eventsByDate.get(dateKey) || [];
+                  const visibleEvents = calendarItemLimit === 'all' 
+                      ? dayEvents 
+                      : dayEvents.slice(0, calendarItemLimit as number);
+                  const hiddenEventsCount = dayEvents.length - visibleEvents.length;
+                  const isCurrentMonthDay = isSameMonth(day, currentDate);
+                  const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
+                  return (
+                    <div
+                      key={day.toString()}
+                      onDragOver={(e) => handleDragOver(e, day)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, day)}
+                      className={cn(
+                        "relative min-h-[150px] rounded-2xl p-2 flex flex-col gap-2 transition-all duration-300 border",
+                        isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
+                        isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
+                      )}
+                    >
+                      <div className="font-semibold text-sm">
+                        {isToday(day) ? (
+                          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground">
+                            {format(day, 'd')}
+                          </div>
+                        ) : (
+                          <div className="flex items-baseline gap-1.5 px-1 py-0.5">
+                            {numColumns < 7 && <span className="text-xs opacity-70">{format(day, 'eee')}</span>}
+                            <span>{format(day, 'd')}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
+                        {visibleEvents.map(item => (
+                          <Tooltip key={item.id}>
+                            <TooltipTrigger asChild>
+                              <CalendarEvent
+                                item={item} 
+                                isSelected={!!selectedItemId && selectedItemId === item.id}
+                                isDragging={!!draggedItemId && draggedItemId === item.id}
+                                onDragStart={handleDragStart}
+                                colorProp={calendarColorProp}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent side="top" align="center" className="border-none bg-transparent p-0 shadow-none">
+                              <EventTooltipContent item={item} />
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+                      {hiddenEventsCount > 0 && (
+                        <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
+                          +{hiddenEventsCount} more
                         </div>
                       )}
                     </div>
-                    <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
-                      {visibleEvents.map(item => (
-                        <CalendarEvent
-                          key={item.id} 
-                          item={item} 
-                          isSelected={!!selectedItemId && selectedItemId === item.id}
-                          isDragging={!!draggedItemId && draggedItemId === item.id}
-                          onDragStart={handleDragStart}
-                          colorProp={calendarColorProp}
-                        />
-                      ))}
-                    </div>
-                    {hiddenEventsCount > 0 && (
-                      <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
-                        +{hiddenEventsCount} more
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-        </div>
+                  );
+                })}
+              </div>
+          </div>
+        </TooltipProvider>
       )}
     </div>
   );
