@@ -9,7 +9,7 @@ interface EventTooltipContentProps {
 }
 
 export function EventTooltipContent({ item }: EventTooltipContentProps) {
-  const { config } = {
+  const config = {
     // This is a placeholder. In a real scenario, this might come from context.
     // For now, we'll hardcode the field IDs we know exist in DataDemoItem.
     statusField: 'status',

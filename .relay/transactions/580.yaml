@@ -1,0 +1,420 @@
+uuid: b09fd5a2-c3f2-498c-8c1d-151034c44238
+projectId: jeli-app-shell
+createdAt: '2025-10-22T06:19:30.347Z'
+gitCommitMsg: >-
+  fix(controls): Decouple DataDemo controls from global view manager
+
+  The `TopBarPageControls` component was attempting to access `filters` state
+  from `useAppViewManager`, which no longer provides it after a recent refactor.
+  This caused a runtime error when navigating to the Data Demo page.
+
+  This commit resolves the issue by: 1.  Creating a new `DataDemoTopBarControls`
+  component. 2.  This new component correctly sources its state from the
+  page-specific `useDataDemoParams` hook. 3.  The main `TopBarPageControls` now
+  conditionally renders `DataDemoTopBarControls`, fully decoupling page-specific
+  state from the global layout controls.
+promptSummary: >-
+  The user is experiencing a runtime error "can't access property 'searchTerm',
+  filters is undefined" in the `TopBarPageControls` component. This is because
+  filter state was moved to a page-specific hook but the TopBar was not updated.
+reasoning:
+  - >-
+    Of course. It looks like my previous refactor missed a key detail. The state
+    for page-specific filters was correctly moved out of the global
+    `useAppViewManager` hook, but the `TopBarPageControls` component wasn't
+    updated to reflect this change. It's still trying to access `filters` from
+    the old, incorrect location, which is causing the application to crash.
+  - >-
+    I'll fix this by creating a dedicated component for the Data Demo page's top
+    bar controls. This new component will correctly use the page-specific
+    `useDataDemoParams` hook to manage its state, ensuring everything is
+    properly decoupled. The main `TopBarPageControls` will then simply render
+    the appropriate controls based on the current page.
+  - This change isolates the state management and resolves the runtime error.
+operations:
+  - type: write
+    path: src/App.tsx
+    content: >+
+      --- src/App.tsx
+
+      +++ src/App.tsx
+
+      @@ -28,6 +28,7 @@
+       // --- Utils & Hooks ---
+       import { cn } from "./lib/utils";
+       import { useAppViewManager } from "./hooks/useAppViewManager.hook";
+      +import { useDataDemoParams } from
+      "./pages/DataDemo/hooks/useDataDemoParams.hook";
+       
+       // Checks for authentication and redirects to login if needed
+       function ProtectedRoute() {
+      @@ -70,8 +71,32 @@
+         );
+       }
+       
+      +// Specific controls for DataDemo page
+
+      +function DataDemoTopBarControls() {
+
+      +  const { filters, setFilters } = useDataDemoParams();
+
+      +
+
+      +  return (
+
+      +    <div className="flex items-center gap-2">
+
+      +      <div className="relative w-64">
+
+      +        <Search className="absolute left-3 top-1/2 -translate-y-1/2
+      text-muted-foreground h-4 w-4" />
+
+      +        <Input
+
+      +          placeholder="Search items..."
+
+      +          className="pl-9 bg-card border-none"
+
+      +          value={filters.searchTerm}
+
+      +          onChange={(e) => setFilters({ ...filters, searchTerm:
+      e.target.value })}
+
+      +        />
+
+      +      </div>
+
+      +      <Button variant="outline">
+
+      +        <Filter className="w-4 h-4 mr-2" />
+
+      +        Filter
+
+      +      </Button>
+
+      +      <Button>
+
+      +        <Plus className="w-4 h-4 mr-2" />
+
+      +        New Item
+
+      +      </Button>
+
+      +    </div>
+
+      +  );
+
+      +}
+       
+       // Page-specific controls for the Top Bar
+       function TopBarPageControls() {
+      -  const { currentActivePage, filters, setFilters } = useAppViewManager();
+
+      +  const { currentActivePage } = useAppViewManager();
+         const [searchTerm, setSearchTerm] = React.useState('');
+         const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+       
+      @@ -104,26 +129,7 @@
+         }
+       
+         if (currentActivePage === 'data-demo') {
+      -    return (
+
+      -      <div className="flex items-center gap-2">
+
+      -        <div className="relative w-64">
+
+      -          <Search className="absolute left-3 top-1/2 -translate-y-1/2
+      text-muted-foreground h-4 w-4" />
+
+      -          <Input
+
+      -            placeholder="Search items..."
+
+      -            className="pl-9 bg-card border-none"
+
+      -            value={filters.searchTerm}
+
+      -            onChange={(e) => setFilters({ ...filters, searchTerm:
+      e.target.value })}
+
+      -          />
+
+      -        </div>
+
+      -        <Button variant="outline">
+
+      -          <Filter className="w-4 h-4 mr-2" />
+
+      -          Filter
+
+      -        </Button>
+
+      -        <Button>
+
+      -          <Plus className="w-4 h-4 mr-2" />
+
+      -          New Item
+
+      -        </Button>
+
+      -      </div>
+
+      -    );
+
+      +    return <DataDemoTopBarControls />;
+         }
+       
+         return null;
+
+    patchStrategy: standard-diff
+snapshot:
+  src/App.tsx: |-
+    import React, { useEffect } from "react";
+    import {
+      createBrowserRouter,
+      RouterProvider,
+      Outlet,
+      Navigate,
+      useNavigate, // used in LoginPageWrapper
+      useLocation,
+      useParams,
+    } from "react-router-dom";
+
+    import { AppShell } from "./components/layout/AppShell";
+    import { AppShellProvider } from "./providers/AppShellProvider";
+    import { useAppShellStore } from "./store/appShell.store";
+    import { useAuthStore } from "./store/authStore";
+    import "./index.css";
+
+    // Import library components
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+    import { MainContent } from "./components/layout/MainContent";
+    import { RightPane } from "./components/layout/RightPane";
+    import { TopBar } from "./components/layout/TopBar";
+    import { CommandPalette } from "./components/global/CommandPalette";
+    import { ToasterProvider } from "./components/ui/toast";
+    import { Input } from "./components/ui/input";
+    import { Button } from "./components/ui/button";
+
+    import { LoginPage } from "./components/auth/LoginPage";
+    import { type ViewId } from "./views/viewRegistry";
+
+    // --- Icons ---
+    import {
+      Search,
+      Filter,
+      Plus,
+      ChevronRight,
+      Rocket,
+    } from "lucide-react";
+
+    // --- Utils & Hooks ---
+    import { cn } from "./lib/utils";
+    import { useAppViewManager } from "./hooks/useAppViewManager.hook";
+
+    // Checks for authentication and redirects to login if needed
+    function ProtectedRoute() {
+      const { isAuthenticated } = useAuthStore();
+      const location = useLocation();
+      if (!isAuthenticated) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+      }
+      return <ComposedApp />; // ComposedApp is the layout for all protected routes
+    }
+
+    // A root component to apply global styles and effects
+    function Root() {
+      const isDarkMode = useAppShellStore((state) => state.isDarkMode);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      return <Outlet />;
+    }
+
+    // Breadcrumbs for the Top Bar
+    function AppBreadcrumbs() {
+      const { currentActivePage } = useAppViewManager();
+      const activePageName = currentActivePage.replace('-', ' ');
+
+      return (
+        <div className="hidden md:flex items-center gap-2 text-sm">
+          <a
+            href="#"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Home
+          </a>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          <span className="font-medium text-foreground capitalize">
+            {activePageName}
+          </span>
+        </div>
+      );
+    }
+
+    // Page-specific controls for the Top Bar
+    function TopBarPageControls() {
+      const { currentActivePage, filters, setFilters } = useAppViewManager();
+      const [searchTerm, setSearchTerm] = React.useState('');
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      if (currentActivePage === 'dashboard') {
+        return (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <div
+              className={cn(
+                "relative transition-all duration-300 ease-in-out",
+                isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+              )}
+            >
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search dashboard..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                className="pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full"
+              />
+            </div>
+            <Button variant="ghost" size="icon" className="flex-shrink-0">
+              <Filter className="w-5 h-5" />
+            </Button>
+            <Button className="flex-shrink-0">
+              <Plus className="w-5 h-5 mr-0 sm:mr-2" />
+              <span className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}>
+                New Project
+              </span>
+            </Button>
+          </div>
+        );
+      }
+
+      if (currentActivePage === 'data-demo') {
+        return (
+          <div className="flex items-center gap-2">
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search items..."
+                className="pl-9 bg-card border-none"
+                value={filters.searchTerm}
+                onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+              />
+            </div>
+            <Button variant="outline">
+              <Filter className="w-4 h-4 mr-2" />
+              Filter
+            </Button>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              New Item
+            </Button>
+          </div>
+        );
+      }
+
+      return null;
+    }
+
+    // The main App component that composes the shell
+    function ComposedApp() {
+      const viewManager = useAppViewManager();
+      const location = useLocation();
+      const params = useParams();
+      const { setBodyState, setSidePaneContent } = useAppShellStore.getState();
+
+      // Sync URL state with AppShellStore
+      useEffect(() => {
+        setBodyState(viewManager.bodyState);
+        // The view manager uses a generic 'dataItem' id for pane content.
+        // We map it to the specific viewId for rendering.
+        if (viewManager.sidePaneContent === 'dataItem') {
+          setSidePaneContent('dataItemDetail');
+        } else {
+          setSidePaneContent(viewManager.sidePaneContent);
+        }
+      }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
+
+      const rightViewId = useAppShellStore(s => s.sidePaneContent);
+
+      // Determine mainViewId from the route path
+      const pathSegments = location.pathname.split('/').filter(Boolean);
+      let mainViewId: ViewId | null = (pathSegments[0] as ViewId) || 'dashboard';
+      
+      // Handle detail views that are part of the main content
+      if (mainViewId === 'data-demo' && params.itemId) {
+        mainViewId = 'dataItemDetail';
+      }
+
+      return (
+        <AppShellProvider
+          appName="Jeli App"
+          appLogo={
+            <div className="p-2 bg-primary/20 rounded-lg">
+              <Rocket className="w-5 h-5 text-primary" />
+            </div>
+          }
+        >
+          <AppShell
+            sidebar={<EnhancedSidebar />}
+            onOverlayClick={viewManager.closeSidePane}
+            topBar={
+              <TopBar breadcrumbs={<AppBreadcrumbs />} pageControls={<TopBarPageControls />} />
+            }
+            mainContent={<MainContent viewId={mainViewId} />}
+            rightPane={<RightPane viewId={rightViewId} />}
+          />
+        </AppShellProvider>
+      );
+    }
+
+    const router = createBrowserRouter([
+        {
+          element: <Root />,
+          children: [
+            {
+              path: "/login",
+              element: <LoginPage />,
+            },
+            {
+              path: "/",
+              element: <ProtectedRoute />,
+              children: [
+                // The ComposedApp layout will render the correct view based on the path
+                // so these elements can be null. The paths are still needed for matching.
+                { index: true, element: <Navigate to="/dashboard" replace /> },
+                { path: "dashboard", element: null },
+                { path: "settings", element: null },
+                { path: "toaster", element: null },
+                { path: "notifications", element: null },
+                { path: "data-demo", element: null },
+                { path: "data-demo/:itemId", element: null },
+                { path: "messaging", element: null },
+                { path: "messaging/:conversationId", element: null },
+              ],
+            },
+          ],
+        },
+      ]);
+
+    function App() {
+      return (
+        <ToasterProvider>
+          <RouterProvider router={router} />
+        </ToasterProvider>
+      );
+    }
+
+    export default App;
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 580

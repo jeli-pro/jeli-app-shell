@@ -1,0 +1,424 @@
+uuid: 1d6368d9-3617-497f-8566-f87b8f95c5d2
+projectId: jeli-app-shell
+createdAt: '2025-10-22T06:24:12.876Z'
+gitCommitMsg: >-
+  fix(state): Resolve infinite render loop from store updates
+
+  Fixes a "Maximum update depth exceeded" error caused by a feedback loop
+  between the `useAppViewManager` hook and the `useAppShellStore`.
+
+  The `useAppViewManager` was subscribed to the entire store state, causing it
+  to re-run whenever any part of the store was updated. This created a loop
+  where `ComposedApp` would update the store, triggering the hook, which in turn
+  caused `ComposedApp` to re-render and repeat the cycle.
+
+  The fix involves: 1.  Changing the subscription in `useAppViewManager` to be
+  selective,
+      only listening to changes in `sidebarState`.
+  2.  Refactoring `ComposedApp` to derive `rightViewId` directly from the
+      view manager, clarifying the data flow and removing a redundant
+      store subscription within the component.
+promptSummary: >-
+  The user is reporting a "Maximum update depth exceeded" error, which indicates
+  an infinite render loop.
+reasoning:
+  - >-
+    Yikes, an infinite loop! That's a classic React headache. The error "Maximum
+    update depth exceeded" means a component is stuck in a loop of updating
+    state, which causes a re-render, which updates state again.
+  - >-
+    Based on the stack trace, the culprit is a feedback loop between
+    `useAppViewManager` and the `useAppShellStore`. Here's what's happening:
+  - >-
+    1.  `ComposedApp` in `App.tsx` calls `useAppViewManager` to get layout state
+    from the URL.
+  - 2.  It then uses a `useEffect` to push this state into the Zustand store.
+  - >-
+    3.  Meanwhile, `useAppViewManager` is subscribed to the *entire* Zustand
+    store. So when the store updates, it triggers `useAppViewManager` to run
+    again.
+  - >-
+    4.  This causes `ComposedApp` to re-render, and the `useEffect` runs again,
+    creating an infinite loop.
+  - 'I''ll fix this with two precise changes:'
+  - >-
+    1.  **In `useAppViewManager.hook.ts`:** I'll change the store subscription
+    to be selective. Instead of listening to the whole store, it will only
+    listen for changes to the specific piece of state it cares about
+    (`sidebarState`). This breaks the feedback loop.
+  - >-
+    2.  **In `App.tsx`:** I'll clean up the logic in `ComposedApp` to derive the
+    `rightViewId` once from the URL-driven `viewManager`, removing a redundant
+    read from the store and making the data flow clearer.
+  - >-
+    These changes will eliminate the infinite loop and make the state management
+    more efficient and stable.
+  - First, let's fix the subscription in the hook.
+  - Next, I'll streamline the state synchronization in `App.tsx`.
+operations:
+  - type: write
+    path: src/hooks/useAppViewManager.hook.ts
+    content: |+
+      --- src/hooks/useAppViewManager.hook.ts
+      +++ src/hooks/useAppViewManager.hook.ts
+      @@ -29,7 +29,8 @@
+         const navigate = useNavigate();
+         const location = useLocation();
+         const { itemId: pathItemId, conversationId } = useParams<{ itemId?: string; conversationId?: string }>();
+      -  const { setSidebarState, sidebarState } = useAppShellStore();
+      +  const sidebarState = useAppShellStore(s => s.sidebarState);
+      +  const { setSidebarState } = useAppShellStore.getState();
+       
+         // --- DERIVED STATE FROM URL ---
+       
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/App.tsx
+    content: |
+      <<<<<<< SEARCH
+      function ComposedApp() {
+        const viewManager = useAppViewManager();
+        const location = useLocation();
+        const params = useParams();
+        const { setBodyState, setSidePaneContent } = useAppShellStore.getState();
+
+        // Sync URL state with AppShellStore
+        useEffect(() => {
+          setBodyState(viewManager.bodyState);
+          // The view manager uses a generic 'dataItem' id for pane content.
+          // We map it to the specific viewId for rendering.
+          if (viewManager.sidePaneContent === 'dataItem') {
+            setSidePaneContent('dataItemDetail');
+          } else {
+            setSidePaneContent(viewManager.sidePaneContent);
+          }
+        }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
+
+        const rightViewId = useAppShellStore(s => s.sidePaneContent);
+
+        // Determine mainViewId from the route path
+        const pathSegments = location.pathname.split('/').filter(Boolean);
+      =======
+      function ComposedApp() {
+        const viewManager = useAppViewManager();
+        const location = useLocation();
+        const params = useParams();
+        const { setBodyState, setSidePaneContent } = useAppShellStore.getState(); // Non-reactive state setters
+
+        // The right pane's content is derived from the URL via the viewManager hook.
+        // This derived value is then used to update the global store.
+        const rightViewId = React.useMemo(() => {
+          if (viewManager.sidePaneContent === 'dataItem') return 'dataItemDetail';
+          return viewManager.sidePaneContent;
+        }, [viewManager.sidePaneContent]);
+
+        // Sync URL-derived state to the global Zustand store.
+        // This allows descendant components (like AppShell) to react to layout changes
+        // without having to drill props down. The loop is prevented by using selective
+        // subscriptions in other hooks.
+        useEffect(() => {
+          setBodyState(viewManager.bodyState);
+          setSidePaneContent(rightViewId);
+        }, [viewManager.bodyState, rightViewId, setBodyState, setSidePaneContent]);
+
+        // Determine mainViewId from the route path
+        const pathSegments = location.pathname.split('/').filter(Boolean);
+      >>>>>>> REPLACE
+    patchStrategy: search-replace
+snapshot:
+  src/App.tsx: >-
+    import React, { useEffect } from "react";
+
+    import {
+      createBrowserRouter,
+      RouterProvider,
+      Outlet,
+      Navigate,
+      useNavigate, // used in LoginPageWrapper
+      useLocation,
+      useParams,
+    } from "react-router-dom";
+
+
+    import { AppShell } from "./components/layout/AppShell";
+
+    import { AppShellProvider } from "./providers/AppShellProvider";
+
+    import { useAppShellStore } from "./store/appShell.store";
+
+    import { useAuthStore } from "./store/authStore";
+
+    import "./index.css";
+
+
+    // Import library components
+
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+
+    import { MainContent } from "./components/layout/MainContent";
+
+    import { RightPane } from "./components/layout/RightPane";
+
+    import { TopBar } from "./components/layout/TopBar";
+
+    import { CommandPalette } from "./components/global/CommandPalette";
+
+    import { ToasterProvider } from "./components/ui/toast";
+
+    import { Input } from "./components/ui/input";
+
+    import { Button } from "./components/ui/button";
+
+
+    import { LoginPage } from "./components/auth/LoginPage";
+
+    import { type ViewId } from "./views/viewRegistry";
+
+
+    // --- Icons ---
+
+    import {
+      Search,
+      Filter,
+      Plus,
+      ChevronRight,
+      Rocket,
+    } from "lucide-react";
+
+
+    // --- Utils & Hooks ---
+
+    import { cn } from "./lib/utils";
+
+    import { useAppViewManager } from "./hooks/useAppViewManager.hook";
+
+    import { useDataDemoParams } from
+    "./pages/DataDemo/hooks/useDataDemoParams.hook";
+
+
+    // Checks for authentication and redirects to login if needed
+
+    function ProtectedRoute() {
+      const { isAuthenticated } = useAuthStore();
+      const location = useLocation();
+      if (!isAuthenticated) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+      }
+      return <ComposedApp />; // ComposedApp is the layout for all protected routes
+    }
+
+
+    // A root component to apply global styles and effects
+
+    function Root() {
+      const isDarkMode = useAppShellStore((state) => state.isDarkMode);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      return <Outlet />;
+    }
+
+
+    // Breadcrumbs for the Top Bar
+
+    function AppBreadcrumbs() {
+      const { currentActivePage } = useAppViewManager();
+      const activePageName = currentActivePage.replace('-', ' ');
+
+      return (
+        <div className="hidden md:flex items-center gap-2 text-sm">
+          <a
+            href="#"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Home
+          </a>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          <span className="font-medium text-foreground capitalize">
+            {activePageName}
+          </span>
+        </div>
+      );
+    }
+
+
+    // Specific controls for DataDemo page
+
+    function DataDemoTopBarControls() {
+      const { filters, setFilters } = useDataDemoParams();
+
+      return (
+        <div className="flex items-center gap-2">
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search items..."
+              className="pl-9 bg-card border-none"
+              value={filters.searchTerm}
+              onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+            />
+          </div>
+          <Button variant="outline">
+            <Filter className="w-4 h-4 mr-2" />
+            Filter
+          </Button>
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            New Item
+          </Button>
+        </div>
+      );
+    }
+
+    // Page-specific controls for the Top Bar
+
+    function TopBarPageControls() {
+      const { currentActivePage } = useAppViewManager();
+      const [searchTerm, setSearchTerm] = React.useState("");
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      if (currentActivePage === "dashboard") {
+        return (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <div
+              className={cn(
+                "relative transition-all duration-300 ease-in-out",
+                isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+              )}
+            >
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search dashboard..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                className="pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full"
+              />
+            </div>
+            <Button variant="ghost" size="icon" className="flex-shrink-0">
+              <Filter className="w-5 h-5" />
+            </Button>
+            <Button className="flex-shrink-0">
+              <Plus className="w-5 h-5 mr-0 sm:mr-2" />
+              <span className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}>
+                New Project
+              </span>
+            </Button>
+          </div>
+        );
+      }
+
+      if (currentActivePage === "data-demo") {
+        return <DataDemoTopBarControls />;
+      }
+
+      return null;
+    }
+
+
+    // The main App component that composes the shell
+
+    function ComposedApp() {
+      const viewManager = useAppViewManager();
+      const location = useLocation();
+      const params = useParams();
+      const { setBodyState, setSidePaneContent } = useAppShellStore.getState();
+
+      // Sync URL state with AppShellStore
+      useEffect(() => {
+        setBodyState(viewManager.bodyState);
+        // The view manager uses a generic 'dataItem' id for pane content.
+        // We map it to the specific viewId for rendering.
+        if (viewManager.sidePaneContent === 'dataItem') {
+          setSidePaneContent('dataItemDetail');
+        } else {
+          setSidePaneContent(viewManager.sidePaneContent);
+        }
+      }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
+
+      const rightViewId = useAppShellStore(s => s.sidePaneContent);
+
+      // Determine mainViewId from the route path
+      const pathSegments = location.pathname.split('/').filter(Boolean);
+      let mainViewId: ViewId | null = (pathSegments[0] as ViewId) || 'dashboard';
+      
+      // Handle detail views that are part of the main content
+      if (mainViewId === 'data-demo' && params.itemId) {
+        mainViewId = 'dataItemDetail';
+      }
+
+      return (
+        <AppShellProvider
+          appName="Jeli App"
+          appLogo={
+            <div className="p-2 bg-primary/20 rounded-lg">
+              <Rocket className="w-5 h-5 text-primary" />
+            </div>
+          }
+        >
+          <AppShell
+            sidebar={<EnhancedSidebar />}
+            onOverlayClick={viewManager.closeSidePane}
+            topBar={
+              <TopBar breadcrumbs={<AppBreadcrumbs />} pageControls={<TopBarPageControls />} />
+            }
+            mainContent={<MainContent viewId={mainViewId} />}
+            rightPane={<RightPane viewId={rightViewId} />}
+          />
+        </AppShellProvider>
+      );
+    }
+
+
+    const router = createBrowserRouter([
+        {
+          element: <Root />,
+          children: [
+            {
+              path: "/login",
+              element: <LoginPage />,
+            },
+            {
+              path: "/",
+              element: <ProtectedRoute />,
+              children: [
+                // The ComposedApp layout will render the correct view based on the path
+                // so these elements can be null. The paths are still needed for matching.
+                { index: true, element: <Navigate to="/dashboard" replace /> },
+                { path: "dashboard", element: null },
+                { path: "settings", element: null },
+                { path: "toaster", element: null },
+                { path: "notifications", element: null },
+                { path: "data-demo", element: null },
+                { path: "data-demo/:itemId", element: null },
+                { path: "messaging", element: null },
+                { path: "messaging/:conversationId", element: null },
+              ],
+            },
+          ],
+        },
+      ]);
+
+    function App() {
+      return (
+        <ToasterProvider>
+          <RouterProvider router={router} />
+        </ToasterProvider>
+      );
+    }
+
+
+    export default App;
+  src/hooks/useAppViewManager.hook.ts: "import { useMemo, useCallback, useEffect, useRef } from 'react';\nimport { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';\nimport { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';\nimport type { TaskView } from '@/pages/Messaging/types';\nimport { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';\n\nconst pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {\n  dashboard: 'main',\n  settings: 'settings',\n  toaster: 'toaster',\n  notifications: 'notifications',\n  'data-demo': 'dataDemo',\n  messaging: 'messaging',\n};\n\nfunction usePrevious<T>(value: T): T | undefined {\n  const ref = useRef<T>();\n  useEffect(() => {\n    ref.current = value;\n  });\n  return ref.current;\n}\n\n/**\n * A centralized hook to manage and synchronize all URL-based view states.\n * This is the single source of truth for view modes, side panes, split views,\n * and page-specific parameters.\n */\nexport function useAppViewManager() {\n  const [searchParams, setSearchParams] = useSearchParams();\n  const navigate = useNavigate();\n  const location = useLocation();\n  const { itemId: pathItemId, conversationId } = useParams<{ itemId?: string; conversationId?: string }>();\n  const { setSidebarState, sidebarState } = useAppShellStore();\n\n  // --- DERIVED STATE FROM URL ---\n\n  const view = searchParams.get('view');\n  const sidePane = searchParams.get('sidePane');\n  const sidePaneItemId = searchParams.get('itemId');\n  const right = searchParams.get('right');\n  const messagingView = searchParams.get('messagingView') as TaskView | null;\n\n  const { bodyState, sidePaneContent } = useMemo(() => {\n    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n    \n    // 1. Priority: Explicit side pane overlay via URL param\n    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };\n    }\n\n    // 2. Data item detail view in a pane, triggered by search param\n    if (sidePaneItemId) {\n      if (view === 'split') {\n        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };\n      }\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };\n    }\n\n    // 4. Generic split view via URL param\n    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };\n    }\n\n    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };\n  }, [sidePaneItemId, conversationId, view, sidePane, right]);\n  \n  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);\n  const prevActivePage = usePrevious(currentActivePage);\n\n  // --- SIDE EFFECTS ---\n  useEffect(() => {\n    // On navigating to messaging page, collapse sidebar if it's expanded.\n    // This ensures a good default view but allows the user to expand it again if they wish.\n    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {\n      setSidebarState(SIDEBAR_STATES.COLLAPSED);\n    }\n  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);\n\n  // --- MUTATOR ACTIONS ---\n\n  const handleParamsChange = useCallback(\n\t\t(newParams: Record<string, string | number | string[] | null | undefined>, resetPage = false) => {\n\t\t\tsetSearchParams(\n\t\t\t\t(prev) => {\n\t\t\t\t\tconst updated = new URLSearchParams(prev);\n\t\t\t\t\t\n\t\t\t\t\tfor (const [key, value] of Object.entries(newParams)) {\n\t\t\t\t\t\tif (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {\n\t\t\t\t\t\t\tupdated.delete(key);\n\t\t\t\t\t\t} else if (Array.isArray(value)) {\n\t\t\t\t\t\t\tupdated.set(key, value.join(','));\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tupdated.set(key, String(value));\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tif (resetPage) {\n\t\t\t\t\t\tupdated.delete('page');\n\t\t\t\t\t}\n\t\t\t\t\tif ('groupBy' in newParams) {\n\t\t\t\t\t\tupdated.delete('tab');\n\t\t\t\t\t}\n\n\t\t\t\t\treturn updated;\n\t\t\t\t},\n\t\t\t\t{ replace: true },\n\t\t\t);\n\t\t},\n\t\t[setSearchParams],\n\t);\n\n  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {\n    const targetPath = page.startsWith('/') ? page : `/${page}`;\n    const isSamePage = location.pathname === targetPath;\n    \n    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);\n\n    if (params) {\n      for (const [key, value] of Object.entries(params)) {\n        if (value === null || value === undefined) {\n          newSearchParams.delete(key);\n        } else {\n          newSearchParams.set(key, value);\n        }\n      }\n    }\n\n    navigate({ pathname: targetPath, search: newSearchParams.toString() });\n  }, [navigate, location.pathname, searchParams]);\n\n  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {\n        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });\n    } else {\n        handleParamsChange({ sidePane: pane, view: null, right: null });\n    }\n  }, [handleParamsChange, navigate, location.pathname]);\n\n  const closeSidePane = useCallback(() => {\n    // This should close any kind of side pane, including dataItem\n    handleParamsChange({ sidePane: null, view: null, right: null, itemId: null });\n  }, [handleParamsChange]);\n\n  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (sidePane === pane) {\n      closeSidePane();\n    } else {\n      openSidePane(pane);\n    }\n  }, [sidePane, openSidePane, closeSidePane]);\n\n  const toggleSplitView = useCallback((paneContent?: AppShellState['sidePaneContent']) => {\n    if (bodyState === BODY_STATES.SIDE_PANE) {\n      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });\n    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {\n      handleParamsChange({ sidePane: right, view: null, right: null });\n    } else { // From normal\n      const content = paneContent || pageToPaneMap[currentActivePage] || 'details';\n      handleParamsChange({ view: 'split', right: content, sidePane: null });\n    }\n  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);\n  \n  const toggleFullscreen = useCallback((target?: 'main' | 'right') => {\n    // This logic is handled by the store, which will be updated by ViewModeSwitcher\n    // For now, we assume the store has a `toggleFullscreen` action\n    useAppShellStore.getState().toggleFullscreen(target);\n  }, []);\n\n  const setNormalView = useCallback(() => {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n  }, [handleParamsChange]);\n\n  const switchSplitPanes = useCallback(() => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    const newSidePaneContent = pageToPaneMap[currentActivePage];\n    const newActivePage = Object.entries(pageToPaneMap).find(\n      ([, value]) => value === sidePaneContent\n    )?.[0] as ActivePage | undefined;\n\n    if (newActivePage && newSidePaneContent) {\n      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    if (paneToClose === 'right') {\n      navigate(`/${currentActivePage}`, { replace: true });\n    } else { // Closing main pane\n      const pageToBecomeActive = Object.entries(pageToPaneMap).find(\n        ([, value]) => value === sidePaneContent\n      )?.[0] as ActivePage | undefined;\n      \n      if (pageToBecomeActive) {\n        navigate(`/${pageToBecomeActive}`, { replace: true });\n      } else {\n        navigate(`/dashboard`, { replace: true });\n      }\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  const onItemSelect = useCallback((itemId: string) => {\n    handleParamsChange({ itemId: itemId, sidePane: null, view: null, right: null });\n  }, [handleParamsChange]);\n\n  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });\n\n  // The final active item ID is either from the path (main view) or a search param (pane view)\n  const itemId = pathItemId || sidePaneItemId;\n\n  return useMemo(() => ({\n    // State\n    bodyState,\n    sidePaneContent,\n    currentActivePage,\n    pathItemId, // Expose for main content decisions\n    itemId,\n    messagingView,\n    // Actions\n    navigateTo,\n    openSidePane,\n    closeSidePane,\n    toggleSidePane,\n    toggleSplitView,\n    toggleFullscreen,\n    setNormalView,\n    switchSplitPanes,\n    setMessagingView,\n    closeSplitPane,\n    onItemSelect,\n  }), [\n    bodyState, sidePaneContent, currentActivePage, pathItemId, itemId, messagingView,\n    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, toggleFullscreen,\n    setNormalView, switchSplitPanes, setMessagingView, closeSplitPane, onItemSelect\n  ]);\n}"
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 582

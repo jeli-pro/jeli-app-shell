@@ -1,15 +1,16 @@
-import { forwardRef } from 'react'
-import { X } from 'lucide-react'
+import { forwardRef } from 'react';
+import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { BODY_STATES } from '@/lib/utils'
-import { useAppShellStore } from '@/store/appShell.store'
+import { BODY_STATES } from '@/lib/utils';
+import { useAppShellStore } from '@/store/appShell.store';
+import { ViewRenderer } from './ViewRenderer';
 
 interface MainContentProps {
-  children?: React.ReactNode;
+  viewId: string | null;
 }
 
 export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
-  ({ children }, ref) => {
+  ({ viewId }, ref) => {
     const bodyState = useAppShellStore(s => s.bodyState);
     const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
     const { toggleFullscreen } = useAppShellStore.getState();
@@ -38,10 +39,10 @@ export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
         )}
 
         <div className="flex-1 min-h-0 flex flex-col">
-          {children}
+          <ViewRenderer viewId={viewId} />
         </div>
       </div>
-    )
+    );
   }
-)
-MainContent.displayName = 'MainContent'
+);
+MainContent.displayName = 'MainContent';

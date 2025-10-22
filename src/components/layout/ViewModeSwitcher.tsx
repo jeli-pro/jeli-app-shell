@@ -35,9 +35,9 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
 
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
   const isThisPaneFullscreen = isFullscreen && (
-    (pane === 'main' && fullscreenTarget !== 'right') ||
-    (pane === 'right' && fullscreenTarget === 'right') ||
-    (!pane && !fullscreenTarget) // Global switcher, global fullscreen
+    (pane === 'main' && fullscreenTarget !== 'right') || // main pane is fullscreen if target is not right
+    (pane === 'right' && fullscreenTarget === 'right') || // right pane is fullscreen if it is the target
+    (!pane && fullscreenTarget !== 'right') // global switcher shows minimize if main pane is fullscreen
   );
 
   useEffect(() => {
@@ -75,15 +75,14 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
     }
   }, [isExpanded, bodyState]); // re-run if bodyState changes to recalc buttons
 
-  const handlePaneClick = (type: 'side-pane' | 'split-view') => {
+  const handleSidePaneClick = () => {
     const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
       dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications', 'data-demo': 'dataDemo',
-      messaging: 'messaging',
+      messaging: 'messaging', dataItemDetail: 'dataItem',
     };
-    const basePage = activePage.split('/')[0];
-    const paneContent = pageToPaneMap[basePage];
-    if (type === 'side-pane') toggleSidePane(paneContent);
-    else toggleSplitView();
+    const basePage = activePage.split('/')[0] as keyof typeof pageToPaneMap;
+    const paneContent = pageToPaneMap[basePage] || 'details';
+    toggleSidePane(paneContent);
   }
 
   const handleNormalViewClick = () => {
@@ -107,17 +106,17 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
     },
     {
       id: 'side-pane',
-      onClick: () => handlePaneClick('side-pane'),
+      onClick: handleSidePaneClick,
       active: bodyState === BODY_STATES.SIDE_PANE,
       title: "Side Pane View",
       icon: <PanelRightOpen className="w-4 h-4" />
     },
     {
       id: 'split-view',
-      onClick: () => handlePaneClick('split-view'),
+      onClick: () => toggleSplitView(),
       active: bodyState === BODY_STATES.SPLIT_VIEW,
-      title: bodyState === BODY_STATES.SPLIT_VIEW ? 'Switch to Overlay View' : 'Switch to Split View',
-      icon: bodyState === BODY_STATES.SPLIT_VIEW ? <Layers className="w-4 h-4" /> : <SplitSquareHorizontal className="w-4 h-4" />
+      title: "Split View",
+      icon: <SplitSquareHorizontal className="w-4 h-4" />
     },
     {
       id: 'fullscreen',

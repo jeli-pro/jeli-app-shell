@@ -6,6 +6,7 @@ import {
   Navigate,
   useNavigate, // used in LoginPageWrapper
   useLocation,
+  useParams,
 } from "react-router-dom";
 
 import { AppShell } from "./components/layout/AppShell";
@@ -24,14 +25,8 @@ import { ToasterProvider } from "./components/ui/toast";
 import { Input } from "./components/ui/input";
 import { Button } from "./components/ui/button";
 
-// --- Page/Content Components for Pages and Panes ---
-import { DashboardContent } from "./pages/Dashboard";
-import { SettingsPage } from "./pages/Settings";
-import { ToasterDemo } from "./pages/ToasterDemo";
-import { NotificationsPage } from "./pages/Notifications";
-import DataDemoPage from "./pages/DataDemo";
-import MessagingPage from "./pages/Messaging";
 import { LoginPage } from "./components/auth/LoginPage";
+import { type ViewId } from "./views/viewRegistry";
 
 // --- Icons ---
 import {
@@ -45,8 +40,7 @@ import {
 // --- Utils & Hooks ---
 import { cn } from "./lib/utils";
 import { useAppViewManager } from "./hooks/useAppViewManager.hook";
-import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
-import { BODY_STATES } from "./lib/utils";
+import { useDataDemoParams } from "./pages/DataDemo/hooks/useDataDemoParams.hook";
 
 // Checks for authentication and redirects to login if needed
 function ProtectedRoute() {
@@ -55,7 +49,7 @@ function ProtectedRoute() {
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
-  return <Outlet />;
+  return <ComposedApp />; // ComposedApp is the layout for all protected routes
 }
 
 // A root component to apply global styles and effects
@@ -67,25 +61,6 @@ function Root() {
   }, [isDarkMode]);
 
   return <Outlet />;
-}
-
-// The main layout for authenticated parts of the application
-function ProtectedLayout() {
-
-  return (
-    <div className="h-screen w-screen overflow-hidden bg-background">
-      <AppShellProvider
-        appName="Jeli App"
-        appLogo={
-          <div className="p-2 bg-primary/20 rounded-lg">
-            <Rocket className="w-5 h-5 text-primary" />
-          </div>
-        }
-      >
-        <ComposedApp />
-      </AppShellProvider>
-    </div>
-  );
 }
 
 // Breadcrumbs for the Top Bar
@@ -109,13 +84,39 @@ function AppBreadcrumbs() {
   );
 }
 
+// Specific controls for DataDemo page
+function DataDemoTopBarControls() {
+  const { filters, setFilters } = useDataDemoParams();
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="relative w-64">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+        <Input
+          placeholder="Search items..."
+          className="pl-9 bg-card border-none"
+          value={filters.searchTerm}
+          onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+        />
+      </div>
+      <Button variant="outline">
+        <Filter className="w-4 h-4 mr-2" />
+        Filter
+      </Button>
+      <Button>
+        <Plus className="w-4 h-4 mr-2" />
+        New Item
+      </Button>
+    </div>
+  );
+}
 // Page-specific controls for the Top Bar
 function TopBarPageControls() {
-  const { currentActivePage, filters, setFilters } = useAppViewManager();
-  const [searchTerm, setSearchTerm] = React.useState('');
+  const { currentActivePage } = useAppViewManager();
+  const [searchTerm, setSearchTerm] = React.useState("");
   const [isSearchFocused, setIsSearchFocused] = React.useState(false);
 
-  if (currentActivePage === 'dashboard') {
+  if (currentActivePage === "dashboard") {
     return (
       <div className="flex items-center gap-2 flex-1 justify-end">
         <div
@@ -148,28 +149,8 @@ function TopBarPageControls() {
     );
   }
 
-  if (currentActivePage === 'data-demo') {
-    return (
-      <div className="flex items-center gap-2">
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search items..."
-            className="pl-9 bg-card border-none"
-            value={filters.searchTerm}
-            onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
-          />
-        </div>
-        <Button variant="outline">
-          <Filter className="w-4 h-4 mr-2" />
-          Filter
-        </Button>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          New Item
-        </Button>
-      </div>
-    );
+  if (currentActivePage === "data-demo") {
+    return <DataDemoTopBarControls />;
   }
 
   return null;
@@ -177,35 +158,59 @@ function TopBarPageControls() {
 
 // The main App component that composes the shell
 function ComposedApp() {
-  const { setBodyState, setSidePaneContent } = useAppShellStore();
   const viewManager = useAppViewManager();
+  const location = useLocation();
+  const params = useParams();
+  const { setBodyState, setSidePaneContent } = useAppShellStore.getState(); // Non-reactive state setters
 
-  // Sync URL state with AppShellStore
+  // The right pane's content is derived from the URL via the viewManager hook.
+  // This derived value is then used to update the global store.
+  const rightViewId = React.useMemo(() => {
+    if (viewManager.sidePaneContent === 'dataItem') return 'dataItemDetail';
+    return viewManager.sidePaneContent;
+  }, [viewManager.sidePaneContent]);
+
+  // Sync URL-derived state to the global Zustand store.
+  // This allows descendant components (like AppShell) to react to layout changes
+  // without having to drill props down. The loop is prevented by using selective
+  // subscriptions in other hooks.
   useEffect(() => {
     setBodyState(viewManager.bodyState);
-    setSidePaneContent(viewManager.sidePaneContent);
-  }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
+    setSidePaneContent(rightViewId);
+  }, [viewManager.bodyState, rightViewId, setBodyState, setSidePaneContent]);
+
+  // Determine mainViewId from the route path
+  const pathSegments = location.pathname.split('/').filter(Boolean);
+  let mainViewId: ViewId | null = (pathSegments[0] as ViewId) || 'dashboard';
+  
+  // Handle detail views that are part of the main content
+  if (mainViewId === 'data-demo' && params.itemId) {
+    mainViewId = 'dataItemDetail';
+  }
 
   return (
-    <AppShell
-      sidebar={<EnhancedSidebar />}
-      onOverlayClick={viewManager.closeSidePane}
-      topBar={
-        <TopBar breadcrumbs={<AppBreadcrumbs />} pageControls={<TopBarPageControls />} />
+    <AppShellProvider
+      appName="Jeli App"
+      appLogo={
+        <div className="p-2 bg-primary/20 rounded-lg">
+          <Rocket className="w-5 h-5 text-primary" />
+        </div>
       }
-      mainContent={
-        <MainContent>
-          <Outlet />
-        </MainContent>
-      }
-      rightPane={<RightPane />}
-      commandPalette={<CommandPalette />}
-    />
+    >
+      <AppShell
+        sidebar={<EnhancedSidebar />}
+        onOverlayClick={viewManager.closeSidePane}
+        topBar={
+          <TopBar breadcrumbs={<AppBreadcrumbs />} pageControls={<TopBarPageControls />} />
+        }
+        mainContent={<MainContent viewId={mainViewId} />}
+        rightPane={<RightPane viewId={rightViewId} />}
+      />
+    </AppShellProvider>
   );
 }
 
-function App() {
-  const router = createBrowserRouter([
+const router = createBrowserRouter([
     {
       element: <Root />,
       children: [
@@ -217,27 +222,24 @@ function App() {
           path: "/",
           element: <ProtectedRoute />,
           children: [
-            {
-              path: "/",
-              element: <ProtectedLayout />,
-              children: [
-                { index: true, element: <Navigate to="/dashboard" replace /> },
-                { path: "dashboard", element: <DashboardContent /> },
-                { path: "settings", element: <SettingsPage /> },
-                { path: "toaster", element: <ToasterDemo /> },
-                { path: "notifications", element: <NotificationsPage /> },
-                { path: "data-demo", element: <DataDemoPage /> },
-                { path: "data-demo/:itemId", element: <DataDemoPage /> },
-                { path: "messaging", element: <MessagingPage /> },
-                { path: "messaging/:conversationId", element: <MessagingPage /> },
-              ],
-            },
+            // The ComposedApp layout will render the correct view based on the path
+            // so these elements can be null. The paths are still needed for matching.
+            { index: true, element: <Navigate to="/dashboard" replace /> },
+            { path: "dashboard", element: null },
+            { path: "settings", element: null },
+            { path: "toaster", element: null },
+            { path: "notifications", element: null },
+            { path: "data-demo", element: null },
+            { path: "data-demo/:itemId", element: null },
+            { path: "messaging", element: null },
+            { path: "messaging/:conversationId", element: null },
           ],
         },
       ],
     },
   ]);
 
+function App() {
   return (
     <ToasterProvider>
       <RouterProvider router={router} />

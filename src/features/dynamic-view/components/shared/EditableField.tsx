@@ -136,7 +136,7 @@ export function EditableField<TFieldId extends string, TItem extends GenericItem
                   <CommandGroup>
                     {userList.map((user) => (
                       <CommandItem key={user.email} onSelect={() => handleUpdate(user)}>
-                          <FieldRenderer item={{ assignee: user } as TItem} fieldId={'assignee' as TFieldId} />
+                          <FieldRenderer item={{ assignee: user } as unknown as TItem} fieldId={'assignee' as TFieldId} />
                       </CommandItem>
                     ))}
                   </CommandGroup>

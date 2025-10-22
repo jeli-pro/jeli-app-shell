@@ -52,16 +52,81 @@
     // "src/pages/Messaging/index.tsx",
     // "src/pages/Notifications/index.tsx",
     // "src/pages/Settings/index.tsx",
-    // "src/pages/ToasterDemo/index.tsx"
-    //
-    //
+    // "src/pages/ToasterDemo/index.tsx",
 
-    "src/features/dynamic-view/DynamicView.tsx",
-    "src/features/dynamic-view/components/views/KanbanView.tsx",
-    "src/features/dynamic-view/types.ts",
-    "src/pages/DataDemo/data/DataDemoItem.ts",
-    "src/pages/DataDemo/data/mockData.ts",
-    "src/pages/DataDemo/index.tsx"
+    // "src/App.tsx",
+    // "src/components/layout/AppShell.tsx",
+    // "src/components/layout/MainContent.tsx",
+    // "src/components/layout/RightPane.tsx",
+    // "src/components/layout/ViewModeSwitcher.tsx",
+    // "src/components/shared/PageLayout.tsx",
+    // "src/hooks/useAppViewManager.hook.ts",
+    // "src/hooks/usePageViewConfig.hook.ts",
+    // "src/hooks/useRightPaneContent.hook.tsx",
+    // "src/pages/Dashboard/index.tsx",
+    // "src/pages/DataDemo/index.tsx",
+    // "src/pages/Messaging/index.tsx",
+    // "src/pages/Notifications/index.tsx",
+    // "src/pages/Settings/index.tsx",
+    // "src/views/view.registry.ts",
+    // "src/hooks/useViewManager.hook.ts",
+    // "src/components/layout/ViewHost.tsx",
+
+    // "src/components/global/CommandPalette.tsx",
+    // "src/components/layout/EnhancedSidebar.tsx",
+    // "src/components/layout/TopBar.tsx",
+    // "src/components/layout/ViewHost.tsx",
+    // "src/features/dynamic-view/components/shared/DetailPanel.tsx",
+    // "src/features/dynamic-view/components/shared/EditableField.tsx",
+    // "src/features/dynamic-view/components/shared/EventTooltipContent.tsx",
+    // "src/hooks/useViewManager.hook.ts",
+    // "src/pages/Messaging/components/ActivityFeed.tsx",
+    // "src/pages/Messaging/components/TaskList.tsx",
+
+    // "src/components/global/CommandPalette.tsx",
+    // "src/components/layout/EnhancedSidebar.tsx",
+    // "src/components/layout/TopBar.tsx",
+    // "src/components/layout/ViewHost.tsx",
+    // "src/features/dynamic-view/components/shared/DetailPanel.tsx",
+    // "src/features/dynamic-view/components/shared/EditableField.tsx",
+    // "src/features/dynamic-view/components/shared/EventTooltipContent.tsx",
+    // "src/hooks/useViewManager.hook.ts",
+    // "src/pages/Messaging/components/ActivityFeed.tsx",
+    // "src/pages/Messaging/components/TaskList.tsx",
+
+    // "src/App.tsx",
+    // "src/components/layout/MainContent.tsx",
+    // "src/components/layout/RightPane.tsx",
+    // "src/components/layout/ViewRenderer.tsx",
+    // "src/views/viewRegistry.ts",
+    // "src/pages/DataDemo/hooks/useDataDemoParams.hook.ts",
+
+    // "src/App.tsx",
+    // "src/components/layout/MainContent.tsx",
+    // "src/components/layout/RightPane.tsx",
+    // "src/components/layout/ViewModeSwitcher.tsx",
+    // "src/components/layout/ViewRenderer.tsx",
+    // "src/features/dynamic-view/components/shared/DetailPanel.tsx",
+    // "src/features/dynamic-view/components/shared/EditableField.tsx",
+    // "src/features/dynamic-view/components/shared/EventTooltipContent.tsx",
+    // "src/pages/Messaging/components/ActivityFeed.tsx",
+    // "src/pages/Messaging/components/TaskList.tsx",
+    // "src/pages/Messaging/index.tsx"
+    //
+    //
+    ".relay/transactions/574.yaml",
+    ".relay/transactions/575.yaml",
+    ".relay/transactions/576.yaml",
+    ".relay/transactions/577.yaml",
+    ".relay/transactions/578.yaml",
+    ".relay/transactions/579.yaml",
+    ".relay/transactions/580.yaml",
+    ".relay/transactions/581.yaml",
+    ".relay/transactions/582.yaml"
+    // ".relay/transactions/582.yaml"
+
+    //
+    //
   ],
   "ignore": {
     "useGitignore": true,

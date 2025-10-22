@@ -214,7 +214,7 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
   const calculatedIsActive = (
     (!opensInSidePane && page && viewManager.currentActivePage === page)
   ) || (
-    opensInSidePane && page === 'notifications' && viewManager.sidePaneContent === 'notifications'
+    (opensInSidePane && page && viewManager.sidePaneContent === page)
   );
 
   const isActive = isActiveProp ?? calculatedIsActive;
@@ -226,8 +226,7 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
     }
     if (page) {
       if (opensInSidePane) {
-        // The only item using this is Notifications
-        viewManager.toggleSidePane('notifications');
+        viewManager.toggleSidePane(page as any);
       } else {
         viewManager.navigateTo(page);
       }

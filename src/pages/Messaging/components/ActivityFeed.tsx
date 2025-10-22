@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { useMessagingStore } from '../store/messaging.store';
 import type { Message, Contact, JourneyPointType } from '../types';
 import { cn, formatDistanceToNowShort } from '@/lib/utils';

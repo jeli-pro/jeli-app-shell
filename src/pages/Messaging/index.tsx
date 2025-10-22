@@ -1,7 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { usePageViewConfig } from "@/hooks/usePageViewConfig.hook";
-import { useAppShellStore } from "@/store/appShell.store";
 import { TaskList } from "./components/TaskList";
 import { TaskDetail } from "./components/TaskDetail";
 import { cn } from "@/lib/utils";
@@ -52,14 +50,8 @@ const useResizableMessagingPanes = (
 };
 
 export default function MessagingPage() {
-  const { conversationId } = useParams<{ conversationId?: string }>();
+  useParams<{ conversationId?: string }>();
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const defaultSplitPaneWidth = useAppShellStore((s) => s.defaultSplitPaneWidth);
-  // When a conversation is selected (split view), reset the pane width to default.
-  // When no conversation is selected, we don't want to manage the width, so pass undefined.
-  const desiredSplitPaneWidth = conversationId ? defaultSplitPaneWidth : undefined;
-  usePageViewConfig({ splitPaneWidth: desiredSplitPaneWidth });
 
   const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);
 

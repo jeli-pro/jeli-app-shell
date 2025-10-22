@@ -14,6 +14,7 @@ import { PageLayout } from "@/components/shared/PageLayout";
 import { useScrollToBottom } from "@/hooks/useScrollToBottom.hook";
 import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton";
 import { mockDataItems } from "./data/mockData";
+import { useDataDemoParams } from "./hooks/useDataDemoParams.hook";
 import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useDataDemoStore, useSelectedItem } from "./store/dataDemo.store";
 import { AddDataItemCta } from "@/features/dynamic-view/components/shared/AddDataItemCta";
@@ -23,6 +24,7 @@ import { dataDemoViewConfig } from "./DataDemo.config";
 import type { StatItem } from "@/features/dynamic-view/types";
 
 export default function DataDemoPage() {
+  const { pathItemId, onItemSelect } = useAppViewManager();
   const {
     viewMode,
     groupBy,
@@ -36,11 +38,9 @@ export default function DataDemoPage() {
     setPage,
     setFilters,
     setViewMode,
-    onItemSelect,
-    pathItemId,
     calendarDate,
     setCalendarDate,
-  } = useAppViewManager();
+  } = useDataDemoParams();
 
   const selectedItem = useSelectedItem(pathItemId);
 
@@ -209,7 +209,7 @@ export default function DataDemoPage() {
         onActiveGroupTabChange={setActiveGroupTab}
         onPageChange={setPage}
         onItemUpdate={updateItem}
-        onItemSelect={onItemSelect}
+        onItemSelect={(item) => onItemSelect(item.id)}
         loaderRef={loaderRef}
         scrollContainerRef={scrollRef}
         statsData={stats}

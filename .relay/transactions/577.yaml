@@ -1,0 +1,1199 @@
+uuid: d8e9b6a1-3a2c-4f7b-8b5e-0a1c9d8e7b6d
+projectId: jeli-app-shell
+createdAt: '2025-10-22T06:08:47.364Z'
+gitCommitMsg: >-
+  fix(types): Resolve TypeScript errors from app shell refactor
+
+  This commit addresses a series of TypeScript compilation errors and linter
+  warnings that arose after the major app shell architecture refactor.
+
+  - Corrects a logic error in `EventTooltipContent` by changing a destructuring
+  assignment to a direct assignment. - Fixes a type mismatch in `ViewRenderer`
+  by ensuring `useSelectedItem` receives `undefined` instead of `null`. -
+  Resolves a `readonly` array type error in `DetailPanel` by creating a mutable
+  copy for `dnd-kit`. - Fixes an unsafe generic cast in `EditableField` by
+  casting to `unknown` first. - Wraps a Lucide icon in `TaskList` with a `span`
+  to correctly apply a `title` attribute. - Removes unused imports and variables
+  across multiple components, including `ViewRenderer`, `DetailPanel`,
+  `ActivityFeed`, and `MessagingPage`, to improve code hygiene and satisfy the
+  linter.
+promptSummary: >-
+  The user wants me to fix all TypeScript compilation errors resulting from the
+  previous refactor.
+reasoning:
+  - >-
+    I've analyzed the TypeScript errors from the build. They're the typical
+    fallout from a large-scale refactor—type mismatches, logic errors, and a lot
+    of dead code. This is a cleanup operation. I'm going in, patching the type
+    definitions, fixing the broken logic, and pruning all the unused imports and
+    variables to get us back to a clean, stable build. No new features, just
+    focused fixes to solidify the new architecture.
+  - Here are the patches.
+  - >-
+    First, I'll fix the incorrect logic in `EventTooltipContent.tsx` where a
+    `config` object was being destructured incorrectly.
+  - >-
+    Next, in `ViewRenderer.tsx`, I'll fix a type mismatch by ensuring
+    `useSelectedItem` receives `undefined` instead of `null`, and I'll remove an
+    unused `React` import.
+  - >-
+    In `DetailPanel.tsx`, I'm addressing a `readonly` array type error from
+    `dnd-kit` by creating a mutable copy of the sections. I'll also remove an
+    unused type import.
+  - >-
+    To resolve an unsafe generic cast in `EditableField.tsx`, I'll make the cast
+    more explicit by first casting to `unknown`.
+  - >-
+    The `lucide-react` icons don't accept a `title` prop. I'll fix this in
+    `TaskList.tsx` by wrapping the icon in a `span` element and moving the title
+    attribute to it.
+  - Now for code cleanup. I'll remove unused imports from `ActivityFeed.tsx`...
+  - >-
+    ...and from `MessagingPage/index.tsx`, where I'll also remove an unused
+    variable.
+operations:
+  - type: write
+    path: src/features/dynamic-view/components/shared/EventTooltipContent.tsx
+    content: |+
+      --- src/features/dynamic-view/components/shared/EventTooltipContent.tsx
+      +++ src/features/dynamic-view/components/shared/EventTooltipContent.tsx
+      @@ -9,7 +9,7 @@
+       }
+       
+       export function EventTooltipContent({ item }: EventTooltipContentProps) {
+      -  const { config } = {
+      +  const config = {
+           // This is a placeholder. In a real scenario, this might come from context.
+           // For now, we'll hardcode the field IDs we know exist in DataDemoItem.
+           statusField: 'status',
+      @@ -17,7 +17,7 @@
+           assigneeField: 'assignee',
+           dateField: 'dueDate'
+         }
+       
+         const priorityColor = getPrioritySolidColor(item[config.priorityField]);
+         const statusClasses = getStatusColor(item[config.statusField]);
+       
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/ViewRenderer.tsx
+    content: >+
+      --- src/components/layout/ViewRenderer.tsx
+
+      +++ src/components/layout/ViewRenderer.tsx
+
+      @@ -1,4 +1,3 @@
+
+      -import React from 'react';
+       import { useParams, useSearchParams } from 'react-router-dom';
+       import { cn } from '@/lib/utils';
+       import { getViewById, type ViewId } from '@/views/viewRegistry';
+      @@ -14,7 +13,7 @@
+         const sidePaneItemId = searchParams.get('itemId');
+       
+         // Specific logic for views that need props
+      -  const selectedItem = useSelectedItem(pathItemId || sidePaneItemId);
+
+      +  const selectedItem = useSelectedItem(pathItemId || sidePaneItemId ||
+      undefined);
+       
+         if (!view) {
+           return (
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/shared/DetailPanel.tsx
+    content: >+
+      --- src/features/dynamic-view/components/shared/DetailPanel.tsx
+
+      +++ src/features/dynamic-view/components/shared/DetailPanel.tsx
+
+      @@ -15,7 +15,7 @@
+         User,
+         BarChart3,
+       } from 'lucide-react'
+      -import type { GenericItem, DetailViewConfig, DetailViewSection } from
+      '../../types'
+
+      +import type { GenericItem, DetailViewConfig } from '../../types'
+       import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook';
+       import { EditableField } from './EditableField'
+       import { DraggableSection } from './DraggableSection'
+      @@ -38,7 +38,7 @@
+         
+         const { getFieldDef } = useDynamicView<TFieldId, TItem>();
+         const { header, body } = config;
+      -  const [sections, setSections] = useState(body.sections);
+
+      +  const [sections, setSections] = useState([...body.sections]);
+       
+         const sectionIds = useMemo(() => sections.map(s => s.title), [sections]);
+       
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/shared/EditableField.tsx
+    content: >+
+      --- src/features/dynamic-view/components/shared/EditableField.tsx
+
+      +++ src/features/dynamic-view/components/shared/EditableField.tsx
+
+      @@ -136,7 +136,7 @@
+                         <CommandGroup>
+                           {userList.map((user) => (
+                             <CommandItem key={user.email} onSelect={() => handleUpdate(user)}>
+      -                          <FieldRenderer item={{ assignee: user } as
+      TItem} fieldId={'assignee' as TFieldId} />
+
+      +                          <FieldRenderer item={{ assignee: user } as
+      unknown as TItem} fieldId={'assignee' as TFieldId} />
+                             </CommandItem>
+                           ))}
+                         </CommandGroup>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskList.tsx
+    content: >+
+      --- src/pages/Messaging/components/TaskList.tsx
+
+      +++ src/pages/Messaging/components/TaskList.tsx
+
+      @@ -147,7 +147,7 @@
+                                         <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                                     </div>
+                                 )}
+      -                          {isHandledByOther && <Eye className="w-3.5
+      h-3.5" title="Being handled by another user" />}
+
+      +                          {isHandledByOther && <span title="Being handled
+      by another user"><Eye className="w-3.5 h-3.5" /></span>}
+                             </div>
+                         </div>
+                         <div className="flex flex-col items-end space-y-1.5 flex-shrink-0">
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/ActivityFeed.tsx
+    content: |+
+      --- src/pages/Messaging/components/ActivityFeed.tsx
+      +++ src/pages/Messaging/components/ActivityFeed.tsx
+      @@ -1,4 +1,4 @@
+      -import React, { forwardRef } from 'react';
+      +import { forwardRef } from 'react';
+       import { useMessagingStore } from '../store/messaging.store';
+       import type { Message, Contact, JourneyPointType } from '../types';
+       import { cn, formatDistanceToNowShort } from '@/lib/utils';
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: |+
+      --- src/pages/Messaging/index.tsx
+      +++ src/pages/Messaging/index.tsx
+      @@ -1,5 +1,4 @@
+      -import React, { useState, useRef, useEffect, useCallback } from "react";
+      -import { useParams } from "react-router-dom";
+      -import { useAppShellStore } from "@/store/appShell.store";
+      +import { useState, useRef, useEffect, useCallback } from "react";
+      +import { useParams } from "react-router-dom";
+       import { TaskList } from "./components/TaskList";
+       import { TaskDetail } from "./components/TaskDetail";
+       import { cn } from "@/lib/utils";
+      @@ -47,7 +46,7 @@
+       };
+       
+       export default function MessagingPage() {
+      -  const { conversationId } = useParams<{ conversationId?: string }>();
+      +  useParams<{ conversationId?: string }>();
+         const containerRef = useRef<HTMLDivElement>(null);
+       
+         const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);
+
+    patchStrategy: standard-diff
+snapshot:
+  src/features/dynamic-view/components/shared/EventTooltipContent.tsx: >-
+    import type { GenericItem } from '../../types';
+
+    import { FieldRenderer } from './FieldRenderer';
+
+    import { formatDistanceToNowShort, getPrioritySolidColor, getStatusColor }
+    from '@/lib/utils';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Clock } from 'lucide-react';
+
+
+    interface EventTooltipContentProps {
+      item: GenericItem;
+    }
+
+
+    export function EventTooltipContent({ item }: EventTooltipContentProps) {
+      const { config } = {
+        // This is a placeholder. In a real scenario, this might come from context.
+        // For now, we'll hardcode the field IDs we know exist in DataDemoItem.
+        statusField: 'status',
+        priorityField: 'priority',
+        assigneeField: 'assignee',
+        dateField: 'dueDate'
+      }
+
+      const priorityColor = getPrioritySolidColor(item[config.priorityField]);
+      const statusClasses = getStatusColor(item[config.statusField]);
+
+      return (
+        <div className="relative w-72 overflow-hidden rounded-xl border border-border/20 bg-background/80 p-4 shadow-xl backdrop-blur-lg">
+          {/* Priority Indicator */}
+          <div className={`absolute left-0 top-0 h-full w-1.5 ${priorityColor}`} />
+
+          <div className="ml-1.5 space-y-3">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4">
+              <h3 className="flex-1 font-semibold leading-tight text-foreground">
+                <FieldRenderer item={item} fieldId="title" />
+              </h3>
+              <div className="flex-shrink-0">
+                <FieldRenderer item={item} fieldId={config.assigneeField} options={{ compact: true, avatarClassName: 'w-7 h-7' }} />
+              </div>
+            </div>
+
+            {/* Status & Date */}
+            <div className="flex items-center justify-between text-sm">
+              <Badge variant="outline" className={`border-transparent capitalize ${statusClasses}`}>
+                {item[config.statusField]}
+              </Badge>
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <span>{formatDistanceToNowShort(item[config.dateField])}</span>
+              </div>
+            </div>
+
+            {/* Tags */}
+            <div>
+              <FieldRenderer item={item} fieldId="tags" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+  src/features/dynamic-view/components/shared/EditableField.tsx: >-
+    import React, { useState, useRef, useEffect } from 'react';
+
+    import { useDynamicView } from '../../DynamicViewContext';
+
+    import type { GenericItem, ControlOption } from '../../types';
+
+    import { FieldRenderer } from './FieldRenderer';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Textarea } from '@/components/ui/textarea';
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover';
+
+    import { Command, CommandGroup, CommandItem, CommandList } from
+    '@/components/ui/command';
+
+    import { Slider } from '@/components/ui/slider';
+
+    import { cn, getNestedValue } from '@/lib/utils';
+
+    import { mockDataItems } from '@/pages/DataDemo/data/mockData';
+
+
+    interface EditableFieldProps<TFieldId extends string, TItem extends
+    GenericItem> {
+      item: TItem;
+      fieldId: TFieldId;
+      className?: string;
+      options?: Record<string, any>;
+    }
+
+
+    // Mock user list for assignee field
+
+    const userList = Array.from(new Set(mockDataItems.map(i =>
+    i.assignee.email)))
+      .map(email => mockDataItems.find(i => i.assignee.email === email)?.assignee)
+      .filter(Boolean) as { name: string; email: string; avatar: string }[];
+
+
+    export function EditableField<TFieldId extends string, TItem extends
+    GenericItem>({
+      item,
+      fieldId,
+      className,
+      options,
+    }: EditableFieldProps<TFieldId, TItem>) {
+      const { config, getFieldDef, onItemUpdate } = useDynamicView<TFieldId, TItem>();
+      const [isEditing, setIsEditing] = useState(false);
+      const fieldDef = getFieldDef(fieldId);
+      const value = getNestedValue(item, fieldId);
+      const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+
+      useEffect(() => {
+        if (isEditing && (fieldDef?.type === 'string' || fieldDef?.type === 'longtext' || fieldDef?.type === 'thumbnail')) {
+          inputRef.current?.focus();
+          inputRef.current?.select();
+        }
+      }, [isEditing, fieldDef]);
+
+      if (!fieldDef || !onItemUpdate) {
+        return <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />;
+      }
+
+      const handleUpdate = (newValue: any) => {
+        if (value !== newValue) {
+          onItemUpdate(item.id, { [fieldId]: newValue } as Partial<TItem>);
+        }
+        setIsEditing(false);
+      };
+
+      const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !(e.currentTarget instanceof HTMLTextAreaElement)) {
+          handleUpdate(e.currentTarget.value);
+        }
+        if (e.key === 'Escape') {
+          setIsEditing(false);
+        }
+      };
+
+      const renderEditComponent = () => {
+        switch (fieldDef.type) {
+          case 'string':
+          case 'thumbnail': // For emoji
+            return (
+              <Input
+                ref={inputRef as React.Ref<HTMLInputElement>}
+                type="text"
+                defaultValue={value}
+                onBlur={(e) => handleUpdate(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="w-full h-auto p-1 bg-transparent border-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+              />
+            );
+          case 'longtext':
+            return (
+              <Textarea
+                ref={inputRef as React.Ref<HTMLTextAreaElement>}
+                defaultValue={value}
+                onBlur={(e) => handleUpdate(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="text-sm w-full p-1 bg-transparent border-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+              />
+            );
+          case 'badge': {
+            const filterableField = config.filterableFields.find((f) => f.id === fieldId);
+            const badgeOptions: readonly ControlOption<string>[] = filterableField?.options || [];
+            return (
+              <Popover open={isEditing} onOpenChange={setIsEditing}>
+                <PopoverTrigger asChild>
+                  <div className="w-full h-full absolute inset-0 opacity-0 cursor-pointer"></div>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[200px]" align="start">
+                  <Command>
+                    <CommandList>
+                      <CommandGroup>
+                        {badgeOptions.map((option) => (
+                          <CommandItem key={option.id} onSelect={() => handleUpdate(option.id)}>
+                            {option.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            );
+          }
+          case 'progress': {
+            const progressValue = typeof value === 'number' ? value : 0;
+            return (
+               <div className="flex items-center gap-3 w-full">
+                <Slider
+                  value={[progressValue]}
+                  max={100} step={1}
+                  onValueCommit={(val) => handleUpdate(val[0])}
+                  className="flex-1"
+                />
+                <span className="text-sm font-medium text-muted-foreground w-10 text-right">{progressValue}%</span>
+               </div>
+            );
+          }
+          case 'avatar': {
+            return (
+              <Popover open={isEditing} onOpenChange={setIsEditing}>
+                <PopoverTrigger asChild>
+                   <div className="w-full h-full absolute inset-0 opacity-0 cursor-pointer"></div>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[250px]" align="start">
+                  <Command>
+                    <CommandList>
+                      <CommandGroup>
+                        {userList.map((user) => (
+                          <CommandItem key={user.email} onSelect={() => handleUpdate(user)}>
+                              <FieldRenderer item={{ assignee: user } as TItem} fieldId={'assignee' as TFieldId} />
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            );
+          }
+          case 'date': {
+            return (
+              <Input
+                autoFocus
+                type="date"
+                defaultValue={value ? new Date(value).toISOString().split('T')[0] : ''}
+                onChange={(e) => {
+                  const date = e.target.valueAsDate;
+                  if (date) {
+                    const originalDate = value ? new Date(value) : new Date();
+                    date.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds());
+                    handleUpdate(date.toISOString());
+                  }
+                }}
+                onBlur={() => setIsEditing(false)}
+                className="h-8"
+              />
+            )
+          }
+          default:
+            return <FieldRenderer item={item} fieldId={fieldId} className={className} options={options} />;
+        }
+      };
+
+      return (
+        <div className={cn("w-full group relative", className)} onClick={() => !isEditing && setIsEditing(true)}>
+          {isEditing ? (
+            renderEditComponent()
+          ) : (
+            <div className={cn(
+              "hover:bg-accent/50 rounded-md transition-colors cursor-text min-h-[32px] w-full p-1",
+               fieldDef.type === 'longtext' ? 'flex items-start' : 'flex items-center'
+            )}>
+                <FieldRenderer item={item} fieldId={fieldId} options={options} />
+            </div>
+          )}
+           {/* For Popover fields, the editor is always rendered when isEditing is true to control its open state */}
+           {isEditing && ['badge', 'avatar'].includes(fieldDef.type) && renderEditComponent()}
+        </div>
+      );
+    }
+  src/pages/Messaging/index.tsx: |-
+    import React, { useState, useRef, useEffect, useCallback } from "react";
+    import { useParams } from "react-router-dom";
+    import { useAppShellStore } from "@/store/appShell.store";
+    import { TaskList } from "./components/TaskList";
+    import { TaskDetail } from "./components/TaskDetail";
+    import { cn } from "@/lib/utils";
+
+    const useResizableMessagingPanes = (
+      containerRef: React.RefObject<HTMLDivElement>,
+      initialWidth: number = 320
+    ) => {
+      const [isResizing, setIsResizing] = useState(false);
+      const [listWidth, setListWidth] = useState(initialWidth);
+
+      const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsResizing(true);
+      }, []);
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing || !containerRef.current) return;
+          const containerRect = containerRef.current.getBoundingClientRect();
+          const newWidth = e.clientX - containerRect.left;
+          // Constraints for the conversation list pane
+          setListWidth(Math.max(280, Math.min(newWidth, containerRect.width - 500)));
+        };
+
+        const handleMouseUp = () => {
+          setIsResizing(false);
+        };
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          window.addEventListener('mousemove', handleMouseMove);
+          window.addEventListener('mouseup', handleMouseUp, { once: true });
+        }
+
+        return () => {
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+          if (document.body) {
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+          }
+        };
+      }, [isResizing, containerRef]);
+
+      return { listWidth, handleMouseDown, isResizing };
+    };
+
+    export default function MessagingPage() {
+      const { conversationId } = useParams<{ conversationId?: string }>();
+      const containerRef = useRef<HTMLDivElement>(null);
+
+      const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "h-full w-full flex bg-background",
+            isResizing && "cursor-col-resize select-none"
+          )}
+        >
+          <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 h-full">
+            <TaskList />
+          </div>
+          <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+          </div>
+          <div className="flex-1 min-w-0 h-full">
+            <TaskDetail />
+          </div>
+        </div>
+      );
+    }
+  src/components/layout/ViewRenderer.tsx: |-
+    import React from 'react';
+    import { useParams, useSearchParams } from 'react-router-dom';
+    import { cn } from '@/lib/utils';
+    import { getViewById, type ViewId } from '@/views/viewRegistry';
+    import { useSelectedItem } from '@/pages/DataDemo/store/dataDemo.store';
+
+    interface ViewRendererProps {
+      viewId: ViewId | string | null;
+      className?: string;
+    }
+
+    export function ViewRenderer({ viewId, className }: ViewRendererProps) {
+      const view = getViewById(viewId);
+      const { conversationId, itemId: pathItemId } = useParams();
+      const [searchParams] = useSearchParams();
+      const sidePaneItemId = searchParams.get('itemId');
+
+      // Specific logic for views that need props
+      const selectedItem = useSelectedItem(pathItemId || sidePaneItemId);
+
+      if (!view) {
+        return (
+          <div className="p-6 text-muted-foreground">
+            View not found: {viewId}
+          </div>
+        );
+      }
+
+      const { component: Component, hasOwnScrolling } = view;
+
+      let componentProps: any = {};
+      if (viewId === 'dataItemDetail') {
+        if (!selectedItem) {
+          return (
+            <div className="p-6 text-muted-foreground">
+              Item not found.
+            </div>
+          );
+        }
+        componentProps = { item: selectedItem };
+      } else if (viewId === 'messaging') {
+        componentProps = { conversationId };
+      }
+
+      const content = <Component {...componentProps} />;
+
+      if (hasOwnScrolling) {
+        return content;
+      }
+
+      return (
+        <div className={cn("h-full overflow-y-auto", className)}>
+          {content}
+        </div>
+      );
+    }
+  src/pages/Messaging/components/ActivityFeed.tsx: >
+    import React, { forwardRef } from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import type { Message, Contact, JourneyPointType } from '../types';
+
+    import { cn, formatDistanceToNowShort } from '@/lib/utils';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { StickyNote, Info, MessageSquare, ShoppingCart, PackageCheck,
+    AlertCircle, RefreshCw, MailQuestion, FileText, CreditCard, Truck, XCircle,
+    Undo2, Star, type LucideIcon } from 'lucide-react';
+
+
+    const journeyInfoMap: Record<JourneyPointType, { Icon: LucideIcon;
+    textColor: string; bgColor: string; }> = {
+      Inquiry: { Icon: Info, textColor: 'text-cyan-500', bgColor: 'bg-cyan-500' },
+      Consult: { Icon: MessageSquare, textColor: 'text-blue-500', bgColor: 'bg-blue-500' },
+      Quote: { Icon: FileText, textColor: 'text-orange-500', bgColor: 'bg-orange-500' },
+      Order: { Icon: ShoppingCart, textColor: 'text-green-500', bgColor: 'bg-green-500' },
+      Payment: { Icon: CreditCard, textColor: 'text-lime-500', bgColor: 'bg-lime-500' },
+      Shipped: { Icon: Truck, textColor: 'text-sky-500', bgColor: 'bg-sky-500' },
+      Delivered: { Icon: PackageCheck, textColor: 'text-emerald-500', bgColor: 'bg-emerald-500' },
+      Canceled: { Icon: XCircle, textColor: 'text-slate-500', bgColor: 'bg-slate-500' },
+      Refund: { Icon: Undo2, textColor: 'text-rose-500', bgColor: 'bg-rose-500' },
+      Complain: { Icon: AlertCircle, textColor: 'text-red-500', bgColor: 'bg-red-500' },
+      Reorder: { Icon: RefreshCw, textColor: 'text-indigo-500', bgColor: 'bg-indigo-500' },
+      'Follow-up': { Icon: MailQuestion, textColor: 'text-yellow-500', bgColor: 'bg-yellow-500' },
+      Review: { Icon: Star, textColor: 'text-amber-500', bgColor: 'bg-amber-500' },
+    };
+
+
+    interface ActivityFeedProps {
+      messages: Message[];
+      contact: Contact;
+      searchTerm?: string;
+    }
+
+
+    const Highlight = ({ text, highlight }: { text: string; highlight?: string
+    }) => {
+      if (!highlight) {
+        return <>{text}</>;
+      }
+      const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+      return (
+        <span>
+          {parts.map((part, i) =>
+            part.toLowerCase() === highlight.toLowerCase() ? (
+              <mark key={i} className="bg-primary/20 text-primary-foreground rounded px-0.5">{part}</mark>
+            ) : (
+              part
+            )
+          )}
+        </span>
+      );
+    };
+
+
+    export const ActivityFeed = forwardRef<HTMLDivElement, ActivityFeedProps>(({
+    messages, contact, searchTerm }, ref) => {
+      const getAssigneeById = useMessagingStore(state => state.getAssigneeById);
+
+      return (
+        <div ref={ref} className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+          {messages.map((message) => {
+            const assignee = message.userId ? getAssigneeById(message.userId) : null;
+            
+            if (message.journeyPoint) {
+              const journeyInfo = journeyInfoMap[message.journeyPoint];
+              const { Icon } = journeyInfo;
+              return (
+                <div key={message.id} data-message-id={message.id} className="relative py-3">
+                  <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div className="w-full border-t border-dashed" />
+                  </div>
+                  <div className="relative flex justify-center">
+                    <div className="bg-background px-3 flex items-center gap-2 text-sm font-medium">
+                      <Icon className={cn("w-4 h-4", journeyInfo.textColor)} />
+                      <span className={cn("font-semibold", journeyInfo.textColor)}>{message.journeyPoint}</span>
+                      <span className="text-xs text-muted-foreground font-normal whitespace-nowrap">{formatDistanceToNowShort(new Date(message.timestamp))}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            
+            if (message.type === 'system') {
+              return (
+                <div key={message.id} data-message-id={message.id} className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Info className="w-3.5 h-3.5" />
+                  <p><Highlight text={message.text} highlight={searchTerm} /></p>
+                  <p className="whitespace-nowrap">{formatDistanceToNowShort(new Date(message.timestamp))}</p>
+                </div>
+              );
+            }
+
+            if (message.type === 'note') {
+              return (
+                <div key={message.id} data-message-id={message.id} className="flex items-start gap-3">
+                  <div className="p-1.5 bg-yellow-400/20 text-yellow-600 rounded-full mt-1.5">
+                    <StickyNote className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-semibold text-sm">{assignee?.name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground">{formatDistanceToNowShort(new Date(message.timestamp))}</p>
+                    </div>
+                    <div className="bg-card border rounded-lg p-3 text-sm">
+                      <p><Highlight text={message.text} highlight={searchTerm} /></p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // Default: 'comment' type
+            return (
+              <div key={message.id} data-message-id={message.id} className={cn(
+                "flex items-end gap-3",
+                message.sender === 'user' ? 'justify-end' : 'justify-start'
+              )}>
+                {message.sender === 'contact' && (
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={contact.avatar} />
+                    <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                )}
+                <div className={cn(
+                  "max-w-xs md:max-w-md lg:max-w-lg p-3 rounded-2xl",
+                  message.sender === 'user' 
+                    ? 'bg-primary text-primary-foreground rounded-br-none' 
+                    : 'bg-card border rounded-bl-none'
+                )}>
+                  <p className="text-sm"><Highlight text={message.text} highlight={searchTerm} /></p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    });
+
+
+    ActivityFeed.displayName = 'ActivityFeed';
+  src/pages/Messaging/components/TaskList.tsx: >-
+    import { useEffect, useMemo } from 'react';
+
+    import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye }
+    from 'lucide-react';
+
+    import { Link, useParams } from 'react-router-dom';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover';
+
+    import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
+    CommandList, CommandSeparator } from '@/components/ui/command';
+
+    import { cn, formatDistanceToNowShort } from '@/lib/utils';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import type { TaskStatus, TaskPriority, TaskView } from '../types';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+    import { useMessagingTaskCounts } from '../store/messaging.store';
+
+
+    // Local helpers for styling based on task properties
+
+    const getStatusIcon = (status: TaskStatus) => {
+        switch(status) {
+            case 'open': return <Inbox className="w-3 h-3 text-blue-500" />;
+            case 'in-progress': return <Zap className="w-3 h-3 text-yellow-500" />;
+            case 'done': return <Shield className="w-3 h-3 text-green-500" />;
+            case 'snoozed': return <Clock className="w-3 h-3 text-gray-500" />;
+        }
+    };
+
+
+    const getPriorityIcon = (priority: TaskPriority) => {
+        switch(priority) {
+            case 'high': return <div className="w-2 h-2 rounded-full bg-red-500" />;
+            case 'medium': return <div className="w-2 h-2 rounded-full bg-yellow-500" />;
+            case 'low': return <div className="w-2 h-2 rounded-full bg-green-500" />;
+            default: return <div className="w-2 h-2 rounded-full bg-gray-400" />;
+        }
+    };
+
+
+    const statusOptions: { value: TaskStatus; label: string }[] = [
+        { value: 'open', label: 'Open' }, { value: 'in-progress', label: 'In Progress' }, { value: 'done', label: 'Done' }, { value: 'snoozed', label: 'Snoozed' }
+    ];
+
+    const priorityOptions: { value: TaskPriority; label: string }[] = [
+        { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }, { value: 'none', label: 'None' }
+    ];
+
+
+    const TABS_CONFIG: { id: TaskView, label: string }[] = [
+      { id: 'all_open', label: 'Open' },
+      { id: 'unassigned', label: 'Unassigned' },
+      { id: 'me', label: 'Me' },
+      { id: 'done', label: 'Done' }
+    ];
+
+
+    export const TaskList = () => {
+      const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
+      const { 
+        getFilteredTasks,
+        setSearchTerm,
+        activeFilters,
+        setActiveTaskView,
+        searchTerm,
+       } = useMessagingStore();
+       const { messagingView, setMessagingView } = useAppViewManager();
+       const taskCounts = useMessagingTaskCounts();
+
+      useEffect(() => {
+        setActiveTaskView(messagingView || 'all_open');
+      }, [messagingView, setActiveTaskView]);
+
+      const filteredTasks = getFilteredTasks();
+      const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
+
+      const TABS = useMemo(() => 
+        TABS_CONFIG.map(tab => ({
+          ...tab,
+          count: taskCounts[tab.id as keyof typeof taskCounts]
+        })), 
+        [taskCounts]
+      );
+
+      return (
+        <div className="h-full flex flex-col bg-background/80">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
+            <h2 className="text-xl font-bold tracking-tight">Inbox</h2>
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Search tasks..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-10 border-dashed gap-2">
+                            <SlidersHorizontal className="w-4 h-4" />
+                            Filters
+                            {activeFilterCount > 0 && <Badge variant="secondary" className="rounded-sm px-1 font-normal">{activeFilterCount}</Badge>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[240px] p-0" align="end">
+                        <FilterCommand />
+                    </PopoverContent>
+                </Popover>
+            </div>
+          </div>
+          <AnimatedTabs
+            tabs={TABS}
+            activeTab={messagingView || 'all_open'}
+            onTabChange={(tabId) => setMessagingView(tabId as TaskView)}
+            size="sm"
+            className="px-4"
+          />
+
+          {/* Task List */}
+          <div className="flex-1 overflow-y-auto">
+            <nav className="p-2 space-y-1">
+              {filteredTasks.map(task => {
+                const currentUserId = 'user-1';
+                const isHandledByOther = task.activeHandlerId && task.activeHandlerId !== currentUserId;
+
+                return (
+                  <Link
+                    to={`/messaging/${task.id}`}
+                    key={task.id}
+                    className={cn(
+                      "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
+                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                      conversationId === task.id && "bg-accent"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-9 w-9 mt-1">
+                        <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                        <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 overflow-hidden">
+                          <p className="text-sm font-semibold truncate pr-2">
+                            {task.contact.name} <span className="text-muted-foreground font-normal">&middot; {task.contact.company}</span>
+                          </p>
+                          <p className="text-sm truncate text-foreground mt-1">{task.title}</p>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1.5" title={task.status}>
+                                  {getStatusIcon(task.status)}
+                                  <span className="capitalize">{task.status.replace('-', ' ')}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5" title={task.priority}>
+                                  {getPriorityIcon(task.priority)}
+                                  <span className="capitalize">{task.priority}</span>
+                              </div>
+                              {task.assignee && (
+                                  <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
+                                      <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                                  </div>
+                              )}
+                              {isHandledByOther && <Eye className="w-3.5 h-3.5" title="Being handled by another user" />}
+                          </div>
+                      </div>
+                      <div className="flex flex-col items-end space-y-1.5 flex-shrink-0">
+                        <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNowShort(new Date(task.lastActivity.timestamp))}</p>
+                        {task.unreadCount > 0 ? (
+                            <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                        ) : <div className="h-5 w-5" /> /* Spacer to maintain alignment */ }
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
+        </div>
+      );
+    };
+
+
+    // Filter component for popover
+
+    function FilterCommand() {
+        const { activeFilters, setFilters, assignees, getAvailableTags } = useMessagingStore();
+        const availableTags = getAvailableTags();
+
+        const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) => {
+            const current = new Set(activeFilters[type]);
+            current.has(value) ? current.delete(value) : current.add(value);
+            setFilters({ [type]: Array.from(current) });
+        };
+
+        const hasActiveFilters = Object.values(activeFilters).some(arr => arr.length > 0);
+
+        return (
+            <Command>
+                <CommandInput placeholder="Filter by..." />
+                <CommandList>
+                    <CommandEmpty>No results found.</CommandEmpty>
+                    <CommandGroup heading="Status">
+                        {statusOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('status', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.status.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Priority">
+                        {priorityOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('priority', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.priority.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Assignee">
+                        {assignees.map(a => (
+                            <CommandItem key={a.id} onSelect={() => handleSelect('assigneeId', a.id)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.assigneeId.includes(a.id) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                                <span>{a.name}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Tags">
+                        {availableTags.map(t => (
+                            <CommandItem key={t} onSelect={() => handleSelect('tags', t)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.tags.includes(t) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{t}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+
+                    {hasActiveFilters && (
+                        <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                                <CommandItem onSelect={() => setFilters({ status: [], priority: [], assigneeId: [], tags: [], channels: [] })} className="justify-center text-center text-sm">Clear all filters</CommandItem>
+                            </CommandGroup>
+                        </>
+                    )}
+                </CommandList>
+            </Command>
+        );
+    }
+  src/features/dynamic-view/components/shared/DetailPanel.tsx: >-
+    import React, { useRef, useState, useMemo } from 'react'
+
+    import {
+      DndContext,
+      closestCenter,
+      type DragEndEvent,
+    } from '@dnd-kit/core';
+
+    import {
+      arrayMove,
+      SortableContext,
+      verticalListSortingStrategy,
+    } from '@dnd-kit/sortable';
+
+    import {
+      Clock, 
+      Tag,
+      User,
+      BarChart3,
+    } from 'lucide-react'
+
+    import type { GenericItem, DetailViewConfig, DetailViewSection } from
+    '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook';
+
+    import { EditableField } from './EditableField'
+
+    import { DraggableSection } from './DraggableSection'
+
+    import { getNestedValue } from '@/lib/utils'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+
+    interface DetailPanelProps<TFieldId extends string, TItem extends
+    GenericItem> {
+      item: TItem;
+      config: DetailViewConfig<TFieldId>;
+    }
+
+
+    const SECTION_ICONS: Record<string, React.ElementType> = {
+      "Assigned to": User,
+      "Engagement Metrics": BarChart3,
+      "Tags": Tag,
+      "Timeline": Clock,
+    };
+
+
+    export function DetailPanel<TFieldId extends string, TItem extends
+    GenericItem>({ item, config }: DetailPanelProps<TFieldId, TItem>) {
+      const contentRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(contentRef, [item]);
+      
+      const { getFieldDef } = useDynamicView<TFieldId, TItem>();
+      const { header, body } = config;
+      const [sections, setSections] = useState(body.sections);
+
+      const sectionIds = useMemo(() => sections.map(s => s.title), [sections]);
+
+      const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (active.id !== over?.id) {
+          setSections((currentSections) => {
+            const oldIndex = sectionIds.indexOf(active.id as string);
+            const newIndex = sectionIds.indexOf(over!.id as string);
+            return arrayMove(currentSections, oldIndex, newIndex);
+          });
+        }
+      };
+
+      if (!item) {
+        return null
+      }
+      
+      return (
+        <div ref={contentRef} className="flex-1 flex flex-col min-h-0">
+          {/* Header */}
+          <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                 <EditableField item={item} fieldId={header.thumbnailField} />
+              </div>
+              <div className="flex-1 min-w-0 break-words">
+                <h1 className="text-2xl font-bold mb-1 leading-tight truncate">
+                  <EditableField item={item} fieldId={header.titleField} />
+                </h1>
+                <p className="text-muted-foreground truncate">
+                  <EditableField item={item} fieldId={header.descriptionField} />
+                </p>
+              </div>
+            </div>
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              {header.badgeFields.map((fieldId: TFieldId) => (
+                <EditableField key={fieldId} item={item} fieldId={fieldId} />
+              ))}
+            </div>
+
+            {/* Progress */}
+            <EditableField item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              <DndContext
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={sectionIds}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {sections.map((section) => {
+                    const IconComponent = SECTION_ICONS[section.title];
+                    const hasContent = section.fields.some((fieldId: TFieldId) => {
+                      const value = getNestedValue(item, fieldId as string);
+                      return value !== null && typeof value !== 'undefined';
+                    });
+
+                    if (!hasContent) return null;
+
+                    return (
+                      <DraggableSection key={section.title} id={section.title} >
+                        <div className="p-4 bg-card/30 rounded-2xl border border-border/30">
+                          <div className="flex items-center gap-1 mb-3">
+                            {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
+                            <h3 className="font-semibold text-sm">{section.title}</h3>
+                          </div>
+                          <div className="space-y-3">
+                            {section.fields.map((fieldId: TFieldId) => {
+                              const fieldDef = getFieldDef(fieldId);
+                              return (
+                                <div key={fieldId} className="flex items-start gap-4 text-sm">
+                                  <div className="w-1/3 text-muted-foreground pt-1.5 shrink-0">{fieldDef?.label}</div>
+                                  <div className="w-2/3 grow min-w-0 break-words"><EditableField item={item} fieldId={fieldId} /></div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </DraggableSection>
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
+            </div>
+          </div>
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 577

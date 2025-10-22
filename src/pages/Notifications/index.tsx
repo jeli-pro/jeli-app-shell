@@ -113,6 +113,7 @@ function NotificationItem({ notification }: { notification: Notification; }) {
 export function NotificationsPage() {
   const bodyState = useAppShellStore(s => s.bodyState);
   const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
   
   const { activeTab, setActiveTab, markAllAsRead } = useNotificationsStore(s => ({ activeTab: s.activeTab, setActiveTab: s.setActiveTab, markAllAsRead: s.markAllAsRead }));
   const filteredNotifications = useFilteredNotifications();
@@ -137,8 +138,8 @@ export function NotificationsPage() {
   };
 
   const content = (
-    <Card className={cn("flex w-full flex-col shadow-none", isInSidePane ? "border-none" : "")}>
-      <CardHeader className={cn(isInSidePane ? "p-4" : "p-6")}>
+    <Card className={cn("flex w-full flex-col shadow-none", (isInSidePane || isFullscreen) ? "border-none" : "")}>
+      <CardHeader className={cn((isInSidePane || isFullscreen) ? "p-4" : "p-6")}>
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">
             Your notifications
@@ -168,7 +169,7 @@ export function NotificationsPage() {
         </Tabs>
       </CardHeader>
 
-      <CardContent className={cn("h-full p-0", isInSidePane ? "px-2" : "px-6")}>
+      <CardContent className={cn("h-full p-0", (isInSidePane || isFullscreen) ? "px-2" : "px-6")}>
         <div className="space-y-2 divide-y divide-border">
           {filteredNotifications.length > 0 ? (
             filteredNotifications.map((notification) => (
@@ -189,7 +190,7 @@ export function NotificationsPage() {
 
   return (
     <PageLayout>
-      {!isInSidePane && (
+      {!isInSidePane && !isFullscreen && (
         <PageHeader
           title="Notifications"
           description="Manage your notifications and stay up-to-date."

@@ -1,0 +1,653 @@
+uuid: c258411b-c743-41bb-b850-25299da18991
+projectId: jeli-app-shell
+createdAt: '2025-10-22T05:59:20.714Z'
+gitCommitMsg: >-
+  refactor(view-management): Isolate page-specific state and simplify view
+  manager
+
+  - Extracted all Data Demo URL parameter logic into a dedicated
+  `useDataDemoParams` hook. - Refactored `useAppViewManager` into a pure layout
+  controller, removing page-specific concerns. - Updated `DataDemoPage` to
+  consume the new dedicated hook for its state and the refactored view manager
+  for layout actions. - Removed special-case logic that forced the Messaging
+  page into a split view, allowing it to be a self-contained component. -
+  Simplified `MessagingPage` by removing now-redundant `usePageViewConfig`
+  calls.
+promptSummary: >-
+  Resending a previous multi-file response in the correct format as requested by
+  the user. The changes isolate page-specific state from the global view manager
+  and refactor the view manager into a pure layout controller.
+reasoning:
+  - Of course. Here is the response in the correct format.
+  - >-
+    I am executing Part 2 of our refactoring plan. My focus is on centralizing
+    layout control and decoupling page-specific state. I'm creating a new,
+    dedicated hook for the Data Demo page's complex URL parameters, cleaning
+    them out of the global `useAppViewManager`. This refactors
+    `useAppViewManager` into a pure, lean layout controller. I'm also ensuring
+    the Messaging page behaves as a self-contained unit, simplifying its
+    interaction with the shell. This lays the groundwork for a much cleaner,
+    more predictable application architecture.
+  - >-
+    First, I'll create `useDataDemoParams.hook.ts` to isolate all the URL
+    parameter logic for the Data Demo page. This makes the component
+    self-sufficient for its state management and cleans up the global view
+    manager.
+  - >-
+    Next, I'll refactor `useAppViewManager` into a pure layout controller. It
+    will no longer concern itself with page-specific details.
+  - I'll now update the `DataDemoPage` to use the new `useDataDemoParams` hook.
+  - >-
+    Finally, I'll remove the `usePageViewConfig` from the `MessagingPage` to
+    make it a fully self-contained component.
+operations:
+  - type: write
+    path: src/pages/DataDemo/hooks/useDataDemoParams.hook.ts
+    content: >-
+      import { useMemo, useCallback } from 'react';
+
+      import { useSearchParams } from 'react-router-dom';
+
+      import { format, parse, isValid } from 'date-fns';
+
+      import type { ViewMode, SortConfig, GroupableField, CalendarDateProp,
+      CalendarDisplayProp, CalendarColorProp, FilterConfig } from
+      '@/features/dynamic-view/types';
+
+
+      export function useDataDemoParams() {
+          const [searchParams, setSearchParams] = useSearchParams();
+
+          // --- READ URL PARAMS ---
+          const q = searchParams.get('q');
+          const status = searchParams.get('status');
+          const priority = searchParams.get('priority');
+          const sort = searchParams.get('sort');
+          const calDate = searchParams.get('calDate');
+          const calDisplay = searchParams.get('calDisplay');
+          const calLimit = searchParams.get('calLimit');
+          const calColor = searchParams.get('calColor');
+          const dateParam = searchParams.get('date');
+
+          // --- DERIVED STATE FROM URL ---
+          const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
+          const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
+          const groupBy = useMemo(() => {
+              const groupByParam = (searchParams.get('groupBy') as GroupableField<string> | 'none') || 'none';
+              if (viewMode === 'kanban' && groupByParam === 'none') {
+                  return 'status';
+              }
+              return groupByParam;
+          }, [searchParams, viewMode]);
+          const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
+          const filters = useMemo<FilterConfig>(
+              () => ({
+                  searchTerm: q || '',
+                  status: (status?.split(',') || []).filter(Boolean),
+                  priority: (priority?.split(',') || []).filter(Boolean),
+              }),
+              [q, status, priority],
+          );
+          const sortConfig = useMemo<SortConfig<string> | null>(() => {
+              if (viewMode === 'kanban') return null;
+              const sortParam = sort;
+              if (!sortParam) return { key: 'updatedAt', direction: 'desc' };
+              if (sortParam === 'default') return null;
+
+              const [key, direction] = sortParam.split('-');
+              return { key, direction: direction as 'asc' | 'desc' };
+          }, [sort, viewMode]);
+          const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp<string>, [calDate]);
+          const calendarDisplayProps = useMemo(
+              () => {
+                  if (calDisplay === null) return [];
+                  if (calDisplay === '') return [];
+                  return calDisplay.split(',') as CalendarDisplayProp<string>[];
+              },
+              [calDisplay]
+          );
+          const calendarItemLimit = useMemo(() => {
+              const limit = parseInt(calLimit || '3', 10);
+              if (calLimit === 'all') return 'all';
+              return isNaN(limit) ? 3 : limit;
+          }, [calLimit]);
+          const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp<string>, [calColor]);
+          const calendarDate = useMemo(() => {
+              if (!dateParam) return new Date();
+              const parsedDate = parse(dateParam, 'yyyy-MM', new Date());
+              return isValid(parsedDate) ? parsedDate : new Date();
+          }, [dateParam]);
+
+          // --- MUTATOR ACTIONS ---
+          const handleParamsChange = useCallback(
+              (newParams: Record<string, string | number | string[] | null | undefined>, resetPage = false) => {
+                  setSearchParams(
+                      (prev) => {
+                          const updated = new URLSearchParams(prev);
+                          
+                          for (const [key, value] of Object.entries(newParams)) {
+                              if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
+                                  updated.delete(key);
+                              } else if (Array.isArray(value)) {
+                                  updated.set(key, value.join(','));
+                              } else {
+                                  updated.set(key, String(value));
+                              }
+                          }
+
+                          if (resetPage) {
+                              updated.delete('page');
+                          }
+                          if ('groupBy' in newParams) {
+                              updated.delete('tab');
+                          }
+
+                          return updated;
+                      },
+                      { replace: true },
+                  );
+              },
+              [setSearchParams],
+          );
+
+          const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
+          const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
+          const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
+          const setFilters = (newFilters: FilterConfig) => {
+              handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
+          }
+          const setSort = (config: SortConfig<string> | null) => {
+              if (!config) {
+                  handleParamsChange({ sort: null }, true);
+              } else {
+                  handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
+              }
+          }
+          const setTableSort = (field: string) => {
+              let newSort: string | null = `${field}-desc`;
+              if (sortConfig && sortConfig.key === field) {
+                  if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
+                  else if (sortConfig.direction === 'asc') newSort = null;
+              }
+              handleParamsChange({ sort: newSort }, true);
+          };
+          const setPage = (newPage: number) => handleParamsChange({ page: newPage > 1 ? newPage.toString() : null });
+
+          // Calendar specific actions
+          const setCalendarDateProp = (prop: CalendarDateProp<string>) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
+          const setCalendarDisplayProps = (props: CalendarDisplayProp<string>[]) => {
+              const isDefault = props.length === 0;
+              handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });
+          };
+          const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
+          const setCalendarColorProp = (prop: CalendarColorProp<string>) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
+          
+          const setCalendarDate = useCallback((date: Date) => {
+              const newDateStr = format(date, 'yyyy-MM');
+              const currentDateStr = format(new Date(), 'yyyy-MM');
+              const valueToSet = newDateStr === currentDateStr ? null : newDateStr;
+              handleParamsChange({ date: valueToSet });
+          }, [handleParamsChange]);
+
+
+          return useMemo(() => ({
+              viewMode,
+              page,
+              groupBy,
+              activeGroupTab,
+              filters,
+              sortConfig,
+              calendarDateProp,
+              calendarDisplayProps,
+              calendarItemLimit,
+              calendarColorProp,
+              calendarDate,
+              setViewMode,
+              setGroupBy,
+              setActiveGroupTab,
+              setFilters,
+              setSort,
+              setTableSort,
+              setPage,
+              setCalendarDateProp,
+              setCalendarDisplayProps,
+              setCalendarItemLimit,
+              setCalendarColorProp,
+              setCalendarDate,
+          }), [
+              viewMode, page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
+              calendarDisplayProps, calendarItemLimit, calendarColorProp, calendarDate,
+              setViewMode, setGroupBy, setActiveGroupTab, setFilters,
+              setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp, setCalendarDate
+          ]);
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/hooks/useAppViewManager.hook.ts
+    content: "--- src/hooks/useAppViewManager.hook.ts\n+++ src/hooks/useAppViewManager.hook.ts\n@@ -1,10 +1,7 @@\n import { useMemo, useCallback, useEffect, useRef } from 'react';\n import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';\n import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';\n-import { format, parse, isValid } from 'date-fns';\n-import type { GenericItem, ViewMode, SortConfig, GroupableField, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';\n import type { TaskView } from '@/pages/Messaging/types';\n import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';\n \n@@ -28,21 +25,12 @@\n export function useAppViewManager() {\n   const [searchParams, setSearchParams] = useSearchParams();\n   const navigate = useNavigate();\n   const location = useLocation();\n-  const { itemId: pathItemId, conversationId } from useParams<{ itemId: string; conversationId: string }>();\n+  const { itemId: pathItemId, conversationId } = useParams<{ itemId?: string; conversationId?: string }>();\n   const { setSidebarState, sidebarState } = useAppShellStore();\n \n   // --- DERIVED STATE FROM URL ---\n \n   const view = searchParams.get('view');\n   const sidePane = searchParams.get('sidePane');\n   const sidePaneItemId = searchParams.get('itemId');\n   const right = searchParams.get('right');\n   const messagingView = searchParams.get('messagingView') as TaskView | null;\n-  const q = searchParams.get('q');\n-  const status = searchParams.get('status');\n-  const priority = searchParams.get('priority');\n-  const sort = searchParams.get('sort');\n-  const calDate = searchParams.get('calDate');\n-  const calDisplay = searchParams.get('calDisplay');\n-  const calLimit = searchParams.get('calLimit');\n-  const calColor = searchParams.get('calColor');\n-  const dateParam = searchParams.get('date');\n \n   const { bodyState, sidePaneContent } = useMemo(() => {\n     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n@@ -58,11 +46,6 @@\n       return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };\n     }\n \n-    // 3. Messaging conversation view (always split)\n-    if (conversationId) {\n-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };\n-    }\n-\n     // 4. Generic split view via URL param\n     if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {\n       return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };\n@@ -75,64 +58,6 @@\n     }\n   }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);\n \n-  // DataDemo specific state\n-  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);\n-  const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);\n-  const groupBy = useMemo(() => {\n-    const groupByParam = (searchParams.get('groupBy') as GroupableField<string> | 'none') || 'none';\n-    // Kanban view should default to grouping by status if no group is specified\n-    if (viewMode === 'kanban' && groupByParam === 'none') {\n-      return 'status';\n-    }\n-    return groupByParam;\n-  }, [searchParams, viewMode]);\n-  const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n-  const filters = useMemo<FilterConfig>(\n-\t\t() => ({\n-\t\t\tsearchTerm: q || '',\n-\t\t\tstatus: (status?.split(',') || []).filter(Boolean),\n-\t\t\tpriority: (priority?.split(',') || []).filter(Boolean),\n-\t\t}),\n-\t\t[q, status, priority],\n-\t);\n-  const sortConfig = useMemo<SortConfig<string> | null>(() => {\n-    if (viewMode === 'kanban') return null; // Kanban is manually sorted\n-\t\tconst sortParam = sort;\n-\t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n-\t\tif (sortParam === 'default') return null;\n-\n-\t\tconst [key, direction] = sortParam.split('-');\n-\t\treturn { key, direction: direction as 'asc' | 'desc' };\n-  }, [sort, viewMode]);\n-  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp<string>, [calDate]);\n-  const calendarDisplayProps = useMemo(\n-    () => {\n-      if (calDisplay === null) return []; // Default is now nothing\n-      if (calDisplay === '') return []; // Explicitly empty is also nothing\n-      return calDisplay.split(',') as CalendarDisplayProp<string>[];\n-    },\n-    [calDisplay]\n-  );\n-  const calendarItemLimit = useMemo(() => {\n-    const limit = parseInt(calLimit || '3', 10);\n-    if (calLimit === 'all') return 'all';\n-    return isNaN(limit) ? 3 : limit;\n-  }, [calLimit]);\n-  const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp<string>, [calColor]);\n-\n-  const calendarDate = useMemo(() => {\n-    if (!dateParam) return new Date();\n-    const parsedDate = parse(dateParam, 'yyyy-MM', new Date());\n-    return isValid(parsedDate) ? parsedDate : new Date();\n-  }, [dateParam]);\n-\n   // --- MUTATOR ACTIONS ---\n \n   const handleParamsChange = useCallback(\n@@ -194,6 +119,12 @@\n     }\n   }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);\n   \n+  const toggleFullscreen = useCallback((target?: 'main' | 'right') => {\n+    // This logic is handled by the store, which will be updated by ViewModeSwitcher\n+    // For now, we assume the store has a `toggleFullscreen` action\n+    useAppShellStore.getState().toggleFullscreen(target);\n+  }, []);\n+\n   const setNormalView = useCallback(() => {\n       handleParamsChange({ sidePane: null, view: null, right: null });\n   }, [handleParamsChange]);\n@@ -223,51 +154,11 @@\n     }\n   }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n   \n-  // DataDemo actions\n-  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });\n-  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);\n-  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });\n-  const setFilters = (newFilters: FilterConfig) => {\n-    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);\n-  }\n-  const setSort = (config: SortConfig<string> | null) => {\n-    if (!config) {\n-      handleParamsChange({ sort: null }, true);\n-    } else {\n-      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);\n-    }\n-  }\n-  const setTableSort = (field: string) => {\n-    let newSort: string | null = `${field}-desc`;\n-    if (sortConfig && sortConfig.key === field) {\n-      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;\n-      else if (sortConfig.direction === 'asc') newSort = null;\n-    }\n-    handleParamsChange({ sort: newSort }, true);\n-  };\n-  const setPage = (newPage: number) => handleParamsChange({ page: newPage > 1 ? newPage.toString() : null });\n-\n-  // Calendar specific actions\n-  const setCalendarDateProp = (prop: CalendarDateProp<string>) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });\n-  const setCalendarDisplayProps = (props: CalendarDisplayProp<string>[]) => {\n-    // Check for default state to keep URL clean\n-    const isDefault = props.length === 0;\n-    handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });\n-  };\n-  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });\n-  const setCalendarColorProp = (prop: CalendarColorProp<string>) => handleParamsChange({ calColor: prop === 'none' ? null : prop });\n-\n-  const onItemSelect = useCallback((item: GenericItem) => {\n-    handleParamsChange({ itemId: item.id, sidePane: null });\n+  const onItemSelect = useCallback((itemId: string) => {\n+    handleParamsChange({ itemId: itemId, sidePane: null, view: null, right: null });\n   }, [handleParamsChange]);\n-  \n-  const setCalendarDate = useCallback((date: Date) => {\n-    const newDateStr = format(date, 'yyyy-MM');\n-    const currentDateStr = format(new Date(), 'yyyy-MM');\n-    // If it's the current month, clear the param to keep the URL clean\n-    const valueToSet = newDateStr === currentDateStr ? null : newDateStr;\n-    handleParamsChange({ date: valueToSet });\n-  }, [handleParamsChange]);\n \n   const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });\n \n@@ -280,34 +171,19 @@\n     pathItemId, // Expose for main content decisions\n     itemId,\n     messagingView,\n-    // DataDemo State\n-    viewMode,\n-    page,\n-    groupBy,\n-    activeGroupTab,\n-    filters,\n-    sortConfig,\n-    calendarDateProp,\n-    calendarDisplayProps,\n-    calendarItemLimit,\n-    calendarColorProp,\n-    calendarDate,\n     // Actions\n     navigateTo,\n     openSidePane,\n     closeSidePane,\n     toggleSidePane,\n     toggleSplitView,\n+    toggleFullscreen,\n     setNormalView,\n     switchSplitPanes,\n     setMessagingView,\n     closeSplitPane,\n-    // DataDemo Actions\n     onItemSelect,\n-    setViewMode,\n-    setGroupBy,\n-    setActiveGroupTab,\n-    setFilters,\n-    setSort,\n-    setTableSort,\n-    setPage,\n-    setCalendarDateProp,\n-    setCalendarDisplayProps,\n-    setCalendarItemLimit,\n-    setCalendarColorProp,\n-    setCalendarDate,\n   }), [\n-    bodyState, sidePaneContent, currentActivePage, pathItemId, itemId, messagingView, viewMode,\n-    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,\n-    calendarDisplayProps, calendarItemLimit, calendarColorProp, calendarDate,\n-    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,\n-    switchSplitPades, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,\n-    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp, setCalendarDate\n+    bodyState, sidePaneContent, currentActivePage, pathItemId, itemId, messagingView,\n+    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, toggleFullscreen,\n+    setNormalView, switchSplitPanes, setMessagingView, closeSplitPane, onItemSelect\n   ]);\n }\n"
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: |
+      --- src/pages/DataDemo/index.tsx
+      +++ src/pages/DataDemo/index.tsx
+      @@ -10,12 +10,10 @@
+       import { useScrollToBottom } from "@/hooks/useScrollToBottom.hook";
+       import { ScrollToBottomButton } from "@/components/shared/ScrollToBottomButton";
+       import { mockDataItems } from "./data/mockData";
+      +import { useDataDemoParams } from "./hooks/useDataDemoParams.hook";
+       import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+       import { useDataDemoStore, useSelectedItem } from "./store/dataDemo.store";
+       import { AddDataItemCta } from "@/features/dynamic-view/components/shared/AddDataItemCta";
+       import { DataDetailContent } from "./components/DataDetailContent";
+       
+       import { dataDemoViewConfig } from "./DataDemo.config";
+       import type { StatItem } from "@/features/dynamic-view/types";
+       
+       export default function DataDemoPage() {
+      +  const { pathItemId, onItemSelect } = useAppViewManager();
+         const {
+           viewMode,
+           groupBy,
+      @@ -28,14 +26,8 @@
+           setPage,
+           setFilters,
+           setViewMode,
+      -    onItemSelect,
+      -    pathItemId,
+           calendarDate,
+           setCalendarDate,
+      -  } = useAppViewManager();
+      +  } = useDataDemoParams();
+       
+         const selectedItem = useSelectedItem(pathItemId);
+       
+      @@ -188,8 +180,8 @@
+               onGroupByChange={setGroupBy}
+               onActiveGroupTabChange={setActiveGroupTab}
+               onPageChange={setPage}
+      -        onItemUpdate={updateItem}
+      -        onItemSelect={onItemSelect}
+      +        onItemUpdate={updateItem}
+      +        onItemSelect={(item) => onItemSelect(item.id)}
+               loaderRef={loaderRef}
+               scrollContainerRef={scrollRef}
+               statsData={stats}
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: >
+      --- src/pages/Messaging/index.tsx
+
+      +++ src/pages/Messaging/index.tsx
+
+      @@ -1,6 +1,5 @@
+       import React, { useState, useRef, useEffect, useCallback } from "react";
+       import { useParams } from "react-router-dom";
+      -import { usePageViewConfig } from "@/hooks/usePageViewConfig.hook";
+       import { useAppShellStore } from "@/store/appShell.store";
+       import { TaskList } from "./components/TaskList";
+       import { TaskDetail } from "./components/TaskDetail";
+      @@ -43,13 +42,6 @@
+       export default function MessagingPage() {
+         const { conversationId } = useParams<{ conversationId?: string }>();
+         const containerRef = useRef<HTMLDivElement>(null);
+      -
+
+      -  const defaultSplitPaneWidth = useAppShellStore((s) =>
+      s.defaultSplitPaneWidth);
+
+      -  // When a conversation is selected (split view), reset the pane width
+      to default.
+
+      -  // When no conversation is selected, we don't want to manage the width,
+      so pass undefined.
+
+      -  const desiredSplitPaneWidth = conversationId ? defaultSplitPaneWidth :
+      undefined;
+
+      -  usePageViewConfig({ splitPaneWidth: desiredSplitPaneWidth });
+       
+         const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);
+       
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/hooks/useDataDemoParams.hook.ts: null
+  src/pages/Messaging/index.tsx: |-
+    import React, { useState, useRef, useEffect, useCallback } from "react";
+    import { useParams } from "react-router-dom";
+    import { usePageViewConfig } from "@/hooks/usePageViewConfig.hook";
+    import { useAppShellStore } from "@/store/appShell.store";
+    import { TaskList } from "./components/TaskList";
+    import { TaskDetail } from "./components/TaskDetail";
+    import { cn } from "@/lib/utils";
+
+    const useResizableMessagingPanes = (
+      containerRef: React.RefObject<HTMLDivElement>,
+      initialWidth: number = 320
+    ) => {
+      const [isResizing, setIsResizing] = useState(false);
+      const [listWidth, setListWidth] = useState(initialWidth);
+
+      const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsResizing(true);
+      }, []);
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing || !containerRef.current) return;
+          const containerRect = containerRef.current.getBoundingClientRect();
+          const newWidth = e.clientX - containerRect.left;
+          // Constraints for the conversation list pane
+          setListWidth(Math.max(280, Math.min(newWidth, containerRect.width - 500)));
+        };
+
+        const handleMouseUp = () => {
+          setIsResizing(false);
+        };
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          window.addEventListener('mousemove', handleMouseMove);
+          window.addEventListener('mouseup', handleMouseUp, { once: true });
+        }
+
+        return () => {
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+          if (document.body) {
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+          }
+        };
+      }, [isResizing, containerRef]);
+
+      return { listWidth, handleMouseDown, isResizing };
+    };
+
+    export default function MessagingPage() {
+      const { conversationId } = useParams<{ conversationId?: string }>();
+      const containerRef = useRef<HTMLDivElement>(null);
+
+      const defaultSplitPaneWidth = useAppShellStore((s) => s.defaultSplitPaneWidth);
+      // When a conversation is selected (split view), reset the pane width to default.
+      // When no conversation is selected, we don't want to manage the width, so pass undefined.
+      const desiredSplitPaneWidth = conversationId ? defaultSplitPaneWidth : undefined;
+      usePageViewConfig({ splitPaneWidth: desiredSplitPaneWidth });
+
+      const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "h-full w-full flex bg-background",
+            isResizing && "cursor-col-resize select-none"
+          )}
+        >
+          <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 h-full">
+            <TaskList />
+          </div>
+          <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+          </div>
+          <div className="flex-1 min-w-0 h-full">
+            <TaskDetail />
+          </div>
+        </div>
+      );
+    }
+  src/pages/DataDemo/index.tsx: >
+    import { useRef, useEffect, useCallback } from "react";
+
+    import {
+      Layers,
+      AlertTriangle,
+      PlayCircle,
+      TrendingUp,
+      CheckCircle,
+      Clock,
+      Archive,
+      PlusCircle,
+    } from "lucide-react";
+
+    import { DynamicView } from "@/features/dynamic-view/DynamicView";
+
+    import { PageLayout } from "@/components/shared/PageLayout";
+
+    import { useScrollToBottom } from "@/hooks/useScrollToBottom.hook";
+
+    import { ScrollToBottomButton } from
+    "@/components/shared/ScrollToBottomButton";
+
+    import { mockDataItems } from "./data/mockData";
+
+    import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+    import { useDataDemoStore, useSelectedItem } from "./store/dataDemo.store";
+
+    import { AddDataItemCta } from
+    "@/features/dynamic-view/components/shared/AddDataItemCta";
+
+    import { DataDetailContent } from "./components/DataDetailContent";
+
+
+    import { dataDemoViewConfig } from "./DataDemo.config";
+
+    import type { StatItem } from "@/features/dynamic-view/types";
+
+
+    export default function DataDemoPage() {
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+        setFilters,
+        setViewMode,
+        onItemSelect,
+        pathItemId,
+        calendarDate,
+        setCalendarDate,
+      } = useAppViewManager();
+
+      const selectedItem = useSelectedItem(pathItemId);
+
+      const {
+        items: allItems,
+        hasMore,
+        isLoading,
+        isInitialLoading,
+        totalItemCount,
+        loadData,
+        updateItem,
+      } = useDataDemoStore((state) => ({
+        items: state.items,
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+        updateItem: state.updateItem,
+      }));
+
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Note: The `DynamicViewProvider` needs `GenericItem[]`.
+      // Our store uses `GenericItem` so no cast is needed.
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length;
+      const { showScrollToBottom, scrollToBottom, handleScroll } =
+        useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(
+        (item) => item.status === "active",
+      ).length;
+      const highPriorityItems = mockDataItems.filter(
+        (item) => item.priority === "high" || item.priority === "critical",
+      ).length;
+      const avgCompletion =
+        totalItems > 0
+          ? Math.round(
+              mockDataItems.reduce(
+                (acc, item) => acc + item.metrics.completion,
+                0,
+              ) / totalItems,
+            )
+          : 0;
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          chartData: [120, 125, 122, 130, 135, 138, 142],
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week",
+          trend: "up" as const,
+          chartData: [45, 50, 48, 55, 53, 60, 58],
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          chartData: [25, 26, 28, 27, 26, 24, 23],
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          chartData: [65, 68, 70, 69, 72, 75, 78],
+        },
+        {
+          title: "Completion Rate",
+          value: "88%",
+          icon: <CheckCircle className="w-5 h-5" />,
+          change: "+1.5% this month",
+          trend: "up" as const,
+          chartData: [80, 82, 81, 84, 85, 87, 88],
+        },
+        {
+          title: "Overdue Items",
+          value: "8",
+          icon: <Clock className="w-5 h-5" />,
+          change: "-3 this week",
+          trend: "down" as const,
+        },
+        {
+          title: "New This Week",
+          value: "12",
+          icon: <PlusCircle className="w-5 h-5" />,
+          change: "+2 from last week",
+          trend: "up" as const,
+        },
+        {
+          title: "Archived Projects",
+          value: "153",
+          icon: <Archive className="w-5 h-5" />,
+          change: "+20 this month",
+          trend: "up" as const,
+        },
+      ];
+
+      useEffect(() => {
+        loadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === "calendar" || viewMode === "kanban",
+        });
+      }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+
+      if (pathItemId && selectedItem) {
+        // Render detail view as the main content
+        return <DataDetailContent item={selectedItem} />;
+      }
+
+      return (
+        <PageLayout scrollRef={scrollRef} onScroll={handleScroll}>
+          <DynamicView
+            viewConfig={dataDemoViewConfig}
+            items={allItems}
+            isLoading={isLoading}
+            isInitialLoading={isInitialLoading}
+            totalItemCount={totalItemCount}
+            hasMore={hasMore}
+            // Controlled state
+            viewMode={viewMode}
+            filters={filters}
+            sortConfig={sortConfig}
+            groupBy={groupBy}
+            activeGroupTab={activeGroupTab}
+            page={page}
+            // Callbacks
+            calendarDate={calendarDate}
+            onCalendarDateChange={setCalendarDate}
+            onViewModeChange={setViewMode}
+            onFiltersChange={setFilters}
+            onSortChange={setSort}
+            onGroupByChange={setGroupBy}
+            onActiveGroupTabChange={setActiveGroupTab}
+            onPageChange={setPage}
+            onItemUpdate={updateItem}
+            onItemSelect={onItemSelect}
+            loaderRef={loaderRef}
+            scrollContainerRef={scrollRef}
+            statsData={stats}
+            // Custom Renderers
+            renderCta={(viewMode, ctaProps) => (
+              <AddDataItemCta viewMode={viewMode} colSpan={ctaProps.colSpan} />
+            )}
+          />
+
+          <ScrollToBottomButton
+            isVisible={showScrollToBottom}
+            onClick={scrollToBottom}
+          />
+        </PageLayout>
+      );
+    }
+  src/hooks/useAppViewManager.hook.ts: "import { useMemo, useCallback, useEffect, useRef } from 'react';\nimport { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';\nimport { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';\nimport { format, parse, isValid } from 'date-fns';\nimport type { GenericItem, ViewMode, SortConfig, GroupableField, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';\nimport type { TaskView } from '@/pages/Messaging/types';\nimport { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';\n\nconst pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {\n  dashboard: 'main',\n  settings: 'settings',\n  toaster: 'toaster',\n  notifications: 'notifications',\n  'data-demo': 'dataDemo',\n  messaging: 'messaging',\n};\n\nfunction usePrevious<T>(value: T): T | undefined {\n  const ref = useRef<T>();\n  useEffect(() => {\n    ref.current = value;\n  });\n  return ref.current;\n}\n\n/**\n * A centralized hook to manage and synchronize all URL-based view states.\n * This is the single source of truth for view modes, side panes, split views,\n * and page-specific parameters.\n */\nexport function useAppViewManager() {\n  const [searchParams, setSearchParams] = useSearchParams();\n  const navigate = useNavigate();\n  const location = useLocation();\n  const { itemId: pathItemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();\n  const { setSidebarState, sidebarState } = useAppShellStore();\n\n  // --- DERIVED STATE FROM URL ---\n\n  const view = searchParams.get('view');\n  const sidePane = searchParams.get('sidePane');\n  const sidePaneItemId = searchParams.get('itemId');\n  const right = searchParams.get('right');\n  const messagingView = searchParams.get('messagingView') as TaskView | null;\n  const q = searchParams.get('q');\n  const status = searchParams.get('status');\n  const priority = searchParams.get('priority');\n  const sort = searchParams.get('sort');\n  const calDate = searchParams.get('calDate');\n  const calDisplay = searchParams.get('calDisplay');\n  const calLimit = searchParams.get('calLimit');\n  const calColor = searchParams.get('calColor');\n  const dateParam = searchParams.get('date');\n\n  const { bodyState, sidePaneContent } = useMemo(() => {\n    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];\n    \n    // 1. Priority: Explicit side pane overlay via URL param\n    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };\n    }\n\n    // 2. Data item detail view in a pane, triggered by search param\n    if (sidePaneItemId) {\n      if (view === 'split') {\n        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };\n      }\n      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };\n    }\n\n    // 3. Messaging conversation view (always split)\n    if (conversationId) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };\n    }\n\n    // 4. Generic split view via URL param\n    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {\n      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };\n    }\n\n    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };\n  }, [sidePaneItemId, conversationId, view, sidePane, right]);\n  \n  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);\n  const prevActivePage = usePrevious(currentActivePage);\n\n  // --- SIDE EFFECTS ---\n  useEffect(() => {\n    // On navigating to messaging page, collapse sidebar if it's expanded.\n    // This ensures a good default view but allows the user to expand it again if they wish.\n    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {\n      setSidebarState(SIDEBAR_STATES.COLLAPSED);\n    }\n  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);\n\n  // DataDemo specific state\n  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);\n  const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);\n  const groupBy = useMemo(() => {\n    const groupByParam = (searchParams.get('groupBy') as GroupableField<string> | 'none') || 'none';\n    // Kanban view should default to grouping by status if no group is specified\n    if (viewMode === 'kanban' && groupByParam === 'none') {\n      return 'status';\n    }\n    return groupByParam;\n  }, [searchParams, viewMode]);\n  const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);\n  const filters = useMemo<FilterConfig>(\n\t\t() => ({\n\t\t\tsearchTerm: q || '',\n\t\t\tstatus: (status?.split(',') || []).filter(Boolean),\n\t\t\tpriority: (priority?.split(',') || []).filter(Boolean),\n\t\t}),\n\t\t[q, status, priority],\n\t);\n  const sortConfig = useMemo<SortConfig<string> | null>(() => {\n    if (viewMode === 'kanban') return null; // Kanban is manually sorted\n\t\tconst sortParam = sort;\n\t\tif (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort\n\t\tif (sortParam === 'default') return null;\n\n\t\tconst [key, direction] = sortParam.split('-');\n\t\treturn { key, direction: direction as 'asc' | 'desc' };\n  }, [sort, viewMode]);\n  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp<string>, [calDate]);\n  const calendarDisplayProps = useMemo(\n    () => {\n      if (calDisplay === null) return []; // Default is now nothing\n      if (calDisplay === '') return []; // Explicitly empty is also nothing\n      return calDisplay.split(',') as CalendarDisplayProp<string>[];\n    },\n    [calDisplay]\n  );\n  const calendarItemLimit = useMemo(() => {\n    const limit = parseInt(calLimit || '3', 10);\n    if (calLimit === 'all') return 'all';\n    return isNaN(limit) ? 3 : limit;\n  }, [calLimit]);\n  const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp<string>, [calColor]);\n\n  const calendarDate = useMemo(() => {\n    if (!dateParam) return new Date();\n    const parsedDate = parse(dateParam, 'yyyy-MM', new Date());\n    return isValid(parsedDate) ? parsedDate : new Date();\n  }, [dateParam]);\n\n  // --- MUTATOR ACTIONS ---\n\n  const handleParamsChange = useCallback(\n\t\t(newParams: Record<string, string | number | string[] | null | undefined>, resetPage = false) => {\n\t\t\tsetSearchParams(\n\t\t\t\t(prev) => {\n\t\t\t\t\tconst updated = new URLSearchParams(prev);\n\t\t\t\t\t\n\t\t\t\t\tfor (const [key, value] of Object.entries(newParams)) {\n\t\t\t\t\t\tif (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {\n\t\t\t\t\t\t\tupdated.delete(key);\n\t\t\t\t\t\t} else if (Array.isArray(value)) {\n\t\t\t\t\t\t\tupdated.set(key, value.join(','));\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\tupdated.set(key, String(value));\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\n\t\t\t\t\tif (resetPage) {\n\t\t\t\t\t\tupdated.delete('page');\n\t\t\t\t\t}\n\t\t\t\t\tif ('groupBy' in newParams) {\n\t\t\t\t\t\tupdated.delete('tab');\n\t\t\t\t\t}\n\n\t\t\t\t\treturn updated;\n\t\t\t\t},\n\t\t\t\t{ replace: true },\n\t\t\t);\n\t\t},\n\t\t[setSearchParams],\n\t);\n\n  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {\n    const targetPath = page.startsWith('/') ? page : `/${page}`;\n    const isSamePage = location.pathname === targetPath;\n    \n    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);\n\n    if (params) {\n      for (const [key, value] of Object.entries(params)) {\n        if (value === null || value === undefined) {\n          newSearchParams.delete(key);\n        } else {\n          newSearchParams.set(key, value);\n        }\n      }\n    }\n\n    navigate({ pathname: targetPath, search: newSearchParams.toString() });\n  }, [navigate, location.pathname, searchParams]);\n\n  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {\n        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });\n    } else {\n        handleParamsChange({ sidePane: pane, view: null, right: null });\n    }\n  }, [handleParamsChange, navigate, location.pathname]);\n\n  const closeSidePane = useCallback(() => {\n    // This should close any kind of side pane, including dataItem\n    handleParamsChange({ sidePane: null, view: null, right: null, itemId: null });\n  }, [handleParamsChange]);\n\n  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {\n    if (sidePane === pane) {\n      closeSidePane();\n    } else {\n      openSidePane(pane);\n    }\n  }, [sidePane, openSidePane, closeSidePane]);\n\n  const toggleSplitView = useCallback(() => {\n    if (bodyState === BODY_STATES.SIDE_PANE) {\n      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });\n    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {\n      handleParamsChange({ sidePane: right, view: null, right: null });\n    } else { // From normal\n      const paneContent = pageToPaneMap[currentActivePage] || 'details';\n      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });\n    }\n  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);\n  \n  const setNormalView = useCallback(() => {\n      handleParamsChange({ sidePane: null, view: null, right: null });\n  }, [handleParamsChange]);\n\n  const switchSplitPanes = useCallback(() => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    const newSidePaneContent = pageToPaneMap[currentActivePage];\n    const newActivePage = Object.entries(pageToPaneMap).find(\n      ([, value]) => value === sidePaneContent\n    )?.[0] as ActivePage | undefined;\n\n    if (newActivePage && newSidePaneContent) {\n      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {\n    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;\n    if (paneToClose === 'right') {\n      navigate(`/${currentActivePage}`, { replace: true });\n    } else { // Closing main pane\n      const pageToBecomeActive = Object.entries(pageToPaneMap).find(\n        ([, value]) => value === sidePaneContent\n      )?.[0] as ActivePage | undefined;\n      \n      if (pageToBecomeActive) {\n        navigate(`/${pageToBecomeActive}`, { replace: true });\n      } else {\n        navigate(`/dashboard`, { replace: true });\n      }\n    }\n  }, [bodyState, currentActivePage, sidePaneContent, navigate]);\n  \n  // DataDemo actions\n  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });\n  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);\n  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });\n  const setFilters = (newFilters: FilterConfig) => {\n    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);\n  }\n  const setSort = (config: SortConfig<string> | null) => {\n    if (!config) {\n      handleParamsChange({ sort: null }, true);\n    } else {\n      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);\n    }\n  }\n  const setTableSort = (field: string) => {\n    let newSort: string | null = `${field}-desc`;\n    if (sortConfig && sortConfig.key === field) {\n      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;\n      else if (sortConfig.direction === 'asc') newSort = null;\n    }\n    handleParamsChange({ sort: newSort }, true);\n  };\n  const setPage = (newPage: number) => handleParamsChange({ page: newPage > 1 ? newPage.toString() : null });\n\n  // Calendar specific actions\n  const setCalendarDateProp = (prop: CalendarDateProp<string>) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });\n  const setCalendarDisplayProps = (props: CalendarDisplayProp<string>[]) => {\n    // Check for default state to keep URL clean\n    const isDefault = props.length === 0;\n    handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });\n  };\n  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });\n  const setCalendarColorProp = (prop: CalendarColorProp<string>) => handleParamsChange({ calColor: prop === 'none' ? null : prop });\n\n  const onItemSelect = useCallback((item: GenericItem) => {\n    handleParamsChange({ itemId: item.id, sidePane: null });\n  }, [handleParamsChange]);\n  \n  const setCalendarDate = useCallback((date: Date) => {\n    const newDateStr = format(date, 'yyyy-MM');\n    const currentDateStr = format(new Date(), 'yyyy-MM');\n    // If it's the current month, clear the param to keep the URL clean\n    const valueToSet = newDateStr === currentDateStr ? null : newDateStr;\n    handleParamsChange({ date: valueToSet });\n  }, [handleParamsChange]);\n\n  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });\n\n  // The final active item ID is either from the path (main view) or a search param (pane view)\n  const itemId = pathItemId || sidePaneItemId;\n\n  return useMemo(() => ({\n    // State\n    bodyState,\n    sidePaneContent,\n    currentActivePage,\n    pathItemId, // Expose for main content decisions\n    itemId,\n    messagingView,\n    // DataDemo State\n    viewMode,\n    page,\n    groupBy,\n    activeGroupTab,\n    filters,\n    sortConfig,\n    calendarDateProp,\n    calendarDisplayProps,\n    calendarItemLimit,\n    calendarColorProp,\n    calendarDate,\n    // Actions\n    navigateTo,\n    openSidePane,\n    closeSidePane,\n    toggleSidePane,\n    toggleSplitView,\n    setNormalView,\n    switchSplitPanes,\n    setMessagingView,\n    closeSplitPane,\n    // DataDemo Actions\n    onItemSelect,\n    setViewMode,\n    setGroupBy,\n    setActiveGroupTab,\n    setFilters,\n    setSort,\n    setTableSort,\n    setPage,\n    setCalendarDateProp,\n    setCalendarDisplayProps,\n    setCalendarItemLimit,\n    setCalendarColorProp,\n    setCalendarDate,\n  }), [\n    bodyState, sidePaneContent, currentActivePage, pathItemId, itemId, messagingView, viewMode,\n    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,\n    calendarDisplayProps, calendarItemLimit, calendarColorProp, calendarDate,\n    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,\n    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,\n    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp, setCalendarDate\n  ]);\n}"
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 575

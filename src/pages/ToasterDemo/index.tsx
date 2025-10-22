@@ -34,6 +34,7 @@ const DemoSection: React.FC<{ title: string; children: React.ReactNode }> = ({
 export function ToasterDemo() {
   const toast = useToast();
   const bodyState = useAppShellStore(s => s.bodyState);
+  const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
   const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
 
   const showToast = (variant: Variant, position: Position = 'bottom-right') => {
@@ -84,7 +85,7 @@ export function ToasterDemo() {
   return (
     <PageLayout>
       {/* Header */}
-      {!isInSidePane && (
+      {!isInSidePane && !isFullscreen && (
         <PageHeader
           title="Toaster"
           description="A customizable toast component for notifications."

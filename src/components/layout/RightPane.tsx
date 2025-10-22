@@ -1,41 +1,40 @@
-import { forwardRef, useMemo, createElement, memo } from 'react'
+import { forwardRef, useMemo, createElement, memo } from 'react';
 import {
   ChevronRight,
   X,
-} from 'lucide-react'
+} from 'lucide-react';
 import { cn, BODY_STATES } from '@/lib/utils';
 import { useAppShellStore } from '@/store/appShell.store';
-import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
-import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
 import { ViewModeSwitcher } from './ViewModeSwitcher';
+import { ViewRenderer } from './ViewRenderer';
+import { getViewById } from '@/views/viewRegistry';
 
-export const RightPane = memo(forwardRef<HTMLDivElement, { className?: string }>(({ className }, ref) => {
-  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget)
-  const bodyState = useAppShellStore(s => s.bodyState)
-  const { toggleFullscreen, setIsResizingRightPane } =
-    useAppShellStore.getState()
+export const RightPane = memo(forwardRef<HTMLDivElement, { className?: string; viewId: string | null }>(({ className, viewId }, ref) => {
+  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+  const bodyState = useAppShellStore(s => s.bodyState);
+  const { toggleFullscreen, setIsResizingRightPane } = useAppShellStore.getState();
+  const viewManager = useAppViewManager();
+  const { closeSidePane } = viewManager;
+  
+  const viewMeta = getViewById(viewId);
 
-  const viewManager = useAppViewManager()
-  const { sidePaneContent, closeSidePane } = viewManager
-  
-  const { meta, content: children } = useRightPaneContent(sidePaneContent)
-  
   const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
   const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
 
   const header = useMemo(() => (
     <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
-      {bodyState !== BODY_STATES.SPLIT_VIEW && 'icon' in meta ? (
+      {bodyState !== BODY_STATES.SPLIT_VIEW && viewMeta ? (
         <div className="flex items-center gap-2">
-          {meta.icon && createElement(meta.icon, { className: "w-5 h-5" })}
-          <h2 className="text-lg font-semibold whitespace-nowrap">{meta.title}</h2>
+          {viewMeta.icon && createElement(viewMeta.icon, { className: "w-5 h-5" })}
+          <h2 className="text-lg font-semibold whitespace-nowrap">{viewMeta.title}</h2>
         </div>
       ) : <div />}
       <div className="flex items-center">
-        {bodyState === BODY_STATES.SIDE_PANE && 'page' in meta && meta.page && <ViewModeSwitcher pane="right" targetPage={meta.page} />}
+        {bodyState === BODY_STATES.SIDE_PANE && viewMeta && <ViewModeSwitcher pane="right" targetPage={viewMeta.id} />}
       </div>
     </div>
-  ), [bodyState, meta]);
+  ), [bodyState, viewMeta]);
 
   if (isFullscreen && fullscreenTarget !== 'right') {
     return null;
@@ -82,13 +81,7 @@ export const RightPane = memo(forwardRef<HTMLDivElement, { className?: string }>
         <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
       </div>
       {!isSplitView && !isFullscreen && header}
-      {meta.hasOwnScrolling ? (
-        children
-      ) : (
-        <div className={cn("flex-1 overflow-y-auto")}>
-          {children}
-        </div>
-      )}
+      <ViewRenderer viewId={viewId} className="flex-1" />
     </aside>
   )
 }));

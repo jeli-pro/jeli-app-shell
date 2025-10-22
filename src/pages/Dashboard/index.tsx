@@ -115,9 +115,10 @@ export function DashboardContent() {
     const statsCardsContainerRef = useRef<HTMLDivElement>(null);
     const featureCardsContainerRef = useRef<HTMLDivElement>(null);
     const bodyState = useAppShellStore(s => s.bodyState);
+    const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
     const isInSidePane = bodyState === BODY_STATES.SIDE_PANE;
     
-    const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane);
+    const { onScroll: handleTopBarScroll } = useAutoAnimateTopBar(isInSidePane || isFullscreen);
     const { showScrollToBottom, scrollToBottom, handleScroll: handleScrollToBottom } = useScrollToBottom(scrollRef);
 
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -145,7 +146,7 @@ export function DashboardContent() {
     return (
       <PageLayout scrollRef={scrollRef} onScroll={handleScroll} ref={contentRef}>
         {/* Header */}
-        {!isInSidePane && (
+        {!isInSidePane && !isFullscreen && (
           <PageHeader
             title="Dashboard"
             description="Welcome to the Jeli App Shell demo! Explore all the features and customization options."

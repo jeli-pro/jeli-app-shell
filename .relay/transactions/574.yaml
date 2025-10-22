@@ -1,0 +1,1286 @@
+uuid: ccfb0a8f-2856-4b61-9c60-a199990b7956
+projectId: jeli-app-shell
+createdAt: '2025-10-22T05:50:40.673Z'
+gitCommitMsg: >-
+  feat(shell): establish view registry and decouple layout from content
+
+  Refactors the application shell to introduce a centralized view registry and a
+  generic view renderer. This is Part 1 of a larger effort to create a more
+  robust, decoupled, and consistent view management system.
+
+  - Creates `src/views/viewRegistry.ts` to define all renderable views,
+    their metadata (title, icon), and associated components using lazy
+    loading for code splitting.
+  - Adds `src/components/layout/ViewRenderer.tsx` which renders a view
+    by its ID, handling component loading and prop passing.
+  - Refactors `MainContent` and `RightPane` to be "dumb" containers that
+    accept a `viewId` prop and use the `ViewRenderer`. This removes
+    direct dependencies on page components.
+  - Simplifies `App.tsx` by making `ComposedApp` the central controller
+    that determines which view IDs to pass to the layout components
+    based on the URL. The router's role is now primarily for path matching.
+  - Deletes the now-obsolete `useRightPaneContent.hook.tsx`.
+promptSummary: >-
+  I'm executing Part 1 of the app shell refactor plan. I need to create the view
+  registry, a generic view renderer, and refactor the main layout components
+  (`MainContent`, `RightPane`, `App`) to use this new decoupled system.
+reasoning:
+  - >-
+    My apologies for the incomplete response earlier. Here is the complete and
+    corrected implementation for Part 1.
+  - >-
+    I've established the view registry foundation, decoupling layout components
+    from page content. This is the first major step in creating a more robust
+    and consistent app shell architecture.
+  - '### Step 1 & 2: Create View Registry and Renderer'
+  - >-
+    First, I'll create `src/views/viewRegistry.ts`. This file will act as a
+    single source of truth for all renderable views in the application, using
+    `React.lazy` to maintain code-splitting and performance. This registry will
+    hold the component, title, icon, and other metadata for each view.
+  - >-
+    Next, I'll create a generic `ViewRenderer` component. This component takes a
+    `viewId`, looks it up in the registry, and handles rendering it, including
+    passing necessary props for specific views and managing scrolling behavior.
+  - '### Step 3: Refactor Layout Components'
+  - >-
+    With the registry and renderer in place, I will now refactor `MainContent`
+    and `RightPane` to be "dumb" containers that simply render a view based on a
+    `viewId` prop.
+  - >-
+    I'll update `RightPane` to use the new system, fetching its header metadata
+    from the view registry and using `ViewRenderer` for its content.
+  - The `useRightPaneContent` hook is now obsolete and will be deleted.
+  - >-
+    Finally, I'll re-wire `App.tsx`. It becomes the master controller that uses
+    `useAppViewManager` to understand the URL and passes the correct `viewId`
+    props to `MainContent` and `RightPane`. The router's role is now simplified
+    to just matching paths to drive the URL state.
+operations:
+  - type: write
+    path: src/views/viewRegistry.ts
+    content: >-
+      import type { LucideIcon } from 'lucide-react';
+
+      import {
+        LayoutDashboard,
+        Settings,
+        Component,
+        Bell,
+        Database,
+        MessageSquare,
+        SlidersHorizontal,
+      } from 'lucide-react';
+
+
+      // --- Lazy load components for better code splitting ---
+
+      import React from 'react';
+
+
+      // Correctly typed lazy imports
+
+      const DashboardContent = React.lazy(() =>
+      import('@/pages/Dashboard').then(module => ({ default:
+      module.DashboardContent })));
+
+      const SettingsPage = React.lazy(() =>
+      import('@/pages/Settings').then(module => ({ default: module.SettingsPage
+      })));
+
+      const ToasterDemo = React.lazy(() =>
+      import('@/pages/ToasterDemo').then(module => ({ default:
+      module.ToasterDemo })));
+
+      const NotificationsPage = React.lazy(() =>
+      import('@/pages/Notifications').then(module => ({ default:
+      module.NotificationsPage })));
+
+      const DataDemoPage = React.lazy(() => import('@/pages/DataDemo'));
+
+      const MessagingPage = React.lazy(() => import('@/pages/Messaging'));
+
+      const DataDetailContent = React.lazy(() =>
+      import('@/pages/DataDemo/components/DataDetailContent').then(module => ({
+      default: module.DataDetailContent })));
+
+
+      export type ViewId = 
+        | 'dashboard'
+        | 'settings'
+        | 'toaster'
+        | 'notifications'
+        | 'data-demo'
+        | 'messaging'
+        | 'dataItemDetail'
+        | 'details';
+
+      export interface ViewRegistration {
+        id: ViewId;
+        component: React.ComponentType<any>;
+        title: string;
+        icon: LucideIcon;
+        hasOwnScrolling?: boolean;
+      }
+
+
+      const suspenseWrapper = (Component:
+      React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
+        <React.Suspense fallback={<div className="p-6">Loading...</div>}>
+          <Component {...props} />
+        </React.Suspense>
+      );
+
+
+      export const viewRegistry: Record<ViewId, ViewRegistration> = {
+        dashboard: {
+          id: 'dashboard',
+          component: suspenseWrapper(DashboardContent),
+          title: 'Dashboard',
+          icon: LayoutDashboard,
+        },
+        settings: {
+          id: 'settings',
+          component: suspenseWrapper(SettingsPage),
+          title: 'Settings',
+          icon: Settings,
+        },
+        toaster: {
+          id: 'toaster',
+          component: suspenseWrapper(ToasterDemo),
+          title: 'Toaster Demo',
+          icon: Component,
+        },
+        notifications: {
+          id: 'notifications',
+          component: suspenseWrapper(NotificationsPage),
+          title: 'Notifications',
+          icon: Bell,
+        },
+        'data-demo': {
+          id: 'data-demo',
+          component: suspenseWrapper(DataDemoPage),
+          title: 'Data Showcase',
+          icon: Database,
+        },
+        messaging: {
+          id: 'messaging',
+          component: suspenseWrapper(MessagingPage),
+          title: 'Messaging',
+          icon: MessageSquare,
+          hasOwnScrolling: true,
+        },
+        dataItemDetail: {
+          id: 'dataItemDetail',
+          component: suspenseWrapper(DataDetailContent),
+          title: 'Item Details',
+          icon: Database,
+          hasOwnScrolling: true,
+        },
+        details: {
+          id: 'details',
+          component: () => (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+          title: 'Details Panel',
+          icon: SlidersHorizontal,
+        },
+      };
+
+
+      export const getViewById = (id: string | null | undefined):
+      ViewRegistration | null => {
+        if (!id) return null;
+        return viewRegistry[id as ViewId] || null;
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/components/layout/ViewRenderer.tsx
+    content: |-
+      import React from 'react';
+      import { useParams, useSearchParams } from 'react-router-dom';
+      import { cn } from '@/lib/utils';
+      import { getViewById, type ViewId } from '@/views/viewRegistry';
+      import { useSelectedItem } from '@/pages/DataDemo/store/dataDemo.store';
+
+      interface ViewRendererProps {
+        viewId: ViewId | string | null;
+        className?: string;
+      }
+
+      export function ViewRenderer({ viewId, className }: ViewRendererProps) {
+        const view = getViewById(viewId);
+        const { conversationId, itemId: pathItemId } = useParams();
+        const [searchParams] = useSearchParams();
+        const sidePaneItemId = searchParams.get('itemId');
+
+        // Specific logic for views that need props
+        const selectedItem = useSelectedItem(pathItemId || sidePaneItemId);
+
+        if (!view) {
+          return (
+            <div className="p-6 text-muted-foreground">
+              View not found: {viewId}
+            </div>
+          );
+        }
+
+        const { component: Component, hasOwnScrolling } = view;
+
+        let componentProps: any = {};
+        if (viewId === 'dataItemDetail') {
+          if (!selectedItem) {
+            return (
+              <div className="p-6 text-muted-foreground">
+                Item not found.
+              </div>
+            );
+          }
+          componentProps = { item: selectedItem };
+        } else if (viewId === 'messaging') {
+          componentProps = { conversationId };
+        }
+
+        const content = <Component {...componentProps} />;
+
+        if (hasOwnScrolling) {
+          return content;
+        }
+
+        return (
+          <div className={cn("h-full overflow-y-auto", className)}>
+            {content}
+          </div>
+        );
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/components/layout/MainContent.tsx
+    content: |+
+      --- src/components/layout/MainContent.tsx
+      +++ src/components/layout/MainContent.tsx
+      @@ -1,13 +1,15 @@
+      -import { forwardRef } from 'react'
+      -import { X } from 'lucide-react'
+      +import { forwardRef } from 'react';
+      +import { X } from 'lucide-react';
+       import { cn } from '@/lib/utils';
+      -import { BODY_STATES } from '@/lib/utils'
+      -import { useAppShellStore } from '@/store/appShell.store'
+      +import { BODY_STATES } from '@/lib/utils';
+      +import { useAppShellStore } from '@/store/appShell.store';
+      +import { ViewRenderer } from './ViewRenderer';
+       
+       interface MainContentProps {
+      -  children?: React.ReactNode;
+      +  viewId: string | null;
+       }
+       
+       export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+      -  ({ children }, ref) => {
+      +  ({ viewId }, ref) => {
+           const bodyState = useAppShellStore(s => s.bodyState);
+           const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+           const { toggleFullscreen } = useAppShellStore.getState();
+      @@ -36,11 +38,9 @@
+               )}
+       
+               <div className="flex-1 min-h-0 flex flex-col">
+      -          {children}
+      +          <ViewRenderer viewId={viewId} />
+               </div>
+             </div>
+      -    )
+      +    );
+         }
+      -)
+      -MainContent.displayName = 'MainContent'
+      +);
+      +MainContent.displayName = 'MainContent';
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/RightPane.tsx
+    content: >
+      --- src/components/layout/RightPane.tsx
+
+      +++ src/components/layout/RightPane.tsx
+
+      @@ -1,30 +1,28 @@
+
+      -import { forwardRef, useMemo, createElement, memo } from 'react'
+
+      +import { forwardRef, useMemo, createElement, memo } from 'react';
+       import {
+         ChevronRight,
+         X,
+      -} from 'lucide-react'
+
+      +} from 'lucide-react';
+       import { cn, BODY_STATES } from '@/lib/utils';
+       import { useAppShellStore } from '@/store/appShell.store';
+      -import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+      -import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
+
+      +import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+       import { ViewModeSwitcher } from './ViewModeSwitcher';
+      +import { ViewRenderer } from './ViewRenderer';
+
+      +import { getViewById } from '@/views/viewRegistry';
+       
+      -export const RightPane = memo(forwardRef<HTMLDivElement, { className?:
+      string }>(({ className }, ref) => {
+
+      -  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget)
+
+      -  const bodyState = useAppShellStore(s => s.bodyState)
+
+      -  const { toggleFullscreen, setIsResizingRightPane } =
+
+      -    useAppShellStore.getState()
+
+      +export const RightPane = memo(forwardRef<HTMLDivElement, { className?:
+      string; viewId: string | null }>(({ className, viewId }, ref) => {
+
+      +  const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+
+      +  const bodyState = useAppShellStore(s => s.bodyState);
+
+      +  const { toggleFullscreen, setIsResizingRightPane } =
+      useAppShellStore.getState();
+
+      +  const viewManager = useAppViewManager();
+
+      +  const { closeSidePane } = viewManager;
+
+      +  
+
+      +  const viewMeta = getViewById(viewId);
+       
+      -  const viewManager = useAppViewManager()
+
+      -  const { sidePaneContent, closeSidePane } = viewManager
+
+      -  
+
+      -  const { meta, content: children } =
+      useRightPaneContent(sidePaneContent)
+
+      -  
+         const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+         const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+       
+         const header = useMemo(() => (
+           <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+      -      {bodyState !== BODY_STATES.SPLIT_VIEW && 'icon' in meta ? (
+
+      -        <div className="flex items-center gap-2">
+
+      -          {meta.icon && createElement(meta.icon, { className: "w-5 h-5"
+      })}
+
+      -          <h2 className="text-lg font-semibold
+      whitespace-nowrap">{meta.title}</h2>
+
+      -        </div>
+
+      -      ) : <div />}
+
+      +      {bodyState !== BODY_STATES.SPLIT_VIEW && viewMeta ? (
+
+      +        <div className="flex items-center gap-2">
+
+      +          {viewMeta.icon && createElement(viewMeta.icon, { className:
+      "w-5 h-5" })}
+
+      +          <h2 className="text-lg font-semibold
+      whitespace-nowrap">{viewMeta.title}</h2>
+
+      +        </div>
+
+      +      ) : <div />}
+             <div className="flex items-center">
+      -        {bodyState === BODY_STATES.SIDE_PANE && 'page' in meta &&
+      meta.page && <ViewModeSwitcher pane="right" targetPage={meta.page} />}
+
+      +        {bodyState === BODY_STATES.SIDE_PANE && viewMeta &&
+      <ViewModeSwitcher pane="right" targetPage={viewMeta.id} />}
+             </div>
+           </div>
+      -  ), [bodyState, meta]);
+
+      +  ), [bodyState, viewMeta]);
+       
+         if (isFullscreen && fullscreenTarget !== 'right') {
+           return null;
+      @@ -69,14 +67,8 @@
+               <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+             </div>
+             {!isSplitView && !isFullscreen && header}
+      -      {meta.hasOwnScrolling ? (
+
+      -        children
+
+      -      ) : (
+
+      -        <div className={cn("flex-1 overflow-y-auto")}>
+
+      -          {children}
+
+      -        </div>
+
+      -      )}
+
+      +      <ViewRenderer viewId={viewId} className="flex-1" />
+           </aside>
+         )
+       }));
+       RightPane.displayName = "RightPane"
+    patchStrategy: standard-diff
+  - type: delete
+    path: src/hooks/useRightPaneContent.hook.tsx
+  - type: write
+    path: src/App.tsx
+    content: >
+      --- src/App.tsx
+
+      +++ src/App.tsx
+
+      @@ -2,12 +2,12 @@
+       import {
+         createBrowserRouter,
+         RouterProvider,
+         Outlet,
+         Navigate,
+         useNavigate, // used in LoginPageWrapper
+         useLocation,
+      +  useParams,
+       } from "react-router-dom";
+       
+       import { AppShell } from "./components/layout/AppShell";
+      @@ -24,14 +24,8 @@
+       import { Input } from "./components/ui/input";
+       import { Button } from "./components/ui/button";
+       
+      -// --- Page/Content Components for Pages and Panes ---
+
+      -import { DashboardContent } from "./pages/Dashboard";
+
+      -import { SettingsPage } from "./pages/Settings";
+
+      -import { ToasterDemo } from "./pages/ToasterDemo";
+
+      -import { NotificationsPage } from "./pages/Notifications";
+
+      -import DataDemoPage from "./pages/DataDemo";
+
+      -import MessagingPage from "./pages/Messaging";
+       import { LoginPage } from "./components/auth/LoginPage";
+      +import { type ViewId } from "./views/viewRegistry";
+       
+       // --- Icons ---
+       import {
+      @@ -44,8 +38,6 @@
+       // --- Utils & Hooks ---
+       import { cn } from "./lib/utils";
+       import { useAppViewManager } from "./hooks/useAppViewManager.hook";
+      -import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
+
+      -import { BODY_STATES } from "./lib/utils";
+       
+       // Checks for authentication and redirects to login if needed
+       function ProtectedRoute() {
+      @@ -54,7 +46,7 @@
+         if (!isAuthenticated) {
+           return <Navigate to="/login" state={{ from: location }} replace />;
+         }
+      -  return <Outlet />;
+
+      +  return <ComposedApp />; // ComposedApp is the layout for all protected
+      routes
+       }
+       
+       // A root component to apply global styles and effects
+      @@ -65,26 +57,7 @@
+           document.documentElement.classList.toggle("dark", isDarkMode);
+         }, [isDarkMode]);
+       
+      -  return <Outlet />;
+
+      -}
+
+      -
+
+      -// The main layout for authenticated parts of the application
+
+      -function ProtectedLayout() {
+
+      -
+
+      -  return (
+
+      -    <div className="h-screen w-screen overflow-hidden bg-background">
+
+      -      <AppShellProvider
+
+      -        appName="Jeli App"
+
+      -        appLogo={
+
+      -          <div className="p-2 bg-primary/20 rounded-lg">
+
+      -            <Rocket className="w-5 h-5 text-primary" />
+
+      -          </div>
+
+      -        }
+
+      -      >
+
+      -        <ComposedApp />
+
+      -      </AppShellProvider>
+
+      -    </div>
+
+      -  );
+
+      +  return <Outlet />;
+       }
+       
+       // Breadcrumbs for the Top Bar
+      @@ -171,36 +144,63 @@
+       }
+       
+       // The main App component that composes the shell
+       function ComposedApp() {
+      -  const { setBodyState, setSidePaneContent } = useAppShellStore();
+
+      +  const { setBodyState, setSidePaneContent } =
+      useAppShellStore.getState();
+         const viewManager = useAppViewManager();
+      +  const location = useLocation();
+
+      +  const params = useParams();
+       
+         // Sync URL state with AppShellStore
+         useEffect(() => {
+           setBodyState(viewManager.bodyState);
+           setSidePaneContent(viewManager.sidePaneContent);
+         }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
+       
+      +  const rightViewId = useAppShellStore(s => s.sidePaneContent);
+
+      +
+
+      +  // Determine mainViewId from the route path
+
+      +  const pathSegments = location.pathname.split('/').filter(Boolean);
+
+      +  let mainViewId: ViewId | null = (pathSegments[0] as ViewId) ||
+      'dashboard';
+
+      +  
+
+      +  // Handle detail views that are part of the main content
+
+      +  if (mainViewId === 'data-demo' && params.itemId) {
+
+      +    mainViewId = 'dataItemDetail';
+
+      +  }
+
+      +
+         return (
+      -    <AppShell
+
+      -      sidebar={<EnhancedSidebar />}
+
+      -      onOverlayClick={viewManager.closeSidePane}
+
+      -      topBar={
+
+      -        <TopBar breadcrumbs={<AppBreadcrumbs />}
+      pageControls={<TopBarPageControls />} />
+
+      +    <AppShellProvider
+
+      +      appName="Jeli App"
+
+      +      appLogo={
+
+      +        <div className="p-2 bg-primary/20 rounded-lg">
+
+      +          <Rocket className="w-5 h-5 text-primary" />
+
+      +        </div>
+             }
+      -      mainContent={
+
+      -        <MainContent>
+
+      -          <Outlet />
+
+      -        </MainContent>
+
+      -      }
+
+      -      rightPane={<RightPane />}
+
+      -      commandPalette={<CommandPalette />}
+
+      -    />
+
+      +    >
+
+      +      <AppShell
+
+      +        sidebar={<EnhancedSidebar />}
+
+      +        onOverlayClick={viewManager.closeSidePane}
+
+      +        topBar={
+
+      +          <TopBar breadcrumbs={<AppBreadcrumbs />}
+      pageControls={<TopBarPageControls />} />
+
+      +        }
+
+      +        mainContent={<MainContent viewId={mainViewId} />}
+
+      +        rightPane={<RightPane viewId={rightViewId} />}
+
+      +        commandPalette={<CommandPalette />}
+
+      +      />
+
+      +    </AppShellProvider>
+         );
+       }
+       
+      -function App() {
+
+      -  const router = createBrowserRouter([
+
+      +const router = createBrowserRouter([
+           {
+             element: <Root />,
+             children: [
+      @@ -212,29 +212,26 @@
+                 path: "/",
+                 element: <ProtectedRoute />,
+                 children: [
+                   {
+      -              path: "/",
+
+      -              element: <ProtectedLayout />,
+
+      -              children: [
+
+      -                { index: true, element: <Navigate to="/dashboard" replace
+      /> },
+
+      -                { path: "dashboard", element: <DashboardContent /> },
+
+      -                { path: "settings", element: <SettingsPage /> },
+
+      -                { path: "toaster", element: <ToasterDemo /> },
+
+      -                { path: "notifications", element: <NotificationsPage />
+      },
+
+      -                { path: "data-demo", element: <DataDemoPage /> },
+
+      -                { path: "data-demo/:itemId", element: <DataDemoPage /> },
+
+      -                { path: "messaging", element: <MessagingPage /> },
+
+      -                { path: "messaging/:conversationId", element:
+      <MessagingPage /> },
+
+      -              ],
+
+      -            },
+
+      +              // The ComposedApp layout will render the correct view
+      based on the path
+
+      +              // so these elements can be null. The paths are still
+      needed for matching.
+
+      +              { index: true, element: <Navigate to="/dashboard" replace
+      /> },
+
+      +              { path: "dashboard", element: null },
+
+      +              { path: "settings", element: null },
+
+      +              { path: "toaster", element: null },
+
+      +              { path: "notifications", element: null },
+
+      +              { path: "data-demo", element: null },
+
+      +              { path: "data-demo/:itemId", element: null },
+
+      +              { path: "messaging", element: null },
+
+      +              { path: "messaging/:conversationId", element: null },
+
+      +            ]
+                 ],
+               },
+             ],
+           },
+         ]);
+       
+      +function App() {
+         return (
+           <ToasterProvider>
+             <RouterProvider router={router} />
+      @@ -242,4 +239,5 @@
+         );
+       }
+       
+       export default App;
+    patchStrategy: standard-diff
+snapshot:
+  src/views/viewRegistry.ts: null
+  src/components/layout/ViewRenderer.tsx: null
+  src/hooks/useRightPaneContent.hook.tsx: >-
+    import { useMemo } from 'react';
+
+    import { useParams, useSearchParams } from 'react-router-dom';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      SlidersHorizontal,
+      Database,
+      MessageSquare,
+      ExternalLink,
+      Share,
+    } from 'lucide-react';
+
+    import { DashboardContent } from "@/pages/Dashboard";
+
+    import { SettingsContent } from "@/features/settings/SettingsContent";
+
+    import { ToasterDemo } from "@/pages/ToasterDemo";
+
+    import { NotificationsPage } from "@/pages/Notifications";
+
+    import DataDemoPage from "@/pages/DataDemo/index";
+
+    import { MessagingContent } from
+    "@/pages/Messaging/components/MessagingContent";
+
+    import type { AppShellState } from '@/store/appShell.store';
+
+    import { useSelectedItem } from '@/pages/DataDemo/store/dataDemo.store';
+
+    import { DataDetailContent } from
+    '@/pages/DataDemo/components/DataDetailContent';
+
+
+    export function useRightPaneContent(sidePaneContent:
+    AppShellState['sidePaneContent']) {
+      const { conversationId } = useParams<{ conversationId: string }>();
+      const [searchParams] = useSearchParams();
+      const sidePaneItemId = searchParams.get('itemId');
+
+      const staticContentMap = useMemo(() => ({
+        main: {
+          title: "Dashboard",
+          icon: LayoutDashboard,
+          page: "dashboard",
+          content: <DashboardContent />,
+        },
+        settings: {
+          title: "Settings",
+          icon: Settings,
+          page: "settings",
+          content: <div className="p-6"><SettingsContent /></div>,
+        },
+        toaster: {
+          title: "Toaster Demo",
+          icon: Component,
+          page: "toaster",
+          content: <ToasterDemo />,
+        },
+        notifications: {
+          title: "Notifications",
+          icon: Bell,
+          page: "notifications",
+          content: <NotificationsPage />,
+        },
+        dataDemo: {
+          title: "Data Showcase",
+          icon: Database,
+          page: "data-demo",
+          content: <DataDemoPage />,
+        },
+        details: {
+          title: "Details Panel",
+          icon: SlidersHorizontal,
+          content: (
+            <div className="p-6">
+              <p className="text-muted-foreground">
+                This is the side pane. It can be used to display contextual
+                information, forms, or actions related to the main content.
+              </p>
+            </div>
+          ),
+        },
+      }), []);
+
+      const contentMap = useMemo(() => ({
+        ...staticContentMap,
+        messaging: {
+          title: "Conversation",
+          icon: MessageSquare,
+          page: "messaging",
+          content: <MessagingContent conversationId={conversationId} />,
+        },
+      }), [conversationId, staticContentMap]);
+
+      const selectedItem = useSelectedItem(sidePaneItemId);
+
+      const { meta, content } = useMemo(() => {
+        if (sidePaneContent === 'dataItem' && selectedItem) {
+          return {
+            meta: { 
+              title: "Item Details", 
+              icon: Database, 
+              page: `data-demo/${sidePaneItemId}`,
+              hasOwnScrolling: true 
+            },
+            content: <DataDetailContent item={selectedItem} />,
+          };
+        }
+        const mappedContent = contentMap[sidePaneContent as keyof typeof contentMap] || contentMap.details;
+        return {
+          meta: mappedContent,
+          content: mappedContent.content,
+        };
+      }, [sidePaneContent, selectedItem, contentMap, sidePaneItemId]);
+
+      return { meta, content };
+    }
+  src/components/layout/RightPane.tsx: >-
+    import { forwardRef, useMemo, createElement, memo } from 'react'
+
+    import {
+      ChevronRight,
+      X,
+    } from 'lucide-react'
+
+    import { cn, BODY_STATES } from '@/lib/utils';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+
+    import { useRightPaneContent } from '@/hooks/useRightPaneContent.hook'
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+
+    export const RightPane = memo(forwardRef<HTMLDivElement, { className?:
+    string }>(({ className }, ref) => {
+      const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget)
+      const bodyState = useAppShellStore(s => s.bodyState)
+      const { toggleFullscreen, setIsResizingRightPane } =
+        useAppShellStore.getState()
+
+      const viewManager = useAppViewManager()
+      const { sidePaneContent, closeSidePane } = viewManager
+      
+      const { meta, content: children } = useRightPaneContent(sidePaneContent)
+      
+      const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
+      const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+      const header = useMemo(() => (
+        <div className="flex items-center justify-between p-4 border-b border-border h-20 flex-shrink-0 pl-6">
+          {bodyState !== BODY_STATES.SPLIT_VIEW && 'icon' in meta ? (
+            <div className="flex items-center gap-2">
+              {meta.icon && createElement(meta.icon, { className: "w-5 h-5" })}
+              <h2 className="text-lg font-semibold whitespace-nowrap">{meta.title}</h2>
+            </div>
+          ) : <div />}
+          <div className="flex items-center">
+            {bodyState === BODY_STATES.SIDE_PANE && 'page' in meta && meta.page && <ViewModeSwitcher pane="right" targetPage={meta.page} />}
+          </div>
+        </div>
+      ), [bodyState, meta]);
+
+      if (isFullscreen && fullscreenTarget !== 'right') {
+        return null;
+      }
+
+      return (
+        <aside
+          ref={ref}
+          className={cn(
+            "border-l border-border flex flex-col h-full overflow-hidden",
+            isSplitView && "relative bg-background",
+            !isSplitView && !isFullscreen && "fixed top-0 right-0 z-[60] bg-card", // side pane overlay
+            isFullscreen && fullscreenTarget === 'right' && "fixed inset-0 z-[60] bg-card", // fullscreen
+            className,
+          )}
+        >
+          {isFullscreen && fullscreenTarget === 'right' && (
+            <button
+              onClick={() => toggleFullscreen()}
+              className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+              title="Exit Fullscreen"
+            >
+              <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+            </button>
+          )}
+          {bodyState !== BODY_STATES.SPLIT_VIEW && !isFullscreen && (
+            <button
+              onClick={closeSidePane}
+              className="absolute top-1/2 -left-px -translate-y-1/2 -translate-x-full w-8 h-16 bg-card border border-r-0 border-border rounded-l-lg flex items-center justify-center hover:bg-accent transition-colors group z-10"
+              title="Close pane"
+            >
+              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </button>
+          )}
+          <div 
+            className={cn(
+              "absolute top-0 left-0 w-2 h-full bg-transparent hover:bg-primary/20 cursor-col-resize z-50 transition-colors duration-200 group -translate-x-1/2"
+            )}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setIsResizingRightPane(true);
+            }}
+          >
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200 mx-auto" />
+          </div>
+          {!isSplitView && !isFullscreen && header}
+          {meta.hasOwnScrolling ? (
+            children
+          ) : (
+            <div className={cn("flex-1 overflow-y-auto")}>
+              {children}
+            </div>
+          )}
+        </aside>
+      )
+    }));
+
+    RightPane.displayName = "RightPane"
+  src/App.tsx: |-
+    import React, { useEffect } from "react";
+    import {
+      createBrowserRouter,
+      RouterProvider,
+      Outlet,
+      Navigate,
+      useNavigate, // used in LoginPageWrapper
+      useLocation,
+    } from "react-router-dom";
+
+    import { AppShell } from "./components/layout/AppShell";
+    import { AppShellProvider } from "./providers/AppShellProvider";
+    import { useAppShellStore } from "./store/appShell.store";
+    import { useAuthStore } from "./store/authStore";
+    import "./index.css";
+
+    // Import library components
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+    import { MainContent } from "./components/layout/MainContent";
+    import { RightPane } from "./components/layout/RightPane";
+    import { TopBar } from "./components/layout/TopBar";
+    import { CommandPalette } from "./components/global/CommandPalette";
+    import { ToasterProvider } from "./components/ui/toast";
+    import { Input } from "./components/ui/input";
+    import { Button } from "./components/ui/button";
+
+    // --- Page/Content Components for Pages and Panes ---
+    import { DashboardContent } from "./pages/Dashboard";
+    import { SettingsPage } from "./pages/Settings";
+    import { ToasterDemo } from "./pages/ToasterDemo";
+    import { NotificationsPage } from "./pages/Notifications";
+    import DataDemoPage from "./pages/DataDemo";
+    import MessagingPage from "./pages/Messaging";
+    import { LoginPage } from "./components/auth/LoginPage";
+
+    // --- Icons ---
+    import {
+      Search,
+      Filter,
+      Plus,
+      ChevronRight,
+      Rocket,
+    } from "lucide-react";
+
+    // --- Utils & Hooks ---
+    import { cn } from "./lib/utils";
+    import { useAppViewManager } from "./hooks/useAppViewManager.hook";
+    import { useRightPaneContent } from "./hooks/useRightPaneContent.hook";
+    import { BODY_STATES } from "./lib/utils";
+
+    // Checks for authentication and redirects to login if needed
+    function ProtectedRoute() {
+      const { isAuthenticated } = useAuthStore();
+      const location = useLocation();
+      if (!isAuthenticated) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+      }
+      return <Outlet />;
+    }
+
+    // A root component to apply global styles and effects
+    function Root() {
+      const isDarkMode = useAppShellStore((state) => state.isDarkMode);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      return <Outlet />;
+    }
+
+    // The main layout for authenticated parts of the application
+    function ProtectedLayout() {
+
+      return (
+        <div className="h-screen w-screen overflow-hidden bg-background">
+          <AppShellProvider
+            appName="Jeli App"
+            appLogo={
+              <div className="p-2 bg-primary/20 rounded-lg">
+                <Rocket className="w-5 h-5 text-primary" />
+              </div>
+            }
+          >
+            <ComposedApp />
+          </AppShellProvider>
+        </div>
+      );
+    }
+
+    // Breadcrumbs for the Top Bar
+    function AppBreadcrumbs() {
+      const { currentActivePage } = useAppViewManager();
+      const activePageName = currentActivePage.replace('-', ' ');
+
+      return (
+        <div className="hidden md:flex items-center gap-2 text-sm">
+          <a
+            href="#"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Home
+          </a>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          <span className="font-medium text-foreground capitalize">
+            {activePageName}
+          </span>
+        </div>
+      );
+    }
+
+    // Page-specific controls for the Top Bar
+    function TopBarPageControls() {
+      const { currentActivePage, filters, setFilters } = useAppViewManager();
+      const [searchTerm, setSearchTerm] = React.useState('');
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      if (currentActivePage === 'dashboard') {
+        return (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <div
+              className={cn(
+                "relative transition-all duration-300 ease-in-out",
+                isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+              )}
+            >
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search dashboard..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                className="pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full"
+              />
+            </div>
+            <Button variant="ghost" size="icon" className="flex-shrink-0">
+              <Filter className="w-5 h-5" />
+            </Button>
+            <Button className="flex-shrink-0">
+              <Plus className="w-5 h-5 mr-0 sm:mr-2" />
+              <span className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}>
+                New Project
+              </span>
+            </Button>
+          </div>
+        );
+      }
+
+      if (currentActivePage === 'data-demo') {
+        return (
+          <div className="flex items-center gap-2">
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search items..."
+                className="pl-9 bg-card border-none"
+                value={filters.searchTerm}
+                onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+              />
+            </div>
+            <Button variant="outline">
+              <Filter className="w-4 h-4 mr-2" />
+              Filter
+            </Button>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              New Item
+            </Button>
+          </div>
+        );
+      }
+
+      return null;
+    }
+
+    // The main App component that composes the shell
+    function ComposedApp() {
+      const { setBodyState, setSidePaneContent } = useAppShellStore();
+      const viewManager = useAppViewManager();
+
+      // Sync URL state with AppShellStore
+      useEffect(() => {
+        setBodyState(viewManager.bodyState);
+        setSidePaneContent(viewManager.sidePaneContent);
+      }, [viewManager.bodyState, viewManager.sidePaneContent, setBodyState, setSidePaneContent]);
+
+      return (
+        <AppShell
+          sidebar={<EnhancedSidebar />}
+          onOverlayClick={viewManager.closeSidePane}
+          topBar={
+            <TopBar breadcrumbs={<AppBreadcrumbs />} pageControls={<TopBarPageControls />} />
+          }
+          mainContent={
+            <MainContent>
+              <Outlet />
+            </MainContent>
+          }
+          rightPane={<RightPane />}
+          commandPalette={<CommandPalette />}
+        />
+      );
+    }
+
+    function App() {
+      const router = createBrowserRouter([
+        {
+          element: <Root />,
+          children: [
+            {
+              path: "/login",
+              element: <LoginPage />,
+            },
+            {
+              path: "/",
+              element: <ProtectedRoute />,
+              children: [
+                {
+                  path: "/",
+                  element: <ProtectedLayout />,
+                  children: [
+                    { index: true, element: <Navigate to="/dashboard" replace /> },
+                    { path: "dashboard", element: <DashboardContent /> },
+                    { path: "settings", element: <SettingsPage /> },
+                    { path: "toaster", element: <ToasterDemo /> },
+                    { path: "notifications", element: <NotificationsPage /> },
+                    { path: "data-demo", element: <DataDemoPage /> },
+                    { path: "data-demo/:itemId", element: <DataDemoPage /> },
+                    { path: "messaging", element: <MessagingPage /> },
+                    { path: "messaging/:conversationId", element: <MessagingPage /> },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ]);
+
+      return (
+        <ToasterProvider>
+          <RouterProvider router={router} />
+        </ToasterProvider>
+      );
+    }
+
+    export default App;
+  src/components/layout/MainContent.tsx: |-
+    import { forwardRef } from 'react'
+    import { X } from 'lucide-react'
+    import { cn } from '@/lib/utils';
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppShellStore } from '@/store/appShell.store'
+
+    interface MainContentProps {
+      children?: React.ReactNode;
+    }
+
+    export const MainContent = forwardRef<HTMLDivElement, MainContentProps>(
+      ({ children }, ref) => {
+        const bodyState = useAppShellStore(s => s.bodyState);
+        const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
+        const { toggleFullscreen } = useAppShellStore.getState();
+        const isFullscreen = bodyState === BODY_STATES.FULLSCREEN;
+
+        if (isFullscreen && fullscreenTarget === 'right') {
+          return null;
+        }
+
+        return (
+          <div
+            ref={ref}
+            className={cn(
+            "relative flex flex-col h-full overflow-hidden bg-background",
+            isFullscreen && "fixed inset-0 z-[60]"
+            )}
+          >
+            {isFullscreen && (
+              <button
+                onClick={() => toggleFullscreen()}
+                className="fixed top-6 right-6 lg:right-12 z-[100] h-12 w-12 flex items-center justify-center rounded-full bg-card/50 backdrop-blur-sm hover:bg-card/75 transition-colors group"
+                title="Exit Fullscreen"
+              >
+                <X className="w-6 h-6 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300" />
+              </button>
+            )}
+
+            <div className="flex-1 min-h-0 flex flex-col">
+              {children}
+            </div>
+          </div>
+        )
+      }
+    )
+    MainContent.displayName = 'MainContent'
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 574

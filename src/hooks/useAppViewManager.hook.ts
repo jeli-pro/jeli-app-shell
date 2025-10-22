@@ -1,8 +1,6 @@
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import { format, parse, isValid } from 'date-fns';
-import type { GenericItem, ViewMode, SortConfig, GroupableField, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';
 import type { TaskView } from '@/pages/Messaging/types';
 import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
 
@@ -32,8 +30,9 @@ export function useAppViewManager() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { itemId: pathItemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
-  const { setSidebarState, sidebarState } = useAppShellStore();
+  const { itemId: pathItemId, conversationId } = useParams<{ itemId?: string; conversationId?: string }>();
+  const sidebarState = useAppShellStore(s => s.sidebarState);
+  const { setSidebarState } = useAppShellStore.getState();
 
   // --- DERIVED STATE FROM URL ---
 
@@ -42,15 +41,6 @@ export function useAppViewManager() {
   const sidePaneItemId = searchParams.get('itemId');
   const right = searchParams.get('right');
   const messagingView = searchParams.get('messagingView') as TaskView | null;
-  const q = searchParams.get('q');
-  const status = searchParams.get('status');
-  const priority = searchParams.get('priority');
-  const sort = searchParams.get('sort');
-  const calDate = searchParams.get('calDate');
-  const calDisplay = searchParams.get('calDisplay');
-  const calLimit = searchParams.get('calLimit');
-  const calColor = searchParams.get('calColor');
-  const dateParam = searchParams.get('date');
 
   const { bodyState, sidePaneContent } = useMemo(() => {
     const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
@@ -66,11 +56,6 @@ export function useAppViewManager() {
         return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
       }
       return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
-    }
-
-    // 3. Messaging conversation view (always split)
-    if (conversationId) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
     }
 
     // 4. Generic split view via URL param
@@ -92,57 +77,6 @@ export function useAppViewManager() {
       setSidebarState(SIDEBAR_STATES.COLLAPSED);
     }
   }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
-
-  // DataDemo specific state
-  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
-  const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-  const groupBy = useMemo(() => {
-    const groupByParam = (searchParams.get('groupBy') as GroupableField<string> | 'none') || 'none';
-    // Kanban view should default to grouping by status if no group is specified
-    if (viewMode === 'kanban' && groupByParam === 'none') {
-      return 'status';
-    }
-    return groupByParam;
-  }, [searchParams, viewMode]);
-  const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
-  const filters = useMemo<FilterConfig>(
-		() => ({
-			searchTerm: q || '',
-			status: (status?.split(',') || []).filter(Boolean),
-			priority: (priority?.split(',') || []).filter(Boolean),
-		}),
-		[q, status, priority],
-	);
-  const sortConfig = useMemo<SortConfig<string> | null>(() => {
-    if (viewMode === 'kanban') return null; // Kanban is manually sorted
-		const sortParam = sort;
-		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
-		if (sortParam === 'default') return null;
-
-		const [key, direction] = sortParam.split('-');
-		return { key, direction: direction as 'asc' | 'desc' };
-  }, [sort, viewMode]);
-  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp<string>, [calDate]);
-  const calendarDisplayProps = useMemo(
-    () => {
-      if (calDisplay === null) return []; // Default is now nothing
-      if (calDisplay === '') return []; // Explicitly empty is also nothing
-      return calDisplay.split(',') as CalendarDisplayProp<string>[];
-    },
-    [calDisplay]
-  );
-  const calendarItemLimit = useMemo(() => {
-    const limit = parseInt(calLimit || '3', 10);
-    if (calLimit === 'all') return 'all';
-    return isNaN(limit) ? 3 : limit;
-  }, [calLimit]);
-  const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp<string>, [calColor]);
-
-  const calendarDate = useMemo(() => {
-    if (!dateParam) return new Date();
-    const parsedDate = parse(dateParam, 'yyyy-MM', new Date());
-    return isValid(parsedDate) ? parsedDate : new Date();
-  }, [dateParam]);
 
   // --- MUTATOR ACTIONS ---
 
@@ -217,17 +151,23 @@ export function useAppViewManager() {
     }
   }, [sidePane, openSidePane, closeSidePane]);
 
-  const toggleSplitView = useCallback(() => {
+  const toggleSplitView = useCallback((paneContent?: AppShellState['sidePaneContent']) => {
     if (bodyState === BODY_STATES.SIDE_PANE) {
       handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
     } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
       handleParamsChange({ sidePane: right, view: null, right: null });
     } else { // From normal
-      const paneContent = pageToPaneMap[currentActivePage] || 'details';
-      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
+      const content = paneContent || pageToPaneMap[currentActivePage] || 'details';
+      handleParamsChange({ view: 'split', right: content, sidePane: null });
     }
   }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
   
+  const toggleFullscreen = useCallback((target?: 'main' | 'right') => {
+    // This logic is handled by the store, which will be updated by ViewModeSwitcher
+    // For now, we assume the store has a `toggleFullscreen` action
+    useAppShellStore.getState().toggleFullscreen(target);
+  }, []);
+
   const setNormalView = useCallback(() => {
       handleParamsChange({ sidePane: null, view: null, right: null });
   }, [handleParamsChange]);
@@ -261,50 +201,8 @@ export function useAppViewManager() {
     }
   }, [bodyState, currentActivePage, sidePaneContent, navigate]);
   
-  // DataDemo actions
-  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
-  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
-  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
-  const setFilters = (newFilters: FilterConfig) => {
-    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
-  }
-  const setSort = (config: SortConfig<string> | null) => {
-    if (!config) {
-      handleParamsChange({ sort: null }, true);
-    } else {
-      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
-    }
-  }
-  const setTableSort = (field: string) => {
-    let newSort: string | null = `${field}-desc`;
-    if (sortConfig && sortConfig.key === field) {
-      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
-      else if (sortConfig.direction === 'asc') newSort = null;
-    }
-    handleParamsChange({ sort: newSort }, true);
-  };
-  const setPage = (newPage: number) => handleParamsChange({ page: newPage > 1 ? newPage.toString() : null });
-
-  // Calendar specific actions
-  const setCalendarDateProp = (prop: CalendarDateProp<string>) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
-  const setCalendarDisplayProps = (props: CalendarDisplayProp<string>[]) => {
-    // Check for default state to keep URL clean
-    const isDefault = props.length === 0;
-    handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });
-  };
-  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
-  const setCalendarColorProp = (prop: CalendarColorProp<string>) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
-
-  const onItemSelect = useCallback((item: GenericItem) => {
-    handleParamsChange({ itemId: item.id, sidePane: null });
-  }, [handleParamsChange]);
-  
-  const setCalendarDate = useCallback((date: Date) => {
-    const newDateStr = format(date, 'yyyy-MM');
-    const currentDateStr = format(new Date(), 'yyyy-MM');
-    // If it's the current month, clear the param to keep the URL clean
-    const valueToSet = newDateStr === currentDateStr ? null : newDateStr;
-    handleParamsChange({ date: valueToSet });
+  const onItemSelect = useCallback((itemId: string) => {
+    handleParamsChange({ itemId: itemId, sidePane: null, view: null, right: null });
   }, [handleParamsChange]);
 
   const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
@@ -320,48 +218,21 @@ export function useAppViewManager() {
     pathItemId, // Expose for main content decisions
     itemId,
     messagingView,
-    // DataDemo State
-    viewMode,
-    page,
-    groupBy,
-    activeGroupTab,
-    filters,
-    sortConfig,
-    calendarDateProp,
-    calendarDisplayProps,
-    calendarItemLimit,
-    calendarColorProp,
-    calendarDate,
     // Actions
     navigateTo,
     openSidePane,
     closeSidePane,
     toggleSidePane,
     toggleSplitView,
+    toggleFullscreen,
     setNormalView,
     switchSplitPanes,
     setMessagingView,
     closeSplitPane,
-    // DataDemo Actions
     onItemSelect,
-    setViewMode,
-    setGroupBy,
-    setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort,
-    setPage,
-    setCalendarDateProp,
-    setCalendarDisplayProps,
-    setCalendarItemLimit,
-    setCalendarColorProp,
-    setCalendarDate,
   }), [
-    bodyState, sidePaneContent, currentActivePage, pathItemId, itemId, messagingView, viewMode,
-    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
-    calendarDisplayProps, calendarItemLimit, calendarColorProp, calendarDate,
-    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
-    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
-    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp, setCalendarDate
+    bodyState, sidePaneContent, currentActivePage, pathItemId, itemId, messagingView,
+    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, toggleFullscreen,
+    setNormalView, switchSplitPanes, setMessagingView, closeSplitPane, onItemSelect
   ]);
 }

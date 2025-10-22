@@ -15,7 +15,7 @@ import {
   User,
   BarChart3,
 } from 'lucide-react'
-import type { GenericItem, DetailViewConfig, DetailViewSection } from '../../types'
+import type { GenericItem, DetailViewConfig } from '../../types'
 import { useStaggeredAnimation } from '@/hooks/useStaggeredAnimation.motion.hook';
 import { EditableField } from './EditableField'
 import { DraggableSection } from './DraggableSection'
@@ -40,7 +40,7 @@ export function DetailPanel<TFieldId extends string, TItem extends GenericItem>(
   
   const { getFieldDef } = useDynamicView<TFieldId, TItem>();
   const { header, body } = config;
-  const [sections, setSections] = useState(body.sections);
+  const [sections, setSections] = useState([...body.sections]);
 
   const sectionIds = useMemo(() => sections.map(s => s.title), [sections]);
 

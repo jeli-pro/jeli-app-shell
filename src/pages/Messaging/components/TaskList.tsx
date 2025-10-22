@@ -147,7 +147,7 @@ export const TaskList = () => {
                                   <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
                               </div>
                           )}
-                          {isHandledByOther && <Eye className="w-3.5 h-3.5" title="Being handled by another user" />}
+                          {isHandledByOther && <span title="Being handled by another user"><Eye className="w-3.5 h-3.5" /></span>}
                       </div>
                   </div>
                   <div className="flex flex-col items-end space-y-1.5 flex-shrink-0">
