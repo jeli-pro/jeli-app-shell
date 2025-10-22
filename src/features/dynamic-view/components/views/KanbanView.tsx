@@ -135,7 +135,8 @@ export function KanbanView({ data }: DataKanbanViewProps) {
       
       // Persist change to global store. The groupBy value tells us which property to update.
       if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
-        onItemUpdate?.(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);
+        const updateValue = targetColumnId === 'N/A' ? undefined : targetColumnId;
+        onItemUpdate?.(itemId, { [groupBy]: updateValue } as Partial<GenericItem>);
       }
 
     } catch (err) {
@@ -159,6 +160,7 @@ export function KanbanView({ data }: DataKanbanViewProps) {
   const statusColors: Record<string, string> = {
     active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
     low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
+    'N/A': 'bg-slate-400 dark:bg-slate-600',
   };
 
   const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
@@ -176,7 +178,9 @@ export function KanbanView({ data }: DataKanbanViewProps) {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3 min-w-0">
               <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
-              <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize truncate">{columnId}</h3>
+              <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize truncate">
+                {columnId === 'N/A' ? 'Uncategorized' : columnId}
+              </h3>
               <span className="text-sm font-medium text-muted-foreground bg-background/50 rounded-full px-2 py-0.5">{items.length}</span>
             </div>
             <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">

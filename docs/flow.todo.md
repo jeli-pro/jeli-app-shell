@@ -26,11 +26,16 @@ data demo page: list  view mode: remove line separator
 
 data demo page: calendar view: dragging items to left or right edge should move to previous or next month so user can easily drop item to different month. of course with acceleration
 
-===
+=== DOING
 
-make the app shell architecture/app view management more decoupled so the consumer has consistent behavior
 
-===
+make the app shell architecture/app view management more decoupled so the consumer has consistent behavior.
+
+because right now, every page is not having the same behavior like some page view mode switching to fullscreen but having broken layout, switching to another view mode sometimes works flowly like setting/notification page sometimes not.
+
+but each page can inform to props that like wanted to open as what view at default/initial,  wanted to having how much size spread on splitting view, etc... but everything should feel like vscode content where can be put anywhere in any pane or tabs
+
+=== HALF
 
 data demo page: calendar view: dynamic-view;
 

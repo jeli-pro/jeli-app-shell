@@ -1,176 +1,138 @@
-Alright, listen up. We're gonna juice up the calendar view. Right now, it's a black box - you can't link to a specific month, and hovering on an event tells you zilch. That's weak. The plan is to make it route-aware and slap on some slick tooltips that actually give you the intel you need without a click.
+Alright, let's architect this refactor. The goal is to get an "Uncategorized" column on the Kanban view for items that don't have a value for the grouping field. Right now, our grouping logic is a bit naive and the UI doesn't account for this state. We're going to make it more robust.
 
-We'll pipe the calendar's date state through the URL, making it shareable and bookmarkable. This involves hooking into our central `useAppViewManager` to manage a new `date` URL param. The `CalendarView` will become a controlled component, driven entirely by this URL state. No more internal state shenanigans.
-
-Then, we'll craft a custom tooltip component that looks sharp and surfaces key data on hover. Think status, priority, assignee, the works. It'll be a self-contained, data-rich heads-up display for each event. Less clicking, more knowing. Let's ship it.
+Here's the plan.
 
 ```yaml
 plan:
-  uuid: '3c8d1e2a-7b0f-4e9a-8a1c-9d4f5e6a7b2c'
+  uuid: 'f8d3a1b2-9c4d-4e6f-8a1b-3c2d1e0f9b4a'
   status: 'todo'
-  title: 'Upgrade Calendar View with URL State and Rich Tooltips'
+  title: 'Refactor Kanban View to Support "Uncategorized" Column'
   introduction: |
-    Alright, listen up. We're gonna juice up the calendar view. Right now, it's a black box - you can't link to a specific month, and hovering on an event tells you zilch. That's weak. The plan is to make it route-aware and slap on some slick tooltips that actually give you the intel you need without a click.
+    This refactoring effort will enhance the Kanban view within our Dynamic View feature to gracefully handle items that lack a value for the selected grouping attribute (e.g., a task with no 'status'). Currently, such items might be handled incorrectly or not displayed at all.
 
-    We'll pipe the calendar's date state through the URL, making it shareable and bookmarkable. This involves hooking into our central `useAppViewManager` to manage a new `date` URL param. The `CalendarView` will become a controlled component, driven entirely by this URL state. No more internal state shenanigans.
+    The plan involves three key parts. First, we'll fix the core data grouping logic to reliably categorize items without a group key under a special 'N/A' identifier. Second, we will update the `KanbanView` component to render this 'N/A' group as a visually distinct "Uncategorized" column and ensure drag-and-drop functionality correctly handles this new state. Finally, we'll add a test data item to our mock data to verify the new functionality end-to-end.
 
-    Then, we'll craft a custom tooltip component that looks sharp and surfaces key data on hover. Think status, priority, assignee, the works. It'll be a self-contained, data-rich heads-up display for each event. Less clicking, more knowing. Let's ship it.
+    This change will lead to a more robust and user-friendly Kanban board that accurately represents all data, including items with missing information.
   parts:
-    - uuid: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+    - uuid: 'a1e9c2b3-8d5e-4f7g-9c2c-4d3e2f1h0i5b'
       status: 'todo'
-      name: 'Part 1: Implement URL-Driven Calendar Date'
+      name: 'Part 1: Solidify Data Grouping Logic'
       reason: |
-        The calendar currently manages its own state for the displayed month, which is bad for usability. Users can't bookmark, share, or link to a specific month. By moving the date state into a URL parameter, we make the view's state transparent and persistent, which is a core tenet of good web app design.
+        The current grouping logic in `DynamicView.tsx` is flawed. It uses `String(value)`, which converts `undefined` to the string "undefined" and `null` to "null", preventing them from being correctly grouped under a common fallback key. We need to fix this to ensure all items without a valid group key are consistently categorized as 'N/A'.
       steps:
-        - uuid: 'b1c2d3e4-f5g6-7890-1234-567890abcdef'
+        - uuid: 'b2f0d3c4-9e6f-5g8h-0d3d-5e4f3g2i1j6c'
           status: 'todo'
-          name: '1. Enhance URL State Manager'
+          name: '1. Refine Grouping Reducer in DynamicView'
           reason: |
-            We need to teach our central state manager, `useAppViewManager`, how to handle calendar dates. It will be responsible for reading the date from the URL on load and providing a function to update it, keeping all URL logic in one place.
+            To ensure `null`, `undefined`, and empty string values for a `groupBy` field are all correctly placed into a single 'N/A' group for processing by the view layer.
           files:
-            - src/hooks/useAppViewManager.hook.ts
+            - 'src/features/dynamic-view/DynamicView.tsx'
           operations:
-            - 'In the "DERIVED STATE FROM URL" section, add logic to parse a `date` search param (e.g., `2024-08`).'
-            - 'Use `new Date()` as a fallback if the param is missing or invalid.'
-            - 'Create a new mutator function `setCalendarDate(date: Date)` that updates the URL param to a `YYYY-MM` format.'
-            - 'The mutator should clear the param if the new date is the current month to keep default URLs clean.'
-            - 'Export the new `calendarDate` state and `setCalendarDate` mutator from the hook.'
-        - uuid: 'c2d3e4f5-g6h7-8901-2345-67890abcdef'
-          status: 'todo'
-          name: '2. Thread State through DynamicView'
-          reason: |
-            The `DynamicView` component and its context are the main data pipeline. We need to plumb the new date state and its updater through this pipeline to get them to the `CalendarView`.
-          files:
-            - src/features/dynamic-view/DynamicView.tsx
-            - src/features/dynamic-view/DynamicViewContext.tsx
-          operations:
-            - 'In `DynamicView.tsx`, add new optional props: `calendarDate?: Date` and `onCalendarDateChange?: (date: Date) => void`.'
-            - 'Pass these new props down to the `DynamicViewProvider`.'
-            - 'In `DynamicViewContext.tsx`, add `calendarDate` and `onCalendarDateChange` to the `DynamicViewContextProps` interface.'
-        - uuid: 'd3e4f5g6-h7i8-9012-3456-7890abcdef'
-          status: 'todo'
-          name: '3. Connect State in DataDemo Page'
-          reason: |
-            The `DataDemoPage` is the top-level component that uses `DynamicView`. We'll connect our new state from `useAppViewManager` to the `DynamicView` component here.
-          files:
-            - src/pages/DataDemo/index.tsx
-          operations:
-            - 'In `DataDemoPage`, call `useAppViewManager` to get `calendarDate` and `setCalendarDate`.'
-            - 'Pass `calendarDate={calendarDate}` and `onCalendarDateChange={setCalendarDate}` to the `<DynamicView />` component.'
-        - uuid: 'e4f5g6h7-i8j9-0123-4567-890abcdef'
-          status: 'todo'
-          name: '4. Refactor CalendarView as Controlled Component'
-          reason: |
-            This is the final step to kill the internal state. `CalendarView` will now be a "dumb" component that just renders the date it's given and reports back when the user tries to change it.
-          files:
-            - src/features/dynamic-view/components/views/CalendarView.tsx
-          operations:
-            - 'Remove the internal `currentDate` state managed by `useState`.'
-            - 'Consume `calendarDate` and `onCalendarDateChange` from the `useDynamicView()` context.'
-            - 'Use `calendarDate ?? new Date()` as the source of truth for rendering.'
-            - 'Update `handlePrevMonth`, `handleNextMonth`, and `handleToday` to call `onCalendarDateChange(newDate)` instead of the old `setCurrentDate`.'
-            - 'Ensure the animation `direction` state is set correctly before calling the callback to preserve transitions.'
+            - "In `DynamicView.tsx`, locate the `useMemo` hook that calculates `groupedData`."
+            - "Modify the `.reduce()` function to be more robust."
+            - "Instead of `const groupKey = String(item[groupBy as keyof TItem]) || 'N/A'`, change the logic to explicitly check for `null` or `undefined` values."
+            - "Create a `key` variable: `const groupValue = item[groupBy as keyof TItem];`"
+            - "Set the final key for the accumulator: `const key = (groupValue === null || groupValue === undefined || groupValue === '') ? 'N/A' : String(groupValue);`"
+            - "Use this new `key` to push the item into the correct group in the accumulator."
       context_files:
         compact:
-          - src/hooks/useAppViewManager.hook.ts
-          - src/features/dynamic-view/components/views/CalendarView.tsx
-          - src/pages/DataDemo/index.tsx
+          - 'src/features/dynamic-view/DynamicView.tsx'
         medium:
-          - src/hooks/useAppViewManager.hook.ts
-          - src/features/dynamic-view/components/views/CalendarView.tsx
-          - src/pages/DataDemo/index.tsx
-          - src/features/dynamic-view/DynamicView.tsx
-          - src/features/dynamic-view/DynamicViewContext.tsx
+          - 'src/features/dynamic-view/DynamicView.tsx'
+          - 'src/features/dynamic-view/types.ts'
         extended:
-          - src/hooks/useAppViewManager.hook.ts
-          - src/features/dynamic-view/components/views/CalendarView.tsx
-          - src/pages/DataDemo/index.tsx
-          - src/features/dynamic-view/DynamicView.tsx
-          - src/features/dynamic-view/DynamicViewContext.tsx
-          - src/features/dynamic-view/types.ts
-    - uuid: 'f6g7h8i9-j0k1-2345-6789-0abcdef12345'
+          - 'src/features/dynamic-view/DynamicView.tsx'
+          - 'src/features/dynamic-view/types.ts'
+          - 'src/pages/DataDemo/index.tsx'
+
+    - uuid: 'c3g1e4d5-0f7g-6h9i-1e4e-6f5g4h3j2k7d'
       status: 'todo'
-      name: 'Part 2: Implement Rich Event Tooltips'
+      name: 'Part 2: Enhance Kanban View for "Uncategorized" Items'
       reason: |
-        A calendar without useful event previews is just a grid of colored boxes. Users need to quickly see what an item is about without clicking into it. A rich tooltip provides this "glanceable" information, dramatically improving workflow and reducing interaction cost.
+        With the data grouping fixed, the `KanbanView` will receive an 'N/A' group. We need to translate this key into a user-friendly "Uncategorized" column, give it a distinct style, and ensure that dropping items into this column correctly updates their data by setting their grouping field to `undefined`.
       steps:
-        - uuid: '01a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6'
+        - uuid: 'd4h2f5e6-1g8h-7i0j-2f5f-7g6h5i4k3l8e'
           status: 'todo'
-          name: '1. Create EventTooltipContent Component'
+          name: '1. Update KanbanView Column Rendering and Styling'
           reason: |
-            To keep `CalendarView` clean and to create a reusable, well-styled tooltip, we'll encapsulate the tooltip's content into its own component.
+            To display the 'N/A' group as "Uncategorized" and provide appropriate styling.
           files:
-            - src/features/dynamic-view/components/shared/EventTooltipContent.tsx
+            - 'src/features/dynamic-view/components/views/KanbanView.tsx'
           operations:
-            - 'Create a new file `src/features/dynamic-view/components/shared/EventTooltipContent.tsx`.'
-            - 'The component will accept an `item: GenericItem` and `config` as props.'
-            - 'Design a layout using a `Card`-like container with a dark, blurred background aesthetic.'
-            - 'Render key fields from the item, such as title, status, priority, and assignee, using `Badge`, `Avatar`, and `lucide-react` icons.'
-            - 'Use `FieldRenderer` where it makes sense but prioritize a custom, compact layout for the tooltip.'
-        - uuid: 'p7q8r9s0-t1u2-v3w4-x5y6-z7a8b9c0d1e2'
+            - "In `KanbanView.tsx`, find where the column title is rendered within the `Object.entries(columns).map`."
+            - "Create a variable `const columnTitle = columnId === 'N/A' ? 'Uncategorized' : capitalize(columnId);` and use it in the `<h3>` tag."
+            - "In the `statusColors` object, add a new entry for the 'N/A' key: `'N/A': 'bg-slate-400 dark:bg-slate-600'`."
+            - "Modify the `cn()` for the column header's color dot to use the new color: `statusColors[columnId] || 'bg-muted-foreground'`."
+        - uuid: 'e5i3g6f7-2h9i-8j1k-3g6g-8h7i6j5l4m9f'
           status: 'todo'
-          name: '2. Integrate Tooltip into CalendarView'
+          name: '2. Adjust Drag-and-Drop Logic'
           reason: |
-            With the content component ready, we need to wire it up to the actual calendar events so it appears on hover.
+            When an item is dropped into the "Uncategorized" column, its corresponding data field (e.g., `status`) should be set to `undefined`, not the string 'N/A'.
           files:
-            - src/features/dynamic-view/components/views/CalendarView.tsx
-            - src/components/ui/tooltip.tsx
+            - 'src/features/dynamic-view/components/views/KanbanView.tsx'
           operations:
-            - 'In `CalendarView.tsx`, import `Tooltip`, `TooltipContent`, `TooltipProvider`, `TooltipTrigger` from `@/components/ui/tooltip`.'
-            - 'Wrap the main calendar grid container with `<TooltipProvider>`.'
-            - 'In the render loop for calendar items (`dayItems.map`), wrap each draggable item `div` with `<Tooltip>`.'
-            - 'Use the item `div` itself as the `<TooltipTrigger asChild>...`.'
-            - 'Add `<TooltipContent>` and place the new `<EventTooltipContent item={item} config={config} />` inside it.'
-            - 'Style `<TooltipContent>` with `side="top"`, `align="center"`, and classes to make its own background transparent, letting the custom component handle all visuals.'
+            - "Locate the `handleDrop` function."
+            - "Inside the `onItemUpdate` call, modify the update payload."
+            - "Change `onItemUpdate?.(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);` to a version that handles the 'N/A' case."
+            - "Create a variable `const updateValue = targetColumnId === 'N/A' ? undefined : targetColumnId;`."
+            - "Use this variable in the update call: `onItemUpdate?.(itemId, { [groupBy]: updateValue } as Partial<GenericItem>);`."
       context_files:
         compact:
-          - src/features/dynamic-view/components/views/CalendarView.tsx
-          - src/components/ui/tooltip.tsx
-          - src/features/dynamic-view/components/shared/EventTooltipContent.tsx
+          - 'src/features/dynamic-view/components/views/KanbanView.tsx'
         medium:
-          - src/features/dynamic-view/components/views/CalendarView.tsx
-          - src/components/ui/tooltip.tsx
-          - src/features/dynamic-view/components/shared/EventTooltipContent.tsx
-          - src/features/dynamic-view/types.ts
-          - src/features/dynamic-view/components/shared/FieldRenderer.tsx
+          - 'src/features/dynamic-view/components/views/KanbanView.tsx'
+          - 'src/features/dynamic-view/DynamicView.tsx'
         extended:
-          - src/features/dynamic-view/components/views/CalendarView.tsx
-          - src/components/ui/tooltip.tsx
-          - src/features/dynamic-view/components/shared/EventTooltipContent.tsx
-          - src/features/dynamic-view/types.ts
-          - src/features/dynamic-view/components/shared/FieldRenderer.tsx
-          - src/pages/DataDemo/data/DataDemoItem.ts
-          - src/pages/DataDemo/DataDemo.config.tsx
-          - src/lib/utils.ts
+          - 'src/features/dynamic-view/components/views/KanbanView.tsx'
+          - 'src/features/dynamic-view/DynamicView.tsx'
+          - 'src/features/dynamic-view/types.ts'
+
+    - uuid: 'f6j4h7g8-3i0j-9k2l-4h7h-9i8j7k6m5n0g'
+      status: 'todo'
+      name: 'Part 3: Add Verification Data'
+      reason: |
+        To verify that the changes work correctly, we need a data item that will naturally fall into the "Uncategorized" column. We will add an item to the mock data with its `status` property explicitly set to `undefined`.
+      steps:
+        - uuid: 'g7k5i8h9-4j1k-0l3m-5i8i-0j9k8l7n6o1h'
+          status: 'todo'
+          name: '1. Add Uncategorized Item to Mock Data'
+          reason: |
+            To provide a test case for the new logic and ensure the "Uncategorized" column appears when grouping by status.
+          files:
+            - 'src/pages/DataDemo/data/mockData.ts'
+          operations:
+            - "In `mockData.ts`, add a new item object to the `mockDataItems` array."
+            - "Give it a unique `id` and `title`, like `id: '25'` and `title: 'Uncategorized Project Task'`."
+            - "Set its `status` property to `undefined`. You will need to use a type assertion to satisfy TypeScript, e.g., `status: undefined as any`."
+            - "Fill in other required properties to make it a valid `GenericItem`."
+      context_files:
+        compact:
+          - 'src/pages/DataDemo/data/mockData.ts'
+        medium:
+          - 'src/pages/DataDemo/data/mockData.ts'
+          - 'src/pages/DataDemo/data/DataDemoItem.ts'
+        extended:
+          - 'src/pages/DataDemo/data/mockData.ts'
+          - 'src/pages/DataDemo/data/DataDemoItem.ts'
+          - 'src/features/dynamic-view/components/views/KanbanView.tsx'
   conclusion: |
-    When this lands, the calendar view will be a first-class citizen in the app. Users can finally share a link to a specific month, which is table stakes for any real-world use. The new tooltips will slash the time-to-insight, letting users get a snapshot of a task without breaking their flow. It's a massive UX win that makes the whole dynamic view feature feel more polished and professional. We're trading user friction for user delight.
+    Upon completion, the Kanban view will be significantly more robust. It will correctly display an "Uncategorized" column for items with missing or null grouping data, improving data visibility and providing a more intuitive user experience. The drag-and-drop functionality will also be enhanced to correctly handle moving items into and out of this special column, ensuring data integrity.
   context_files:
     compact:
-      - src/features/dynamic-view/components/views/CalendarView.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/features/dynamic-view/DynamicView.tsx
-      - src/pages/DataDemo/index.tsx
-      - src/components/ui/tooltip.tsx
-      - src/features/dynamic-view/components/shared/EventTooltipContent.tsx
+      - 'src/features/dynamic-view/DynamicView.tsx'
+      - 'src/features/dynamic-view/components/views/KanbanView.tsx'
+      - 'src/pages/DataDemo/data/mockData.ts'
     medium:
-      - src/features/dynamic-view/components/views/CalendarView.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/features/dynamic-view/DynamicView.tsx
-      - src/pages/DataDemo/index.tsx
-      - src/components/ui/tooltip.tsx
-      - src/features/dynamic-view/components/shared/EventTooltipContent.tsx
-      - src/features/dynamic-view/DynamicViewContext.tsx
-      - src/features/dynamic-view/types.ts
+      - 'src/features/dynamic-view/DynamicView.tsx'
+      - 'src/features/dynamic-view/components/views/KanbanView.tsx'
+      - 'src/pages/DataDemo/data/mockData.ts'
+      - 'src/features/dynamic-view/types.ts'
     extended:
-      - src/features/dynamic-view/components/views/CalendarView.tsx
-      - src/hooks/useAppViewManager.hook.ts
-      - src/features/dynamic-view/DynamicView.tsx
-      - src/pages/DataDemo/index.tsx
-      - src/components/ui/tooltip.tsx
-      - src/features/dynamic-view/components/shared/EventTooltipContent.tsx
-      - src/features/dynamic-view/DynamicViewContext.tsx
-      - src/features/dynamic-view/types.ts
-      - src/pages/DataDemo/DataDemo.config.tsx
-      - src/features/dynamic-view/components/shared/FieldRenderer.tsx
-      - src/lib/utils.ts
+      - 'src/features/dynamic-view/DynamicView.tsx'
+      - 'src/features/dynamic-view/components/views/KanbanView.tsx'
+      - 'src/pages/DataDemo/data/mockData.ts'
+      - 'src/features/dynamic-view/types.ts'
+      - 'src/pages/DataDemo/index.tsx'
+      - 'src/pages/DataDemo/data/DataDemoItem.ts'
+
 ```

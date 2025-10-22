@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useLayoutEffect } from "react";
+import { useState, useMemo, useRef, useLayoutEffect, forwardRef } from "react";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { gsap } from "gsap";
@@ -74,64 +74,70 @@ function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
   );
 }
 
-function CalendarEvent({ item, isSelected, isDragging, onDragStart, colorProp }: { 
-    item: GenericItem; 
-    isSelected: boolean;
-    isDragging: boolean;
-    onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void
-    colorProp: CalendarColorProp<string>;
-  }) {
-  const { config, onItemSelect } = useDynamicView<string, GenericItem>();
-  const { calendarView: viewConfig } = config;
-
-    const colorClass = useMemo(() => {
-      switch (colorProp) {
-        case 'priority': return PRIORITY_BG_COLORS[item.priority as Priority];
-        case 'status': return STATUS_BG_COLORS[item.status as Status];
-        case 'category': return getCategoryBgColor(item.category as string);
-        default: return null;
-      }
-    }, [colorProp, item]);
-
-    return (
-        <div
-            draggable
-            onDragStart={(e) => onDragStart(e, item.id)}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-                "p-2 rounded-lg cursor-grab transition-all duration-200 border space-y-1",
-                isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2",
-                isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing",
-                colorClass 
-                  ? `${colorClass} hover:brightness-95 dark:hover:brightness-110`
-                  : "bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/80 dark:hover:bg-neutral-700/70"
-            )}
-        >
-            <div className={cn(
-              "font-semibold text-sm leading-tight line-clamp-2",
-              colorClass ? "text-inherit" : "text-card-foreground/90"
-            )}>
-              <FieldRenderer item={item} fieldId={viewConfig.titleField} />
-            </div>
-
-            {viewConfig.displayFields.includes('tags') && <FieldRenderer item={item} fieldId="tags" />}
-
-            {(viewConfig.displayFields.includes('priority') || viewConfig.displayFields.includes('assignee')) && (
-                <div className={cn(
-                    "flex items-center justify-between pt-1 border-t",
-                    colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
-                )}>
-                    <div>
-                      {viewConfig.displayFields.includes('priority') && <FieldRenderer item={item} fieldId="priority" />}
-                    </div>
-                    <div>
-                      {viewConfig.displayFields.includes('assignee') && <FieldRenderer item={item} fieldId="assignee" options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+interface CalendarEventProps {
+  item: GenericItem;
+  isSelected: boolean;
+  isDragging: boolean;
+  onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void;
+  colorProp: CalendarColorProp<string>;
 }
+
+const CalendarEvent = forwardRef<HTMLDivElement, CalendarEventProps>(
+  ({ item, isSelected, isDragging, onDragStart, colorProp }, ref) => {
+    const { config, onItemSelect } = useDynamicView<string, GenericItem>();
+    const { calendarView: viewConfig } = config;
+
+      const colorClass = useMemo(() => {
+        switch (colorProp) {
+          case 'priority': return PRIORITY_BG_COLORS[item.priority as Priority];
+          case 'status': return STATUS_BG_COLORS[item.status as Status];
+          case 'category': return getCategoryBgColor(item.category as string);
+          default: return null;
+        }
+      }, [colorProp, item]);
+
+      return (
+          <div
+              ref={ref}
+              draggable
+              onDragStart={(e) => onDragStart(e, item.id)}
+              onClick={() => onItemSelect(item)}
+              className={cn(
+                  "p-2 rounded-lg cursor-grab transition-all duration-200 border space-y-1",
+                  isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2",
+                  isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing",
+                  colorClass 
+                    ? `${colorClass} hover:brightness-95 dark:hover:brightness-110`
+                    : "bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/80 dark:hover:bg-neutral-700/70"
+              )}
+          >
+              <div className={cn(
+                "font-semibold text-sm leading-tight line-clamp-2",
+                colorClass ? "text-inherit" : "text-card-foreground/90"
+              )}>
+                <FieldRenderer item={item} fieldId={viewConfig.titleField} />
+              </div>
+
+              {viewConfig.displayFields.includes('tags') && <FieldRenderer item={item} fieldId="tags" />}
+
+              {(viewConfig.displayFields.includes('priority') || viewConfig.displayFields.includes('assignee')) && (
+                  <div className={cn(
+                      "flex items-center justify-between pt-1 border-t",
+                      colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
+                  )}>
+                      <div>
+                        {viewConfig.displayFields.includes('priority') && <FieldRenderer item={item} fieldId="priority" />}
+                      </div>
+                      <div>
+                        {viewConfig.displayFields.includes('assignee') && <FieldRenderer item={item} fieldId="assignee" options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>}
+                      </div>
+                  </div>
+              )}
+          </div>
+      );
+    }
+);
+CalendarEvent.displayName = 'CalendarEvent';
 
 const datePropLabels: Record<CalendarDateProp<string>, string> = {
   dueDate: 'due dates',

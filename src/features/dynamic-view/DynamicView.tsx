@@ -95,9 +95,10 @@ export function DynamicView<TFieldId extends string, TItem extends GenericItem>(
         return null;
     }
     return (items as TItem[]).reduce((acc, item) => {
-        const groupKey = String(item[groupBy as keyof TItem]) || 'N/A';
+        const groupValue = item[groupBy as keyof TItem];
+        const groupKey = (groupValue === null || groupValue === undefined || groupValue === '') ? 'N/A' : String(groupValue);
         if (!acc[groupKey]) {
-            acc[groupKey] = [] as TItem[];
+            acc[groupKey] = [];
         }
         acc[groupKey].push(item);
         return acc;

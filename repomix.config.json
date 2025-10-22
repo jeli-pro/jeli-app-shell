@@ -33,48 +33,34 @@
     "index.html",
     "src/index.css",
     // "src"
-    // "src/components/shared/PageLayout.tsx",
-    // "src/features/dynamic-view/DynamicView.tsx",
-    // "src/features/dynamic-view/DynamicViewContext.tsx",
-    // "src/features/dynamic-view/components/views/KanbanView.tsx",
-    // "src/hooks/useAppViewManager.hook.ts",
-    // "src/hooks/useAutoAnimateStats.hook.ts",
-    // "src/pages/DataDemo/index.tsx"
-    //
-    //
-    //
-    //
-    // "src/features/dynamic-view/components/views/CalendarView.tsx"
-    //
-    //
-    //
-    //
-    //
 
     // "src/App.tsx",
+    // "src/components/layout/AppShell.tsx",
     // "src/components/layout/MainContent.tsx",
     // "src/components/layout/RightPane.tsx",
+    // "src/components/layout/ViewModeSwitcher.tsx",
     // "src/components/shared/PageLayout.tsx",
-    // "src/features/dynamic-view/DynamicViewContext.tsx",
-    // "src/features/dynamic-view/components/shared/DetailPanel.tsx",
+    // "src/features/settings/SettingsContent.tsx",
     // "src/hooks/useAppViewManager.hook.ts",
     // "src/hooks/useRightPaneContent.hook.tsx",
-    // "src/pages/DataDemo/DataDemo.config.tsx",
+    // "src/pages/Dashboard/DemoContent.tsx",
+    // "src/pages/Dashboard/index.tsx",
+    // "src/pages/DataDemo/components/DataDetailContent.tsx",
     // "src/pages/DataDemo/index.tsx",
-    // "src/pages/DataDemo/store/dataDemo.store.tsx"
+    // "src/pages/DataDemo/store/dataDemo.store.tsx",
+    // "src/pages/Messaging/components/TaskList.tsx",
+    // "src/pages/Messaging/index.tsx",
+    // "src/pages/Notifications/index.tsx",
+    // "src/pages/Settings/index.tsx",
+    // "src/pages/ToasterDemo/index.tsx"
     //
     //
 
-    "src/components/ui/tooltip.tsx",
     "src/features/dynamic-view/DynamicView.tsx",
-    "src/features/dynamic-view/DynamicViewContext.tsx",
-    "src/features/dynamic-view/components/shared/FieldRenderer.tsx",
-    "src/features/dynamic-view/components/views/CalendarView.tsx",
+    "src/features/dynamic-view/components/views/KanbanView.tsx",
     "src/features/dynamic-view/types.ts",
-    "src/hooks/useAppViewManager.hook.ts",
-    "src/lib/utils.ts",
-    "src/pages/DataDemo/DataDemo.config.tsx",
     "src/pages/DataDemo/data/DataDemoItem.ts",
+    "src/pages/DataDemo/data/mockData.ts",
     "src/pages/DataDemo/index.tsx"
   ],
   "ignore": {

@@ -1,28 +1,18 @@
 # Directory Structure
 ```
 src/
-  components/
-    ui/
-      tooltip.tsx
   features/
     dynamic-view/
       components/
-        shared/
-          FieldRenderer.tsx
         views/
-          CalendarView.tsx
+          KanbanView.tsx
       DynamicView.tsx
-      DynamicViewContext.tsx
       types.ts
-  hooks/
-    useAppViewManager.hook.ts
-  lib/
-    utils.ts
   pages/
     DataDemo/
       data/
         DataDemoItem.ts
-      DataDemo.config.tsx
+        mockData.ts
       index.tsx
   index.css
 index.html
@@ -210,40 +200,6 @@ export default defineConfig({
 })
 ```
 
-## File: src/components/ui/tooltip.tsx
-```typescript
-"use client"
-
-import * as React from "react"
-import * as TooltipPrimitive from "@radix-ui/react-tooltip"
-
-import { cn } from "@/lib/utils"
-
-const TooltipProvider = TooltipPrimitive.Provider
-
-const Tooltip = TooltipPrimitive.Root
-
-const TooltipTrigger = TooltipPrimitive.Trigger
-
-const TooltipContent = React.forwardRef<
-  React.ElementRef<typeof TooltipPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <TooltipPrimitive.Content
-    ref={ref}
-    sideOffset={sideOffset}
-    className={cn(
-      "z-50 overflow-hidden rounded-md border bg-popover px-3 py-1.5 text-sm text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-      className
-    )}
-    {...props}
-  />
-))
-TooltipContent.displayName = TooltipPrimitive.Content.displayName
-
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
-```
-
 ## File: src/pages/DataDemo/data/DataDemoItem.ts
 ```typescript
 import type { GenericItem, Status, Priority } from '@/features/dynamic-view/types';
@@ -272,6 +228,791 @@ export interface DataDemoItem extends GenericItem {
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
+```
+
+## File: src/pages/DataDemo/data/mockData.ts
+```typescript
+import type { GenericItem } from '@/features/dynamic-view/types';
+
+export const mockDataItems: GenericItem[] = [
+  {
+    id: '1',
+    title: 'Mobile App Redesign Project',
+    description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',
+    category: 'Design',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Sarah Chen',
+      avatar: '🎨',
+      email: 'sarah.chen@company.com'
+    },
+    metrics: {
+      views: 1247,
+      likes: 89,
+      shares: 23,
+      completion: 65
+    },
+    tags: ['UI/UX', 'Mobile', 'Accessibility', 'Figma'],
+    createdAt: '2024-01-15T09:00:00Z',
+    updatedAt: '2024-01-20T14:30:00Z',
+    dueDate: '2024-02-28T23:59:59Z',
+    thumbnail: '🎨',
+    content: {
+      summary: 'Redesigning the mobile app to improve user experience and accessibility compliance.',
+      details: 'This project involves a complete redesign of our mobile application interface. The focus is on creating a more intuitive user experience while ensuring full accessibility compliance. We\'re implementing modern design patterns and conducting extensive user testing.',
+      attachments: [
+        { name: 'Design_Mockups_v2.fig', type: 'Figma', size: '2.4 MB', url: '#' },
+        { name: 'User_Research_Report.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
+        { name: 'Accessibility_Guidelines.docx', type: 'Document', size: '850 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '2',
+    title: 'API Performance Optimization',
+    description: 'Optimize backend API endpoints to reduce response times and improve scalability for high-traffic scenarios.',
+    category: 'Development',
+    status: 'pending',
+    priority: 'critical',
+    assignee: {
+      name: 'Marcus Rodriguez',
+      avatar: '⚡',
+      email: 'marcus.rodriguez@company.com'
+    },
+    metrics: {
+      views: 892,
+      likes: 156,
+      shares: 45,
+      completion: 25
+    },
+    tags: ['Backend', 'Performance', 'API', 'Optimization'],
+    createdAt: '2024-01-18T11:15:00Z',
+    updatedAt: '2024-01-22T16:45:00Z',
+    dueDate: '2024-01-30T23:59:59Z',
+    thumbnail: '⚡',
+    content: {
+      summary: 'Critical performance improvements needed for API endpoints experiencing high latency.',
+      details: 'Our API endpoints are experiencing significant performance issues during peak traffic. This optimization project will focus on database query optimization, caching strategies, and implementing rate limiting to ensure consistent performance.',
+      attachments: [
+        { name: 'Performance_Analysis.xlsx', type: 'Spreadsheet', size: '3.2 MB', url: '#' },
+        { name: 'Database_Schema_Updates.sql', type: 'SQL', size: '45 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '3',
+    title: 'Customer Feedback Dashboard',
+    description: 'Build a comprehensive dashboard for analyzing customer feedback trends and sentiment analysis.',
+    category: 'Analytics',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Emma Thompson',
+      avatar: '📊',
+      email: 'emma.thompson@company.com'
+    },
+    metrics: {
+      views: 2341,
+      likes: 234,
+      shares: 67,
+      completion: 100
+    },
+    tags: ['Dashboard', 'Analytics', 'Customer Experience', 'Data Viz'],
+    createdAt: '2024-01-05T08:30:00Z',
+    updatedAt: '2024-01-19T17:20:00Z',
+    thumbnail: '📊',
+    content: {
+      summary: 'Successfully launched customer feedback dashboard with real-time analytics.',
+      details: 'Completed the development of a comprehensive customer feedback dashboard that provides real-time insights into customer sentiment, trending topics, and satisfaction metrics. The dashboard includes interactive visualizations and automated reporting.',
+      attachments: [
+        { name: 'Dashboard_Demo.mp4', type: 'Video', size: '15.7 MB', url: '#' },
+        { name: 'User_Guide.pdf', type: 'PDF', size: '2.1 MB', url: '#' },
+        { name: 'Technical_Specs.md', type: 'Markdown', size: '23 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '4',
+    title: 'Security Audit & Compliance',
+    description: 'Comprehensive security audit of all systems and implementation of compliance measures for data protection.',
+    category: 'Security',
+    status: 'active',
+    priority: 'critical',
+    assignee: {
+      name: 'David Kim',
+      avatar: '🔒',
+      email: 'david.kim@company.com'
+    },
+    metrics: {
+      views: 567,
+      likes: 78,
+      shares: 12,
+      completion: 45
+    },
+    tags: ['Security', 'Compliance', 'GDPR', 'Audit'],
+    createdAt: '2024-01-20T10:00:00Z',
+    updatedAt: '2024-01-23T13:15:00Z',
+    dueDate: '2024-03-15T23:59:59Z',
+    thumbnail: '🔒',
+    content: {
+      summary: 'Ongoing security audit to ensure compliance with data protection regulations.',
+      details: 'Comprehensive security assessment covering all systems, applications, and data handling processes. The audit includes penetration testing, vulnerability assessments, and implementation of GDPR compliance measures.',
+      attachments: [
+        { name: 'Security_Checklist.xlsx', type: 'Spreadsheet', size: '1.5 MB', url: '#' },
+        { name: 'Compliance_Report_Draft.pdf', type: 'PDF', size: '4.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '5',
+    title: 'AI-Powered Content Recommendations',
+    description: 'Implement machine learning algorithms to provide personalized content recommendations for users.',
+    category: 'AI/ML',
+    status: 'pending',
+    priority: 'medium',
+    assignee: {
+      name: 'Priya Patel',
+      avatar: '🤖',
+      email: 'priya.patel@company.com'
+    },
+    metrics: {
+      views: 1456,
+      likes: 201,
+      shares: 89,
+      completion: 15
+    },
+    tags: ['Machine Learning', 'AI', 'Recommendations', 'Personalization'],
+    createdAt: '2024-01-22T14:20:00Z',
+    updatedAt: '2024-01-24T09:10:00Z',
+    dueDate: '2024-04-10T23:59:59Z',
+    thumbnail: '🤖',
+    content: {
+      summary: 'Building AI-driven recommendation system to enhance user engagement.',
+      details: 'Development of a sophisticated recommendation engine using machine learning algorithms. The system will analyze user behavior patterns, content preferences, and engagement metrics to provide highly personalized content suggestions.',
+      attachments: [
+        { name: 'ML_Model_Proposal.pdf', type: 'PDF', size: '3.8 MB', url: '#' },
+        { name: 'Training_Data_Analysis.ipynb', type: 'Jupyter Notebook', size: '892 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '6',
+    title: 'Cloud Infrastructure Migration',
+    description: 'Migrate legacy systems to cloud infrastructure for improved scalability and cost efficiency.',
+    category: 'Infrastructure',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Alex Johnson',
+      avatar: '☁️',
+      email: 'alex.johnson@company.com'
+    },
+    metrics: {
+      views: 734,
+      likes: 92,
+      shares: 34,
+      completion: 70
+    },
+    tags: ['Cloud', 'Migration', 'AWS', 'Infrastructure'],
+    createdAt: '2024-01-10T07:45:00Z',
+    updatedAt: '2024-01-24T11:30:00Z',
+    dueDate: '2024-02-15T23:59:59Z',
+    thumbnail: '☁️',
+    content: {
+      summary: 'Migrating critical systems to cloud infrastructure for better performance and scalability.',
+      details: 'Comprehensive migration of our legacy on-premise infrastructure to AWS cloud services. This includes database migration, application containerization, and implementation of auto-scaling capabilities.',
+      attachments: [
+        { name: 'Migration_Plan.pdf', type: 'PDF', size: '5.1 MB', url: '#' },
+        { name: 'Cost_Analysis.xlsx', type: 'Spreadsheet', size: '1.9 MB', url: '#' },
+        { name: 'Architecture_Diagram.png', type: 'Image', size: '2.3 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '7',
+    title: 'User Onboarding Experience',
+    description: 'Design and implement an intuitive onboarding flow to improve new user activation rates.',
+    category: 'Product',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Lisa Zhang',
+      avatar: '🚀',
+      email: 'lisa.zhang@company.com'
+    },
+    metrics: {
+      views: 1876,
+      likes: 298,
+      shares: 156,
+      completion: 100
+    },
+    tags: ['Onboarding', 'UX', 'Product', 'Conversion'],
+    createdAt: '2024-01-02T12:00:00Z',
+    updatedAt: '2024-01-16T18:45:00Z',
+    thumbnail: '🚀',
+    content: {
+      summary: 'Successfully launched new user onboarding experience with 40% improvement in activation rates.',
+      details: 'Designed and implemented a streamlined onboarding flow that guides new users through key product features. The new experience includes interactive tutorials, progress tracking, and personalized setup recommendations.',
+      attachments: [
+        { name: 'Onboarding_Flow.sketch', type: 'Sketch', size: '4.7 MB', url: '#' },
+        { name: 'A_B_Test_Results.pdf', type: 'PDF', size: '1.4 MB', url: '#' },
+        { name: 'User_Journey_Map.png', type: 'Image', size: '3.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '8',
+    title: 'Real-time Collaboration Features',
+    description: 'Implement real-time collaborative editing and communication features for team productivity.',
+    category: 'Development',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Jordan Miller',
+      avatar: '👥',
+      email: 'jordan.miller@company.com'
+    },
+    metrics: {
+      views: 1123,
+      likes: 167,
+      shares: 78,
+      completion: 55
+    },
+    tags: ['Collaboration', 'Real-time', 'WebSocket', 'Team Tools'],
+    createdAt: '2024-01-14T15:30:00Z',
+    updatedAt: '2024-01-25T10:20:00Z',
+    dueDate: '2024-03-01T23:59:59Z',
+    thumbnail: '👥',
+    content: {
+      summary: 'Building real-time collaboration features to enhance team productivity and communication.',
+      details: 'Development of real-time collaborative editing capabilities using WebSocket technology. Features include live cursor tracking, simultaneous editing, instant messaging, and presence indicators for team members.',
+      attachments: [
+        { name: 'Technical_Architecture.pdf', type: 'PDF', size: '2.8 MB', url: '#' },
+        { name: 'WebSocket_Implementation.js', type: 'JavaScript', size: '67 KB', url: '#' },
+        { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '9',
+    title: 'Mobile App Redesign Project',
+    description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',
+    category: 'Design',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Sarah Chen',
+      avatar: '🎨',
+      email: 'sarah.chen@company.com'
+    },
+    metrics: {
+      views: 1247,
+      likes: 89,
+      shares: 23,
+      completion: 65
+    },
+    tags: ['UI/UX', 'Mobile', 'Accessibility', 'Figma'],
+    createdAt: '2024-01-15T09:00:00Z',
+    updatedAt: '2024-01-20T14:30:00Z',
+    dueDate: '2024-02-28T23:59:59Z',
+    thumbnail: '🎨',
+    content: {
+      summary: 'Redesigning the mobile app to improve user experience and accessibility compliance.',
+      details: 'This project involves a complete redesign of our mobile application interface. The focus is on creating a more intuitive user experience while ensuring full accessibility compliance. We\'re implementing modern design patterns and conducting extensive user testing.',
+      attachments: [
+        { name: 'Design_Mockups_v2.fig', type: 'Figma', size: '2.4 MB', url: '#' },
+        { name: 'User_Research_Report.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
+        { name: 'Accessibility_Guidelines.docx', type: 'Document', size: '850 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '10',
+    title: 'API Performance Optimization',
+    description: 'Optimize backend API endpoints to reduce response times and improve scalability for high-traffic scenarios.',
+    category: 'Development',
+    status: 'pending',
+    priority: 'critical',
+    assignee: {
+      name: 'Marcus Rodriguez',
+      avatar: '⚡',
+      email: 'marcus.rodriguez@company.com'
+    },
+    metrics: {
+      views: 892,
+      likes: 156,
+      shares: 45,
+      completion: 25
+    },
+    tags: ['Backend', 'Performance', 'API', 'Optimization'],
+    createdAt: '2024-01-18T11:15:00Z',
+    updatedAt: '2024-01-22T16:45:00Z',
+    dueDate: '2024-01-30T23:59:59Z',
+    thumbnail: '⚡',
+    content: {
+      summary: 'Critical performance improvements needed for API endpoints experiencing high latency.',
+      details: 'Our API endpoints are experiencing significant performance issues during peak traffic. This optimization project will focus on database query optimization, caching strategies, and implementing rate limiting to ensure consistent performance.',
+      attachments: [
+        { name: 'Performance_Analysis.xlsx', type: 'Spreadsheet', size: '3.2 MB', url: '#' },
+        { name: 'Database_Schema_Updates.sql', type: 'SQL', size: '45 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '11',
+    title: 'Customer Feedback Dashboard',
+    description: 'Build a comprehensive dashboard for analyzing customer feedback trends and sentiment analysis.',
+    category: 'Analytics',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Emma Thompson',
+      avatar: '📊',
+      email: 'emma.thompson@company.com'
+    },
+    metrics: {
+      views: 2341,
+      likes: 234,
+      shares: 67,
+      completion: 100
+    },
+    tags: ['Dashboard', 'Analytics', 'Customer Experience', 'Data Viz'],
+    createdAt: '2024-01-05T08:30:00Z',
+    updatedAt: '2024-01-19T17:20:00Z',
+    thumbnail: '📊',
+    content: {
+      summary: 'Successfully launched customer feedback dashboard with real-time analytics.',
+      details: 'Completed the development of a comprehensive customer feedback dashboard that provides real-time insights into customer sentiment, trending topics, and satisfaction metrics. The dashboard includes interactive visualizations and automated reporting.',
+      attachments: [
+        { name: 'Dashboard_Demo.mp4', type: 'Video', size: '15.7 MB', url: '#' },
+        { name: 'User_Guide.pdf', type: 'PDF', size: '2.1 MB', url: '#' },
+        { name: 'Technical_Specs.md', type: 'Markdown', size: '23 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '12',
+    title: 'Security Audit & Compliance',
+    description: 'Comprehensive security audit of all systems and implementation of compliance measures for data protection.',
+    category: 'Security',
+    status: 'active',
+    priority: 'critical',
+    assignee: {
+      name: 'David Kim',
+      avatar: '🔒',
+      email: 'david.kim@company.com'
+    },
+    metrics: {
+      views: 567,
+      likes: 78,
+      shares: 12,
+      completion: 45
+    },
+    tags: ['Security', 'Compliance', 'GDPR', 'Audit'],
+    createdAt: '2024-01-20T10:00:00Z',
+    updatedAt: '2024-01-23T13:15:00Z',
+    dueDate: '2024-03-15T23:59:59Z',
+    thumbnail: '🔒',
+    content: {
+      summary: 'Ongoing security audit to ensure compliance with data protection regulations.',
+      details: 'Comprehensive security assessment covering all systems, applications, and data handling processes. The audit includes penetration testing, vulnerability assessments, and implementation of GDPR compliance measures.',
+      attachments: [
+        { name: 'Security_Checklist.xlsx', type: 'Spreadsheet', size: '1.5 MB', url: '#' },
+        { name: 'Compliance_Report_Draft.pdf', type: 'PDF', size: '4.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '13',
+    title: 'AI-Powered Content Recommendations',
+    description: 'Implement machine learning algorithms to provide personalized content recommendations for users.',
+    category: 'AI/ML',
+    status: 'pending',
+    priority: 'medium',
+    assignee: {
+      name: 'Priya Patel',
+      avatar: '🤖',
+      email: 'priya.patel@company.com'
+    },
+    metrics: {
+      views: 1456,
+      likes: 201,
+      shares: 89,
+      completion: 15
+    },
+    tags: ['Machine Learning', 'AI', 'Recommendations', 'Personalization'],
+    createdAt: '2024-01-22T14:20:00Z',
+    updatedAt: '2024-01-24T09:10:00Z',
+    dueDate: '2024-04-10T23:59:59Z',
+    thumbnail: '🤖',
+    content: {
+      summary: 'Building AI-driven recommendation system to enhance user engagement.',
+      details: 'Development of a sophisticated recommendation engine using machine learning algorithms. The system will analyze user behavior patterns, content preferences, and engagement metrics to provide highly personalized content suggestions.',
+      attachments: [
+        { name: 'ML_Model_Proposal.pdf', type: 'PDF', size: '3.8 MB', url: '#' },
+        { name: 'Training_Data_Analysis.ipynb', type: 'Jupyter Notebook', size: '892 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '14',
+    title: 'Cloud Infrastructure Migration',
+    description: 'Migrate legacy systems to cloud infrastructure for improved scalability and cost efficiency.',
+    category: 'Infrastructure',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Alex Johnson',
+      avatar: '☁️',
+      email: 'alex.johnson@company.com'
+    },
+    metrics: {
+      views: 734,
+      likes: 92,
+      shares: 34,
+      completion: 70
+    },
+    tags: ['Cloud', 'Migration', 'AWS', 'Infrastructure'],
+    createdAt: '2024-01-10T07:45:00Z',
+    updatedAt: '2024-01-24T11:30:00Z',
+    dueDate: '2024-02-15T23:59:59Z',
+    thumbnail: '☁️',
+    content: {
+      summary: 'Migrating critical systems to cloud infrastructure for better performance and scalability.',
+      details: 'Comprehensive migration of our legacy on-premise infrastructure to AWS cloud services. This includes database migration, application containerization, and implementation of auto-scaling capabilities.',
+      attachments: [
+        { name: 'Migration_Plan.pdf', type: 'PDF', size: '5.1 MB', url: '#' },
+        { name: 'Cost_Analysis.xlsx', type: 'Spreadsheet', size: '1.9 MB', url: '#' },
+        { name: 'Architecture_Diagram.png', type: 'Image', size: '2.3 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '15',
+    title: 'User Onboarding Experience',
+    description: 'Design and implement an intuitive onboarding flow to improve new user activation rates.',
+    category: 'Product',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Lisa Zhang',
+      avatar: '🚀',
+      email: 'lisa.zhang@company.com'
+    },
+    metrics: {
+      views: 1876,
+      likes: 298,
+      shares: 156,
+      completion: 100
+    },
+    tags: ['Onboarding', 'UX', 'Product', 'Conversion'],
+    createdAt: '2024-01-02T12:00:00Z',
+    updatedAt: '2024-01-16T18:45:00Z',
+    thumbnail: '🚀',
+    content: {
+      summary: 'Successfully launched new user onboarding experience with 40% improvement in activation rates.',
+      details: 'Designed and implemented a streamlined onboarding flow that guides new users through key product features. The new experience includes interactive tutorials, progress tracking, and personalized setup recommendations.',
+      attachments: [
+        { name: 'Onboarding_Flow.sketch', type: 'Sketch', size: '4.7 MB', url: '#' },
+        { name: 'A_B_Test_Results.pdf', type: 'PDF', size: '1.4 MB', url: '#' },
+        { name: 'User_Journey_Map.png', type: 'Image', size: '3.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '16',
+    title: 'Real-time Collaboration Features',
+    description: 'Implement real-time collaborative editing and communication features for team productivity.',
+    category: 'Development',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Jordan Miller',
+      avatar: '👥',
+      email: 'jordan.miller@company.com'
+    },
+    metrics: {
+      views: 1123,
+      likes: 167,
+      shares: 78,
+      completion: 55
+    },
+    tags: ['Collaboration', 'Real-time', 'WebSocket', 'Team Tools'],
+    createdAt: '2024-01-14T15:30:00Z',
+    updatedAt: '2024-01-25T10:20:00Z',
+    dueDate: '2024-03-01T23:59:59Z',
+    thumbnail: '👥',
+    content: {
+      summary: 'Building real-time collaboration features to enhance team productivity and communication.',
+      details: 'Development of real-time collaborative editing capabilities using WebSocket technology. Features include live cursor tracking, simultaneous editing, instant messaging, and presence indicators for team members.',
+      attachments: [
+        { name: 'Technical_Architecture.pdf', type: 'PDF', size: '2.8 MB', url: '#' },
+        { name: 'WebSocket_Implementation.js', type: 'JavaScript', size: '67 KB', url: '#' },
+        { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '17',
+    title: 'Mobile App Redesign Project',
+    description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',
+    category: 'Design',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Sarah Chen',
+      avatar: '🎨',
+      email: 'sarah.chen@company.com'
+    },
+    metrics: {
+      views: 1247,
+      likes: 89,
+      shares: 23,
+      completion: 65
+    },
+    tags: ['UI/UX', 'Mobile', 'Accessibility', 'Figma'],
+    createdAt: '2024-01-15T09:00:00Z',
+    updatedAt: '2024-01-20T14:30:00Z',
+    dueDate: '2024-02-28T23:59:59Z',
+    thumbnail: '🎨',
+    content: {
+      summary: 'Redesigning the mobile app to improve user experience and accessibility compliance.',
+      details: 'This project involves a complete redesign of our mobile application interface. The focus is on creating a more intuitive user experience while ensuring full accessibility compliance. We\'re implementing modern design patterns and conducting extensive user testing.',
+      attachments: [
+        { name: 'Design_Mockups_v2.fig', type: 'Figma', size: '2.4 MB', url: '#' },
+        { name: 'User_Research_Report.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
+        { name: 'Accessibility_Guidelines.docx', type: 'Document', size: '850 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '18',
+    title: 'API Performance Optimization',
+    description: 'Optimize backend API endpoints to reduce response times and improve scalability for high-traffic scenarios.',
+    category: 'Development',
+    status: 'pending',
+    priority: 'critical',
+    assignee: {
+      name: 'Marcus Rodriguez',
+      avatar: '⚡',
+      email: 'marcus.rodriguez@company.com'
+    },
+    metrics: {
+      views: 892,
+      likes: 156,
+      shares: 45,
+      completion: 25
+    },
+    tags: ['Backend', 'Performance', 'API', 'Optimization'],
+    createdAt: '2024-01-18T11:15:00Z',
+    updatedAt: '2024-01-22T16:45:00Z',
+    dueDate: '2024-01-30T23:59:59Z',
+    thumbnail: '⚡',
+    content: {
+      summary: 'Critical performance improvements needed for API endpoints experiencing high latency.',
+      details: 'Our API endpoints are experiencing significant performance issues during peak traffic. This optimization project will focus on database query optimization, caching strategies, and implementing rate limiting to ensure consistent performance.',
+      attachments: [
+        { name: 'Performance_Analysis.xlsx', type: 'Spreadsheet', size: '3.2 MB', url: '#' },
+        { name: 'Database_Schema_Updates.sql', type: 'SQL', size: '45 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '19',
+    title: 'Customer Feedback Dashboard',
+    description: 'Build a comprehensive dashboard for analyzing customer feedback trends and sentiment analysis.',
+    category: 'Analytics',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Emma Thompson',
+      avatar: '📊',
+      email: 'emma.thompson@company.com'
+    },
+    metrics: {
+      views: 2341,
+      likes: 234,
+      shares: 67,
+      completion: 100
+    },
+    tags: ['Dashboard', 'Analytics', 'Customer Experience', 'Data Viz'],
+    createdAt: '2024-01-05T08:30:00Z',
+    updatedAt: '2024-01-19T17:20:00Z',
+    thumbnail: '📊',
+    content: {
+      summary: 'Successfully launched customer feedback dashboard with real-time analytics.',
+      details: 'Completed the development of a comprehensive customer feedback dashboard that provides real-time insights into customer sentiment, trending topics, and satisfaction metrics. The dashboard includes interactive visualizations and automated reporting.',
+      attachments: [
+        { name: 'Dashboard_Demo.mp4', type: 'Video', size: '15.7 MB', url: '#' },
+        { name: 'User_Guide.pdf', type: 'PDF', size: '2.1 MB', url: '#' },
+        { name: 'Technical_Specs.md', type: 'Markdown', size: '23 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '20',
+    title: 'Security Audit & Compliance',
+    description: 'Comprehensive security audit of all systems and implementation of compliance measures for data protection.',
+    category: 'Security',
+    status: 'active',
+    priority: 'critical',
+    assignee: {
+      name: 'David Kim',
+      avatar: '🔒',
+      email: 'david.kim@company.com'
+    },
+    metrics: {
+      views: 567,
+      likes: 78,
+      shares: 12,
+      completion: 45
+    },
+    tags: ['Security', 'Compliance', 'GDPR', 'Audit'],
+    createdAt: '2024-01-20T10:00:00Z',
+    updatedAt: '2024-01-23T13:15:00Z',
+    dueDate: '2024-03-15T23:59:59Z',
+    thumbnail: '🔒',
+    content: {
+      summary: 'Ongoing security audit to ensure compliance with data protection regulations.',
+      details: 'Comprehensive security assessment covering all systems, applications, and data handling processes. The audit includes penetration testing, vulnerability assessments, and implementation of GDPR compliance measures.',
+      attachments: [
+        { name: 'Security_Checklist.xlsx', type: 'Spreadsheet', size: '1.5 MB', url: '#' },
+        { name: 'Compliance_Report_Draft.pdf', type: 'PDF', size: '4.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '21',
+    title: 'AI-Powered Content Recommendations',
+    description: 'Implement machine learning algorithms to provide personalized content recommendations for users.',
+    category: 'AI/ML',
+    status: 'pending',
+    priority: 'medium',
+    assignee: {
+      name: 'Priya Patel',
+      avatar: '🤖',
+      email: 'priya.patel@company.com'
+    },
+    metrics: {
+      views: 1456,
+      likes: 201,
+      shares: 89,
+      completion: 15
+    },
+    tags: ['Machine Learning', 'AI', 'Recommendations', 'Personalization'],
+    createdAt: '2024-01-22T14:20:00Z',
+    updatedAt: '2024-01-24T09:10:00Z',
+    dueDate: '2024-04-10T23:59:59Z',
+    thumbnail: '🤖',
+    content: {
+      summary: 'Building AI-driven recommendation system to enhance user engagement.',
+      details: 'Development of a sophisticated recommendation engine using machine learning algorithms. The system will analyze user behavior patterns, content preferences, and engagement metrics to provide highly personalized content suggestions.',
+      attachments: [
+        { name: 'ML_Model_Proposal.pdf', type: 'PDF', size: '3.8 MB', url: '#' },
+        { name: 'Training_Data_Analysis.ipynb', type: 'Jupyter Notebook', size: '892 KB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '22',
+    title: 'Cloud Infrastructure Migration',
+    description: 'Migrate legacy systems to cloud infrastructure for improved scalability and cost efficiency.',
+    category: 'Infrastructure',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Alex Johnson',
+      avatar: '☁️',
+      email: 'alex.johnson@company.com'
+    },
+    metrics: {
+      views: 734,
+      likes: 92,
+      shares: 34,
+      completion: 70
+    },
+    tags: ['Cloud', 'Migration', 'AWS', 'Infrastructure'],
+    createdAt: '2024-01-10T07:45:00Z',
+    updatedAt: '2024-01-24T11:30:00Z',
+    dueDate: '2024-02-15T23:59:59Z',
+    thumbnail: '☁️',
+    content: {
+      summary: 'Migrating critical systems to cloud infrastructure for better performance and scalability.',
+      details: 'Comprehensive migration of our legacy on-premise infrastructure to AWS cloud services. This includes database migration, application containerization, and implementation of auto-scaling capabilities.',
+      attachments: [
+        { name: 'Migration_Plan.pdf', type: 'PDF', size: '5.1 MB', url: '#' },
+        { name: 'Cost_Analysis.xlsx', type: 'Spreadsheet', size: '1.9 MB', url: '#' },
+        { name: 'Architecture_Diagram.png', type: 'Image', size: '2.3 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '23',
+    title: 'User Onboarding Experience',
+    description: 'Design and implement an intuitive onboarding flow to improve new user activation rates.',
+    category: 'Product',
+    status: 'completed',
+    priority: 'medium',
+    assignee: {
+      name: 'Lisa Zhang',
+      avatar: '🚀',
+      email: 'lisa.zhang@company.com'
+    },
+    metrics: {
+      views: 1876,
+      likes: 298,
+      shares: 156,
+      completion: 100
+    },
+    tags: ['Onboarding', 'UX', 'Product', 'Conversion'],
+    createdAt: '2024-01-02T12:00:00Z',
+    updatedAt: '2024-01-16T18:45:00Z',
+    thumbnail: '🚀',
+    content: {
+      summary: 'Successfully launched new user onboarding experience with 40% improvement in activation rates.',
+      details: 'Designed and implemented a streamlined onboarding flow that guides new users through key product features. The new experience includes interactive tutorials, progress tracking, and personalized setup recommendations.',
+      attachments: [
+        { name: 'Onboarding_Flow.sketch', type: 'Sketch', size: '4.7 MB', url: '#' },
+        { name: 'A_B_Test_Results.pdf', type: 'PDF', size: '1.4 MB', url: '#' },
+        { name: 'User_Journey_Map.png', type: 'Image', size: '3.2 MB', url: '#' }
+      ]
+    }
+  },
+  {
+    id: '24',
+    title: 'Real-time Collaboration Features',
+    description: 'Implement real-time collaborative editing and communication features for team productivity.',
+    category: 'Development',
+    status: 'active',
+    priority: 'high',
+    assignee: {
+      name: 'Jordan Miller',
+      avatar: '👥',
+      email: 'jordan.miller@company.com'
+    },
+    metrics: {
+      views: 1123,
+      likes: 167,
+      shares: 78,
+      completion: 55
+    },
+    tags: ['Collaboration', 'Real-time', 'WebSocket', 'Team Tools'],
+    createdAt: '2024-01-14T15:30:00Z',
+    updatedAt: '2024-01-25T10:20:00Z',
+    dueDate: '2024-03-01T23:59:59Z',
+    thumbnail: '👥',
+    content: {
+      summary: 'Building real-time collaboration features to enhance team productivity and communication.',
+      details: 'Development of real-time collaborative editing capabilities using WebSocket technology. Features include live cursor tracking, simultaneous editing, instant messaging, and presence indicators for team members.',
+      attachments: [
+        { name: 'Technical_Architecture.pdf', type: 'PDF', size: '2.8 MB', url: '#' },
+        { name: 'WebSocket_Implementation.js', type: 'JavaScript', size: '67 KB', url: '#' },
+        { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+      ]
+    }
+  }
+]
 ```
 
 ## File: index.html
@@ -484,239 +1225,222 @@ export default {
 }
 ```
 
-## File: src/features/dynamic-view/DynamicViewContext.tsx
+## File: src/features/dynamic-view/components/views/KanbanView.tsx
 ```typescript
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, GroupableField } from './types';
+import { useState, useEffect, Fragment } from "react";
+import {
+  GripVertical,
+  Plus,
+} from "lucide-react";
+import type { GenericItem } from '../../types'
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { EmptyState } from "../shared/EmptyState";
+import { useDynamicView } from '../../DynamicViewContext'
+import { FieldRenderer } from '../shared/FieldRenderer'
 
-export interface DynamicViewContextProps<TFieldId extends string, TItem extends GenericItem> {
-  config: ViewConfig<TFieldId, TItem>;
-  data: TItem[];
-  getFieldDef: (fieldId: TFieldId) => ViewConfig<TFieldId, TItem>['fields'][number] | undefined;
-
-  // Data & State from parent
-  items: TItem[];
-  isLoading: boolean;
-  isInitialLoading: boolean;
-  totalItemCount: number;
-  hasMore: boolean;
-
-  // Controlled State Props from parent
-  viewMode: ViewMode;
-  filters: FilterConfig;
-  sortConfig: SortConfig<TFieldId> | null;
-  groupBy: GroupableField<TFieldId>;
-  activeGroupTab: string;
-  page: number;
-  selectedItemId?: string;
-  // Calendar-specific state
-  calendarDateProp?: CalendarDateProp<TFieldId>;
-  calendarDisplayProps?: CalendarDisplayProp<TFieldId>[];
-  calendarItemLimit?: 'all' | number;
-  calendarColorProp?: CalendarColorProp<TFieldId>;
-
-  // Callbacks to parent
-  onViewModeChange: (mode: ViewMode) => void;
-  onFiltersChange: (filters: FilterConfig) => void;
-  onSortChange: (sort: SortConfig<TFieldId> | null) => void;
-  onGroupByChange: (group: GroupableField<TFieldId>) => void;
-  onActiveGroupTabChange: (tab: string) => void;
-  onPageChange: (page: number) => void;
-  onItemSelect: (item: TItem) => void;
-  onItemUpdate?: (itemId: string, updates: Partial<TItem>) => void;
-  // Calendar-specific callbacks
-  onCalendarDatePropChange?: (prop: CalendarDateProp<TFieldId>) => void;
-  onCalendarDisplayPropsChange?: (props: CalendarDisplayProp<TFieldId>[]) => void;
-  onCalendarItemLimitChange?: (limit: 'all' | number) => void;
-  onCalendarColorPropChange?: (prop: CalendarColorProp<TFieldId>) => void;
+interface KanbanCardProps {
+  item: GenericItem;
+  isDragging: boolean;
 }
 
-const DynamicViewContext = createContext<DynamicViewContextProps<any, any> | null>(null);
-
-interface DynamicViewProviderProps<TFieldId extends string, TItem extends GenericItem> extends Omit<DynamicViewContextProps<TFieldId, TItem>, 'getFieldDef' | 'config' | 'data'> {
-  viewConfig: ViewConfig<TFieldId, TItem>,
-  children: ReactNode;
-}
-
-export function DynamicViewProvider<TFieldId extends string, TItem extends GenericItem>({ viewConfig, children, ...rest }: DynamicViewProviderProps<TFieldId, TItem>) {
-  const fieldDefsById = useMemo(() => {
-    return new Map(viewConfig.fields.map(field => [field.id, field]));
-  }, [viewConfig.fields]);
-
-  const getFieldDef = (fieldId: TFieldId) => {
-    return fieldDefsById.get(fieldId);
-  };
-
-  const value = useMemo(() => ({
-    ...rest,
-    config: viewConfig,
-    data: rest.items, // alias for convenience
-    getFieldDef,
-  }), [viewConfig, getFieldDef, rest]);
+function KanbanCard({ item, isDragging, ...props }: KanbanCardProps & React.HTMLAttributes<HTMLDivElement>) {
+  const { config, onItemSelect } = useDynamicView<string, GenericItem>();
+  const { kanbanView: viewConfig } = config;
 
   return (
-    <DynamicViewContext.Provider value={value}>
-      {children}
-    </DynamicViewContext.Provider>
+    <Card
+      {...props}
+      data-draggable-id={item.id}
+      onClick={() => onItemSelect(item)}
+      className={cn(
+        "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
+        isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
+      )}
+    >
+      <CardContent className="p-5">
+        <div className="space-y-4">
+          <div className="flex items-start justify-between">
+            <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
+              <FieldRenderer item={item} fieldId={viewConfig.cardFields.titleField} />
+            </h4>
+            <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+          </div>
+
+          <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.descriptionField} />
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.priorityField} />
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.tagsField} />
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
+            <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
+              <FieldRenderer item={item} fieldId={viewConfig.cardFields.dateField} />
+              <FieldRenderer item={item} fieldId={viewConfig.cardFields.metricsField} />
+            </div>
+            <FieldRenderer item={item} fieldId={viewConfig.cardFields.assigneeField} options={{ compact: true, avatarClassName: 'w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50' }} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
-export function useDynamicView<TFieldId extends string, TItem extends GenericItem>() {
-  const context = useContext(DynamicViewContext);
-  if (!context) {
-    throw new Error('useDynamicView must be used within a DynamicViewProvider');
-  }
-  return context as DynamicViewContextProps<TFieldId, TItem>;
-}
-```
-
-## File: src/features/dynamic-view/components/shared/FieldRenderer.tsx
-```typescript
-import { useDynamicView } from '../../DynamicViewContext';
-import type { GenericItem, BadgeFieldDefinition, FieldDefinition } from '../../types';
-import { cn, getNestedValue } from '@/lib/utils';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Clock, Eye, Heart, Share } from 'lucide-react';
-
-interface FieldRendererProps<TFieldId extends string, TItem extends GenericItem> {
-  item: TItem;
-  fieldId: TFieldId;
-  className?: string;
-  options?: Record<string, any>; // For extra props like 'compact' for avatar
+interface DataKanbanViewProps {
+  data: Record<string, GenericItem[]>;
 }
 
-export function FieldRenderer<TFieldId extends string, TItem extends GenericItem>({ item, fieldId, className, options }: FieldRendererProps<TFieldId, TItem>) {
-  const { getFieldDef } = useDynamicView<TFieldId, TItem>();
-  const fieldDef = getFieldDef(fieldId);
-  const value = getNestedValue(item, fieldId);
+export function KanbanView({ data }: DataKanbanViewProps) {
+  const [columns, setColumns] = useState(data);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
+  const { groupBy, onItemUpdate } = useDynamicView<string, GenericItem>();
 
-  // Custom render function takes precedence
-  if (fieldDef?.render) {
-    return <>{(fieldDef as FieldDefinition<TFieldId, TItem>).render?.(item, options)}</>;
-  }
+  useEffect(() => {
+    setColumns(data);
+  }, [data]);
 
-  if (!fieldDef) {
-    console.warn(`[FieldRenderer] No field definition found for ID: ${fieldId}`);
-    return <span className="text-red-500">?</span>;
-  }
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: GenericItem, sourceColumnId: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
+    setDraggedItemId(item.id);
+  };
 
-  if (value === null || typeof value === 'undefined') {
-    return null; // Or some placeholder like 'N/A'
-  }
-  
-  switch (fieldDef.type) {
-    case 'string':
-    case 'longtext':
-      return <span className={cn("truncate", className)}>{String(value)}</span>;
-    
-    case 'thumbnail':
-      return <span className={cn("text-xl", className)}>{String(value)}</span>;
+  const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) => {
+    const mouseY = e.clientY;
+    let closestIndex = elements.length;
 
-    case 'badge': {
-      const { colorMap, indicatorColorMap } = fieldDef as BadgeFieldDefinition<TFieldId, TItem>;
+    elements.forEach((el, index) => {
+      const { top, height } = el.getBoundingClientRect();
+      const offset = mouseY - (top + height / 2);
+      if (offset < 0 && index < closestIndex) {
+        closestIndex = index;
+      }
+    });
+    return closestIndex;
+  };
+
+  const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
+    e.preventDefault();
+    const container = e.currentTarget;
+    const draggableElements = Array.from(container.querySelectorAll('[data-draggable-id]')) as HTMLElement[];
+    const index = getDropIndicatorIndex(e, draggableElements);
+
+    if (dropIndicator?.columnId === columnId && dropIndicator.index === index) return;
+    setDropIndicator({ columnId, index });
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
+    e.preventDefault();
+    setDropIndicator(null);
+    try {
+      const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
+
+      const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
+      if (!droppedItem) return;
+
+      // Update local state for immediate feedback
+      setColumns(prev => {
+        const newColumns = { ...prev };
+        const sourceCol = prev[sourceColumnId].filter(i => i.id !== itemId);
+
+        if (sourceColumnId === targetColumnId) {
+          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : sourceCol.length;
+          sourceCol.splice(dropIndex, 0, droppedItem);
+          newColumns[sourceColumnId] = sourceCol;
+        } else {
+          const targetCol = [...prev[targetColumnId]];
+          const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : targetCol.length;
+          targetCol.splice(dropIndex, 0, droppedItem);
+          
+          newColumns[sourceColumnId] = sourceCol;
+          newColumns[targetColumnId] = targetCol;
+        }
+        return newColumns;
+      });
       
-      if (options?.displayAs === 'indicator' && indicatorColorMap) {
-        const indicatorColorClass = indicatorColorMap[String(value)] || 'bg-muted-foreground';
-        return (
-          <div className={cn("w-3 h-3 rounded-full", indicatorColorClass, className)} />
-        );
+      // Persist change to global store. The groupBy value tells us which property to update.
+      if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
+        onItemUpdate?.(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);
       }
 
-      const colorClass = colorMap?.[String(value)] || '';
-      return (
-        <Badge variant="outline" className={cn("font-medium capitalize", colorClass, className)}>
-          {String(value)}
-        </Badge>
-      );
+    } catch (err) {
+      console.error("Failed to parse drag data", err)
+    } finally {
+      setDraggedItemId(null);
     }
-    
-    case 'avatar': {
-      const { compact = false, avatarClassName = "w-8 h-8" } = options || {};
-      const avatarUrl = getNestedValue(value, 'avatar');
-      const name = getNestedValue(value, 'name');
-      const email = getNestedValue(value, 'email');
-      const fallback = name?.split(' ').map((n: string) => n[0]).join('') || '?';
+  };
 
-      const avatarEl = (
-        <Avatar className={cn("border-2 border-transparent group-hover:border-primary/50 transition-colors", avatarClassName)}>
-          <AvatarImage src={avatarUrl} alt={name} />
-          <AvatarFallback>{fallback}</AvatarFallback>
-        </Avatar>
-      );
-      if (compact) return avatarEl;
+  const handleDragEnd = () => {
+    setDraggedItemId(null);
+    setDropIndicator(null);
+  };
 
-      return (
-        <div className={cn("flex items-center gap-2 group", className)}>
-          {avatarEl}
-          <div className="min-w-0 hidden sm:block">
-            <p className="font-medium text-sm truncate">{name}</p>
-            <p className="text-xs text-muted-foreground truncate">{email}</p>
+  const initialColumns = Object.entries(data);
+
+  if (!initialColumns || initialColumns.length === 0) {
+    return <EmptyState />;
+  }
+
+  const statusColors: Record<string, string> = {
+    active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
+    low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
+  };
+
+  const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
+
+  return (
+    <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
+      {Object.entries(columns).map(([columnId, items]) => (
+        <div
+          key={columnId}
+          className={cn(
+            "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
+            dropIndicator?.columnId === columnId && "bg-primary/10 border-primary/30"
+          )}
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
+              <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize truncate">{columnId}</h3>
+              <span className="text-sm font-medium text-muted-foreground bg-background/50 rounded-full px-2 py-0.5">{items.length}</span>
+            </div>
+            <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+              <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
+            </button>
+          </div>
+
+          <div
+            onDragOver={(e) => handleDragOverCardsContainer(e, columnId)}
+            onDrop={(e) => handleDrop(e, columnId)}
+            onDragLeave={() => setDropIndicator(null)}
+            className="space-y-4 min-h-[100px]"
+          >
+            {items.map((item, index) => (
+              <Fragment key={item.id}>
+                {dropIndicator?.columnId === columnId && dropIndicator.index === index && (
+                  <DropIndicator />
+                )}
+                <KanbanCard
+                  item={item}
+                  isDragging={draggedItemId === item.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, item, columnId)}
+                  onDragEnd={handleDragEnd}
+                />
+              </Fragment>
+            ))}
+            {dropIndicator?.columnId === columnId && dropIndicator.index === items.length && (
+              <DropIndicator />
+            )}
           </div>
         </div>
-      );
-    }
-    
-    case 'progress': {
-      const { showPercentage = false } = options || {};
-      const bar = (
-        <div className="w-full bg-muted rounded-full h-2.5">
-          <div
-            className="bg-gradient-to-r from-primary to-primary/80 h-2.5 rounded-full transition-all duration-500"
-            style={{ width: `${value}%` }}
-          />
-        </div>
-      );
-      if (!showPercentage) return bar;
-      
-      return (
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">{bar}</div>
-          <span className="text-sm font-medium text-muted-foreground">{value}%</span>
-        </div>
-      );
-    }
-
-    case 'date':
-      return (
-        <div className={cn("flex items-center gap-1.5 text-sm", className)}>
-          <Clock className="w-4 h-4" />
-          <span>{new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-        </div>
-      );
-
-    case 'tags': {
-      const MAX_TAGS = 2;
-      const tags = Array.isArray(value) ? value : [];
-      const remainingTags = tags.length - MAX_TAGS;
-      return (
-        <div className={cn("flex items-center gap-1.5 flex-wrap", className)}>
-          {tags.slice(0, MAX_TAGS).map(tag => (
-            <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-          ))}
-          {remainingTags > 0 && (
-            <Badge variant="outline" className="text-xs">+{remainingTags}</Badge>
-          )}
-        </div>
-      );
-    }
-
-    case 'metrics': {
-      const views = getNestedValue(value, 'views') || 0;
-      const likes = getNestedValue(value, 'likes') || 0;
-      const shares = getNestedValue(value, 'shares') || 0;
-      return (
-        <div className={cn("flex items-center gap-3 text-sm", className)}>
-          <div className="flex items-center gap-1"><Eye className="w-4 h-4" /> {views}</div>
-          <div className="flex items-center gap-1"><Heart className="w-4 h-4" /> {likes}</div>
-          <div className="flex items-center gap-1"><Share className="w-4 h-4" /> {shares}</div>
-        </div>
-      );
-    }
-      
-    default:
-      return <>{String(value)}</>;
-  }
+      ))}
+    </div>
+  );
 }
 ```
 
@@ -764,6 +1488,7 @@ export interface DynamicViewProps<TFieldId extends string, TItem extends Generic
   calendarDisplayProps?: CalendarDisplayProp<TFieldId>[];
   calendarItemLimit?: 'all' | number;
   calendarColorProp?: CalendarColorProp<TFieldId>;
+  calendarDate?: Date;
   statsData?: StatItem[];
 
   // State Change Callbacks
@@ -780,6 +1505,7 @@ export interface DynamicViewProps<TFieldId extends string, TItem extends Generic
   onCalendarDisplayPropsChange?: (props: CalendarDisplayProp<TFieldId>[]) => void;
   onCalendarItemLimitChange?: (limit: 'all' | number) => void;
   onCalendarColorPropChange?: (prop: CalendarColorProp<TFieldId>) => void;
+  onCalendarDateChange?: (date: Date) => void;
   
   // Custom Renderers
   renderHeaderControls?: () => ReactNode;
@@ -926,711 +1652,6 @@ export function DynamicView<TFieldId extends string, TItem extends GenericItem>(
           </div>
       </div>
     </DynamicViewProvider>
-  );
-}
-```
-
-## File: src/lib/utils.ts
-```typescript
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-import { formatDistanceToNow } from "date-fns"
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
-
-export const SIDEBAR_STATES = {
-  HIDDEN: 'hidden',
-  COLLAPSED: 'collapsed', 
-  EXPANDED: 'expanded',
-  PEEK: 'peek'
-} as const
-
-export const BODY_STATES = {
-  NORMAL: 'normal',
-  FULLSCREEN: 'fullscreen',
-  SIDE_PANE: 'side_pane',
-  SPLIT_VIEW: 'split_view'
-} as const
-
-export type SidebarState = typeof SIDEBAR_STATES[keyof typeof SIDEBAR_STATES]
-export type BodyState = typeof BODY_STATES[keyof typeof BODY_STATES]
-
-export function capitalize(str: string): string {
-  if (!str) return str
-  return str.charAt(0).toUpperCase() + str.slice(1)
-}
-
-export function formatDistanceToNowShort(date: Date | string): string {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  const result = formatDistanceToNow(dateObj, { addSuffix: true });
-
-  if (result === 'less than a minute ago') return 'now';
-
-  return result
-    .replace('about ', '')
-    .replace(' minutes', 'm')
-    .replace(' minute', 'm')
-    .replace(' hours', 'h')
-    .replace(' hour', 'h')
-    .replace(' days', 'd')
-}
-
-export const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    case 'pending': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30'
-    case 'completed': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'archived': return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
-}
-
-// A helper to get nested properties from an object, e.g., 'metrics.views'
-export function getNestedValue(obj: Record<string, any>, path: string): any {
-  return path.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : undefined), obj);
-}
-
-export const getPrioritySolidColor = (priority: string) => {
-  switch (priority) {
-    case 'critical': return 'bg-red-500'
-    case 'high': return 'bg-orange-500'
-    case 'medium': return 'bg-blue-500'
-    case 'low': return 'bg-green-500'
-    default: return 'bg-gray-500'
-  }
-}
-
-export const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'critical': return 'bg-red-500/20 text-red-700 border-red-500/30'
-    case 'high': return 'bg-orange-500/20 text-orange-700 border-orange-500/30'
-    case 'medium': return 'bg-blue-500/20 text-blue-700 border-blue-500/30'
-    case 'low': return 'bg-green-500/20 text-green-700 border-green-500/30'
-    default: return 'bg-gray-500/20 text-gray-700 border-gray-500/30'
-  }
-}
-```
-
-## File: src/pages/DataDemo/DataDemo.config.tsx
-```typescript
-import { FieldRenderer } from "@/features/dynamic-view/components/shared/FieldRenderer";
-import type {
-  ViewConfig,
-  FieldDefinition,
-} from "@/features/dynamic-view/types";
-import type { DataDemoItem } from "./data/DataDemoItem";
-
-const fields: readonly FieldDefinition<string, DataDemoItem>[] = [
-  { id: "id", label: "ID", type: "string" },
-  { id: "title", label: "Title", type: "string" },
-  { id: "description", label: "Description", type: "longtext" },
-  { id: "thumbnail", label: "Thumbnail", type: "thumbnail" },
-  { id: "category", label: "Category", type: "badge" },
-  {
-    id: "status",
-    label: "Status",
-    type: "badge",
-    colorMap: {
-      active: "bg-sky-500/10 text-sky-600 border-sky-500/20",
-      pending: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-      completed: "bg-emerald-600/10 text-emerald-700 border-emerald-600/20",
-      archived: "bg-zinc-500/10 text-zinc-600 border-zinc-500/20",
-    },
-  },
-  {
-    id: "priority",
-    label: "Priority",
-    type: "badge",
-    colorMap: {
-      critical: "bg-red-600/10 text-red-700 border-red-600/20",
-      high: "bg-orange-500/10 text-orange-600 border-orange-500/20",
-      medium: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-      low: "bg-green-500/10 text-green-600 border-green-500/20",
-    },
-    indicatorColorMap: {
-      critical: "bg-red-500",
-      high: "bg-orange-500",
-      medium: "bg-blue-500",
-      low: "bg-green-500",
-    },
-  },
-  { id: "assignee", label: "Assignee", type: "avatar" },
-  { id: "tags", label: "Tags", type: "tags" },
-  { id: "metrics", label: "Engagement", type: "metrics" },
-  { id: "metrics.completion", label: "Progress", type: "progress" },
-  { id: "dueDate", label: "Due Date", type: "date" },
-  { id: "createdAt", label: "Created At", type: "date" },
-  { id: "updatedAt", label: "Last Updated", type: "date" },
-  // A custom field to replicate the composite "Project" column in the table view
-  {
-    id: "project_details",
-    label: "Project",
-    type: "custom",
-    render: (item: DataDemoItem) => (
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
-          <FieldRenderer item={item} fieldId="thumbnail" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <h4 className="font-medium group-hover:text-primary transition-colors truncate">
-            <FieldRenderer item={item} fieldId="title" />
-          </h4>
-          <p className="text-sm text-muted-foreground truncate">
-            <FieldRenderer item={item} fieldId="category" />
-          </p>
-        </div>
-      </div>
-    ),
-  },
-] as const;
-
-// Infer the field IDs from the const-asserted array.
-type DataDemoFieldId = (typeof fields)[number]["id"];
-
-export const dataDemoViewConfig: ViewConfig<DataDemoFieldId, DataDemoItem> = {
-  // 1. Field Definitions
-  fields,
-  // 2. Control Definitions
-  sortableFields: [
-    { id: "updatedAt", label: "Last Updated" },
-    { id: "title", label: "Title" },
-    { id: "status", label: "Status" },
-    { id: "priority", label: "Priority" },
-    { id: "metrics.completion", label: "Progress" },
-  ],
-  groupableFields: [
-    { id: "none", label: "None" },
-    { id: "status", label: "Status" },
-    { id: "priority", label: "Priority" },
-    { id: "category", label: "Category" },
-  ],
-  filterableFields: [
-    {
-      id: "status",
-      label: "Status",
-      options: [
-        { id: "active", label: "Active" },
-        { id: "pending", label: "Pending" },
-        { id: "completed", label: "Completed" },
-        { id: "archived", label: "Archived" },
-      ],
-    },
-    {
-      id: "priority",
-      label: "Priority",
-      options: [
-        { id: "critical", label: "Critical" },
-        { id: "high", label: "High" },
-        { id: "medium", label: "Medium" },
-        { id: "low", label: "Low" },
-      ],
-    },
-  ],
-  // 3. View Layouts
-  listView: {
-    iconField: "thumbnail",
-    titleField: "title",
-    metaFields: [
-      { fieldId: "status", className: "hidden sm:flex" },
-      { fieldId: "tags", className: "hidden lg:flex" },
-      { fieldId: "updatedAt", className: "hidden md:flex" },
-      { fieldId: "assignee" },
-      { fieldId: "priority", className: "hidden xs:flex" },
-    ],
-  },
-  cardView: {
-    thumbnailField: "thumbnail",
-    titleField: "title",
-    descriptionField: "description",
-    headerFields: ["priority"],
-    statusField: "status",
-    categoryField: "category",
-    tagsField: "tags",
-    progressField: "metrics.completion",
-    assigneeField: "assignee",
-    metricsField: "metrics",
-    dateField: "updatedAt",
-  },
-  tableView: {
-    columns: [
-      { fieldId: "project_details", label: "Project", isSortable: true },
-      { fieldId: "status", label: "Status", isSortable: true },
-      { fieldId: "priority", label: "Priority", isSortable: true },
-      { fieldId: "assignee", label: "Assignee", isSortable: true },
-      { fieldId: "metrics.completion", label: "Progress", isSortable: true },
-      { fieldId: "metrics", label: "Engagement", isSortable: true },
-      { fieldId: "updatedAt", label: "Last Updated", isSortable: true },
-    ],
-  },
-  kanbanView: {
-    groupByField: "status",
-    cardFields: {
-      titleField: "title",
-      descriptionField: "description",
-      priorityField: "priority",
-      tagsField: "tags",
-      dateField: "dueDate",
-      metricsField: "metrics",
-      assigneeField: "assignee",
-    },
-  },
-  calendarView: {
-    dateField: "dueDate",
-    titleField: "title",
-    displayFields: ["tags", "priority", "assignee"],
-    colorByField: "priority",
-  },
-  detailView: {
-    header: {
-      thumbnailField: "thumbnail",
-      titleField: "title",
-      descriptionField: "description",
-      badgeFields: ["status", "priority", "category"],
-      progressField: "metrics.completion",
-    },
-    body: {
-      sections: [
-        { title: "Assigned to", fields: ["assignee"] },
-        { title: "Engagement Metrics", fields: ["metrics"] },
-        { title: "Tags", fields: ["tags"] },
-        {
-          title: "Timeline",
-          fields: ["createdAt", "updatedAt", "dueDate"],
-        },
-      ],
-    },
-  },
-};
-```
-
-## File: src/features/dynamic-view/components/views/CalendarView.tsx
-```typescript
-import { useState, useMemo, useRef, useLayoutEffect } from "react";
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday, isSameDay, } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { gsap } from "gsap";
-
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import type { GenericItem } from '../../types';
-import type { CalendarDateProp, CalendarColorProp, Status, Priority } from '../../types';
-import { useResizeObserver } from "@/hooks/useResizeObserver.hook";
-import { useDynamicView } from '../../DynamicViewContext'
-import { FieldRenderer } from '../shared/FieldRenderer'
-
-interface CalendarViewProps {
-  data: GenericItem[];
-}
-
-const PRIORITY_BG_COLORS: Record<Priority, string> = {
-  low: 'bg-blue-500/80 border-blue-600/80 text-white',
-  medium: 'bg-yellow-500/80 border-yellow-600/80 text-yellow-950',
-  high: 'bg-orange-500/80 border-orange-600/80 text-white',
-  critical: 'bg-red-600/80 border-red-700/80 text-white',
-};
-
-const STATUS_BG_COLORS: Record<Status, string> = {
-  active: 'bg-sky-500/80 border-sky-600/80 text-white',
-  pending: 'bg-amber-500/80 border-amber-600/80 text-amber-950',
-  completed: 'bg-emerald-600/80 border-emerald-700/80 text-white',
-  archived: 'bg-zinc-500/80 border-zinc-600/80 text-white',
-};
-
-const CATEGORY_BG_COLORS = [
-  'bg-rose-500/80 border-rose-600/80 text-white',
-  'bg-fuchsia-500/80 border-fuchsia-600/80 text-white',
-  'bg-indigo-500/80 border-indigo-600/80 text-white',
-  'bg-teal-500/80 border-teal-600/80 text-white',
-  'bg-lime-500/80 border-lime-600/80 text-lime-950',
-];
-
-const getCategoryBgColor = (category: string) => {
-  let hash = 0;
-  for (let i = 0; i < category.length; i++) {
-    hash = category.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index = Math.abs(hash % CATEGORY_BG_COLORS.length);
-  return CATEGORY_BG_COLORS[index];
-};
-
-function CalendarHeader({ currentDate, onPrevMonth, onNextMonth, onToday }: {
-  currentDate: Date;
-  onPrevMonth: () => void;
-  onNextMonth: () => void;
-  onToday: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 mb-6">
-      <h2 className="text-xl font-bold md:text-2xl tracking-tight">
-        {format(currentDate, "MMMM yyyy")}
-      </h2>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={onToday}>Today</Button>
-        <div className="flex items-center">
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={onPrevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={onNextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CalendarEvent({ item, isSelected, isDragging, onDragStart, colorProp }: { 
-    item: GenericItem; 
-    isSelected: boolean;
-    isDragging: boolean;
-    onDragStart: (e: React.DragEvent<HTMLDivElement>, itemId: string) => void
-    colorProp: CalendarColorProp<string>;
-  }) {
-  const { config, onItemSelect } = useDynamicView<string, GenericItem>();
-  const { calendarView: viewConfig } = config;
-
-    const colorClass = useMemo(() => {
-      switch (colorProp) {
-        case 'priority': return PRIORITY_BG_COLORS[item.priority as Priority];
-        case 'status': return STATUS_BG_COLORS[item.status as Status];
-        case 'category': return getCategoryBgColor(item.category as string);
-        default: return null;
-      }
-    }, [colorProp, item]);
-
-    return (
-        <div
-            draggable
-            onDragStart={(e) => onDragStart(e, item.id)}
-            onClick={() => onItemSelect(item)}
-            className={cn(
-                "p-2 rounded-lg cursor-grab transition-all duration-200 border space-y-1",
-                isSelected && "ring-2 ring-primary ring-offset-background ring-offset-2",
-                isDragging && "opacity-50 ring-2 ring-primary cursor-grabbing",
-                colorClass 
-                  ? `${colorClass} hover:brightness-95 dark:hover:brightness-110`
-                  : "bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/80 dark:hover:bg-neutral-700/70"
-            )}
-        >
-            <div className={cn(
-              "font-semibold text-sm leading-tight line-clamp-2",
-              colorClass ? "text-inherit" : "text-card-foreground/90"
-            )}>
-              <FieldRenderer item={item} fieldId={viewConfig.titleField} />
-            </div>
-
-            {viewConfig.displayFields.includes('tags') && <FieldRenderer item={item} fieldId="tags" />}
-
-            {(viewConfig.displayFields.includes('priority') || viewConfig.displayFields.includes('assignee')) && (
-                <div className={cn(
-                    "flex items-center justify-between pt-1 border-t",
-                    colorClass ? "border-black/10 dark:border-white/10" : "border-border/30 dark:border-neutral-700/50"
-                )}>
-                    <div>
-                      {viewConfig.displayFields.includes('priority') && <FieldRenderer item={item} fieldId="priority" />}
-                    </div>
-                    <div>
-                      {viewConfig.displayFields.includes('assignee') && <FieldRenderer item={item} fieldId="assignee" options={{ compact: true, avatarClassName: 'w-5 h-5' }}/>}
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
-const datePropLabels: Record<CalendarDateProp<string>, string> = {
-  dueDate: 'due dates',
-  createdAt: 'creation dates',
-  updatedAt: 'update dates',
-};
-
-export function CalendarView({ data }: CalendarViewProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const {
-    onItemUpdate,
-    calendarDateProp = 'dueDate', // Provide default
-    calendarItemLimit = 3, // Provide default
-    calendarColorProp = 'none', // Provide default
-    selectedItemId,
-  } = useDynamicView<string, GenericItem>();
-  
-  // Drag & Drop State
-  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
-  const [dropTargetDate, setDropTargetDate] = useState<Date | null>(null);
-  const [activeEdge, setActiveEdge] = useState<'left' | 'right' | null>(null);
-  const edgeHoverTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const currentEdgeRef = useRef<'left' | 'right' | null>(null);
-  const consecutiveMonthChangesRef = useRef(0);
-
-  // GSAP animation state
-  const [direction, setDirection] = useState(0); // 0: initial, 1: next, -1: prev
-
-  // Responsive Calendar State
-  const calendarContainerRef = useRef<HTMLDivElement>(null);
-  const { width } = useResizeObserver(calendarContainerRef);
-  const MIN_DAY_WIDTH = 160; // px
-  const numColumns = useMemo(() => {
-    if (width === 0) return 7;
-    const cols = Math.floor(width / MIN_DAY_WIDTH);
-    return Math.max(3, Math.min(7, cols));
-  }, [width]);
-
-  const gridRef = useRef<HTMLDivElement>(null);
-  const itemsByDateProp = useMemo(() => data.filter(item => !!item[calendarDateProp]), [data, calendarDateProp]);
-
-  const eventsByDate = useMemo(() => {
-    const eventsMap = new Map<string, GenericItem[]>();
-    itemsByDateProp.forEach(item => {
-      const dateValue = item[calendarDateProp];
-      if (!dateValue) return;
-      const date = new Date(dateValue as string);
-      const dateKey = format(date, "yyyy-MM-dd");
-      if (!eventsMap.has(dateKey)) {
-        eventsMap.set(dateKey, []);
-      }
-      eventsMap.get(dateKey)?.push(item);
-    });
-    return eventsMap;
-  }, [itemsByDateProp, calendarDateProp]);
-
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(monthStart);
-  const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Sunday
-  const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 });
-
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
-  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  
-  // D&D Handlers
-  const handleDragStart = (e: React.DragEvent, itemId: string) => {
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', itemId);
-    setDraggedItemId(itemId);
-  };
-  
-  const handleDragEnd = () => {
-    if (edgeHoverTimerRef.current) {
-      clearTimeout(edgeHoverTimerRef.current);
-      edgeHoverTimerRef.current = null;
-    }
-    currentEdgeRef.current = null;
-    consecutiveMonthChangesRef.current = 0;
-    setActiveEdge(null);
-    setDraggedItemId(null);
-    setDropTargetDate(null);
-  };
-
-  const handleMonthChange = (direction: 'prev' | 'next') => {
-    // Safety check: ensure user is still hovering on the correct edge
-    if ((direction === 'prev' && currentEdgeRef.current !== 'left') || (direction === 'next' && currentEdgeRef.current !== 'right')) {
-      return;
-    }
-
-    if (direction === 'prev') {
-      setDirection(-1);
-      setCurrentDate(current => subMonths(current, 1));
-    } else {
-      setDirection(1);
-      setCurrentDate(current => addMonths(current, 1));
-    }
-
-    consecutiveMonthChangesRef.current += 1;
-
-    // Schedule next accelerated change
-    const nextDelay = consecutiveMonthChangesRef.current >= 2 ? 150 : 300;
-    edgeHoverTimerRef.current = setTimeout(() => handleMonthChange(direction), nextDelay);
-  };
-
-  const handleDragOver = (e: React.DragEvent, day: Date) => {
-    e.preventDefault();
-    if (!gridRef.current) return;
-
-    const rect = gridRef.current.getBoundingClientRect();
-    const edgeZoneWidth = 80; // 80px hotzone on each side
-
-    const clearTimer = () => {
-      if (edgeHoverTimerRef.current) {
-        clearTimeout(edgeHoverTimerRef.current);
-        edgeHoverTimerRef.current = null;
-      }
-    };
-
-    // Check left edge
-    if (e.clientX < rect.left + edgeZoneWidth) {
-      if (currentEdgeRef.current !== 'left') {
-        clearTimer();
-        currentEdgeRef.current = 'left';
-        consecutiveMonthChangesRef.current = 0;
-        setDropTargetDate(null);
-        edgeHoverTimerRef.current = setTimeout(() => handleMonthChange('prev'), 600);
-      }
-      setActiveEdge('left');
-      return;
-    }
-
-    // Check right edge
-    if (e.clientX > rect.right - edgeZoneWidth) {
-      if (currentEdgeRef.current !== 'right') {
-        clearTimer();
-        currentEdgeRef.current = 'right';
-        consecutiveMonthChangesRef.current = 0;
-        setDropTargetDate(null);
-        edgeHoverTimerRef.current = setTimeout(() => handleMonthChange('next'), 600);
-      }
-      setActiveEdge('right');
-      return;
-    }
-
-    // If not in an edge zone
-    clearTimer();
-    setActiveEdge(null);
-    currentEdgeRef.current = null;
-    
-    if (dropTargetDate === null || !isSameDay(day, dropTargetDate)) {
-      setDropTargetDate(day);
-    }
-  };
-
-  const handleDragLeave = () => {
-    setDropTargetDate(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, day: Date) => {
-    e.preventDefault();
-    const itemIdToUpdate = e.dataTransfer.getData('text/plain');
-    if (itemIdToUpdate) {
-        const originalItem = itemsByDateProp.find(i => i.id === itemIdToUpdate);
-        if (originalItem && originalItem[calendarDateProp]) {
-            const originalDate = new Date(originalItem[calendarDateProp] as string);
-            // Preserve the time, only change the date part
-            const newDueDate = new Date(day);
-            newDueDate.setHours(originalDate.getHours(), originalDate.getMinutes(), originalDate.getSeconds(), originalDate.getMilliseconds());
-            onItemUpdate?.(itemIdToUpdate, { [calendarDateProp]: newDueDate.toISOString() });
-        }
-    }
-    handleDragEnd(); // Reset state
-  };
-  
-  const handlePrevMonth = () => {
-    setDirection(-1);
-    setCurrentDate(subMonths(currentDate, 1));
-  };
-  const handleNextMonth = () => {
-    setDirection(1);
-    setCurrentDate(addMonths(currentDate, 1));
-  };
-  const handleToday = () => {
-    setDirection(0); // No animation for 'Today'
-    setCurrentDate(new Date());
-  };
-
-  useLayoutEffect(() => {
-    if (direction === 0 || !gridRef.current) return;
-    gsap.fromTo(gridRef.current, 
-      { opacity: 0, x: 30 * direction }, 
-      { opacity: 1, x: 0, duration: 0.3, ease: 'power2.out' }
-    );
-  }, [currentDate]);
-
-  return (
-    <div ref={calendarContainerRef} className="-mx-4 md:-mx-6">
-      <div className="px-4 md:px-6 pb-2">
-        <CalendarHeader currentDate={currentDate} onPrevMonth={handlePrevMonth} onNextMonth={handleNextMonth} onToday={handleToday} />
-      </div>
-      {itemsByDateProp.length === 0 ? (
-        <div className="flex items-center justify-center h-96 text-muted-foreground rounded-lg border bg-card/30 mx-4 md:mx-6">
-          No items with {datePropLabels[calendarDateProp]} to display on the calendar.
-        </div>
-      ) : (
-        <div className="px-2 relative" onDragEnd={handleDragEnd}>
-          {/* Left edge cue */}
-          <div className={cn(
-              "absolute top-0 left-2 bottom-0 w-20 bg-gradient-to-r from-primary/20 to-transparent pointer-events-none transition-opacity duration-300 z-10",
-              activeEdge === 'left' ? "opacity-100" : "opacity-0"
-          )} />
-          {/* Right edge cue */}
-          <div className={cn(
-              "absolute top-0 right-2 bottom-0 w-20 bg-gradient-to-l from-primary/20 to-transparent pointer-events-none transition-opacity duration-300 z-10",
-              activeEdge === 'right' ? "opacity-100" : "opacity-0"
-          )} />
-
-          {numColumns === 7 && (
-            <div className="grid grid-cols-7">
-              {weekdays.map(day => (
-                <div key={day} className="py-2 px-3 text-center text-xs font-semibold text-muted-foreground">
-                  {day}
-                </div>
-              ))}
-            </div>
-          )}
-
-            <div
-              ref={gridRef}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(${numColumns}, minmax(0, 1fr))`,
-                gap: '0.5rem',
-              }}
-            >
-              {days.map(day => {
-                const dateKey = format(day, "yyyy-MM-dd");
-                const dayEvents = eventsByDate.get(dateKey) || [];
-                const visibleEvents = calendarItemLimit === 'all' 
-                    ? dayEvents 
-                    : dayEvents.slice(0, calendarItemLimit as number);
-                const hiddenEventsCount = dayEvents.length - visibleEvents.length;
-                const isCurrentMonthDay = isSameMonth(day, currentDate);
-                const isDropTarget = dropTargetDate && isSameDay(day, dropTargetDate);
-                return (
-                  <div
-                    key={day.toString()}
-                    onDragOver={(e) => handleDragOver(e, day)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, day)}
-                    className={cn(
-                      "relative min-h-[150px] rounded-2xl p-2 flex flex-col gap-2 transition-all duration-300 border",
-                      isCurrentMonthDay ? "bg-card/40 dark:bg-neutral-900/40 border-transparent" : "bg-muted/30 dark:bg-neutral-800/20 border-transparent text-muted-foreground/60",
-                      isDropTarget ? "border-primary/50 bg-primary/10" : "hover:border-primary/20 hover:bg-card/60"
-                    )}
-                  >
-                    <div className="font-semibold text-sm">
-                      {isToday(day) ? (
-                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground">
-                          {format(day, 'd')}
-                        </div>
-                      ) : (
-                        <div className="flex items-baseline gap-1.5 px-1 py-0.5">
-                          {numColumns < 7 && <span className="text-xs opacity-70">{format(day, 'eee')}</span>}
-                          <span>{format(day, 'd')}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-2 overflow-y-auto flex-grow custom-scrollbar">
-                      {visibleEvents.map(item => (
-                        <CalendarEvent
-                          key={item.id} 
-                          item={item} 
-                          isSelected={!!selectedItemId && selectedItemId === item.id}
-                          isDragging={!!draggedItemId && draggedItemId === item.id}
-                          onDragStart={handleDragStart}
-                          colorProp={calendarColorProp}
-                        />
-                      ))}
-                    </div>
-                    {hiddenEventsCount > 0 && (
-                      <div className="absolute bottom-1 right-2 text-xs font-bold text-muted-foreground">
-                        +{hiddenEventsCount} more
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-        </div>
-      )}
-    </div>
   );
 }
 ```
@@ -1902,359 +1923,6 @@ export type StatItem = {
 }
 ```
 
-## File: src/hooks/useAppViewManager.hook.ts
-```typescript
-import { useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate, useLocation, useParams } from 'react-router-dom';
-import { useAppShellStore, type AppShellState, type ActivePage } from '@/store/appShell.store';
-import type { GenericItem, ViewMode, SortConfig, GroupableField, CalendarDateProp, CalendarDisplayProp, CalendarColorProp, FilterConfig } from '@/features/dynamic-view/types';
-import type { TaskView } from '@/pages/Messaging/types';
-import { BODY_STATES, SIDEBAR_STATES } from '@/lib/utils';
-
-const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
-  dashboard: 'main',
-  settings: 'settings',
-  toaster: 'toaster',
-  notifications: 'notifications',
-  'data-demo': 'dataDemo',
-  messaging: 'messaging',
-};
-
-function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>();
-  useEffect(() => {
-    ref.current = value;
-  });
-  return ref.current;
-}
-
-/**
- * A centralized hook to manage and synchronize all URL-based view states.
- * This is the single source of truth for view modes, side panes, split views,
- * and page-specific parameters.
- */
-export function useAppViewManager() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { itemId: pathItemId, conversationId } = useParams<{ itemId: string; conversationId: string }>();
-  const { setSidebarState, sidebarState } = useAppShellStore();
-
-  // --- DERIVED STATE FROM URL ---
-
-  const view = searchParams.get('view');
-  const sidePane = searchParams.get('sidePane');
-  const sidePaneItemId = searchParams.get('itemId');
-  const right = searchParams.get('right');
-  const messagingView = searchParams.get('messagingView') as TaskView | null;
-  const q = searchParams.get('q');
-  const status = searchParams.get('status');
-  const priority = searchParams.get('priority');
-  const sort = searchParams.get('sort');
-  const calDate = searchParams.get('calDate');
-  const calDisplay = searchParams.get('calDisplay');
-  const calLimit = searchParams.get('calLimit');
-  const calColor = searchParams.get('calColor');
-
-  const { bodyState, sidePaneContent } = useMemo(() => {
-    const validPanes: AppShellState['sidePaneContent'][] = ['details', 'settings', 'main', 'toaster', 'notifications', 'dataDemo', 'messaging'];
-    
-    // 1. Priority: Explicit side pane overlay via URL param
-    if (sidePane && validPanes.includes(sidePane as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: sidePane as AppShellState['sidePaneContent'] };
-    }
-
-    // 2. Data item detail view in a pane, triggered by search param
-    if (sidePaneItemId) {
-      if (view === 'split') {
-        return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'dataItem' as const };
-      }
-      return { bodyState: BODY_STATES.SIDE_PANE, sidePaneContent: 'dataItem' as const };
-    }
-
-    // 3. Messaging conversation view (always split)
-    if (conversationId) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: 'messaging' as const };
-    }
-
-    // 4. Generic split view via URL param
-    if (view === 'split' && right && validPanes.includes(right as AppShellState['sidePaneContent'])) {
-      return { bodyState: BODY_STATES.SPLIT_VIEW, sidePaneContent: right as AppShellState['sidePaneContent'] };
-    }
-
-    return { bodyState: BODY_STATES.NORMAL, sidePaneContent: 'details' as const };
-  }, [sidePaneItemId, conversationId, view, sidePane, right]);
-  
-  const currentActivePage = useMemo(() => (location.pathname.split('/')[1] || 'dashboard') as ActivePage, [location.pathname]);
-  const prevActivePage = usePrevious(currentActivePage);
-
-  // --- SIDE EFFECTS ---
-  useEffect(() => {
-    // On navigating to messaging page, collapse sidebar if it's expanded.
-    // This ensures a good default view but allows the user to expand it again if they wish.
-    if (currentActivePage === 'messaging' && prevActivePage !== 'messaging' && sidebarState === SIDEBAR_STATES.EXPANDED) {
-      setSidebarState(SIDEBAR_STATES.COLLAPSED);
-    }
-  }, [currentActivePage, prevActivePage, sidebarState, setSidebarState]);
-
-  // DataDemo specific state
-  const viewMode = useMemo(() => (searchParams.get('dataView') as ViewMode) || 'list', [searchParams]);
-  const page = useMemo(() => parseInt(searchParams.get('page') || '1', 10), [searchParams]);
-  const groupBy = useMemo(() => {
-    const groupByParam = (searchParams.get('groupBy') as GroupableField<string> | 'none') || 'none';
-    // Kanban view should default to grouping by status if no group is specified
-    if (viewMode === 'kanban' && groupByParam === 'none') {
-      return 'status';
-    }
-    return groupByParam;
-  }, [searchParams, viewMode]);
-  const activeGroupTab = useMemo(() => searchParams.get('tab') || 'all', [searchParams]);
-  const filters = useMemo<FilterConfig>(
-		() => ({
-			searchTerm: q || '',
-			status: (status?.split(',') || []).filter(Boolean),
-			priority: (priority?.split(',') || []).filter(Boolean),
-		}),
-		[q, status, priority],
-	);
-  const sortConfig = useMemo<SortConfig<string> | null>(() => {
-    if (viewMode === 'kanban') return null; // Kanban is manually sorted
-		const sortParam = sort;
-		if (!sortParam) return { key: 'updatedAt', direction: 'desc' }; // Default sort
-		if (sortParam === 'default') return null;
-
-		const [key, direction] = sortParam.split('-');
-		return { key, direction: direction as 'asc' | 'desc' };
-  }, [sort, viewMode]);
-  const calendarDateProp = useMemo(() => (calDate || 'dueDate') as CalendarDateProp<string>, [calDate]);
-  const calendarDisplayProps = useMemo(
-    () => {
-      if (calDisplay === null) return []; // Default is now nothing
-      if (calDisplay === '') return []; // Explicitly empty is also nothing
-      return calDisplay.split(',') as CalendarDisplayProp<string>[];
-    },
-    [calDisplay]
-  );
-  const calendarItemLimit = useMemo(() => {
-    const limit = parseInt(calLimit || '3', 10);
-    if (calLimit === 'all') return 'all';
-    return isNaN(limit) ? 3 : limit;
-  }, [calLimit]);
-  const calendarColorProp = useMemo(() => (calColor || 'none') as CalendarColorProp<string>, [calColor]);
-
-  // --- MUTATOR ACTIONS ---
-
-  const handleParamsChange = useCallback(
-		(newParams: Record<string, string | number | string[] | null | undefined>, resetPage = false) => {
-			setSearchParams(
-				(prev) => {
-					const updated = new URLSearchParams(prev);
-					
-					for (const [key, value] of Object.entries(newParams)) {
-						if (value === null || value === undefined || (Array.isArray(value) && value.length === 0) || value === '') {
-							updated.delete(key);
-						} else if (Array.isArray(value)) {
-							updated.set(key, value.join(','));
-						} else {
-							updated.set(key, String(value));
-						}
-					}
-
-					if (resetPage) {
-						updated.delete('page');
-					}
-					if ('groupBy' in newParams) {
-						updated.delete('tab');
-					}
-
-					return updated;
-				},
-				{ replace: true },
-			);
-		},
-		[setSearchParams],
-	);
-
-  const navigateTo = useCallback((page: string, params?: Record<string, string | null>) => {
-    const targetPath = page.startsWith('/') ? page : `/${page}`;
-    const isSamePage = location.pathname === targetPath;
-    
-    const newSearchParams = new URLSearchParams(isSamePage ? searchParams : undefined);
-
-    if (params) {
-      for (const [key, value] of Object.entries(params)) {
-        if (value === null || value === undefined) {
-          newSearchParams.delete(key);
-        } else {
-          newSearchParams.set(key, value);
-        }
-      }
-    }
-
-    navigate({ pathname: targetPath, search: newSearchParams.toString() });
-  }, [navigate, location.pathname, searchParams]);
-
-  const openSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (location.pathname === `/${Object.keys(pageToPaneMap).find(key => pageToPaneMap[key] === pane)}`) {
-        navigate({ pathname: '/dashboard', search: `?sidePane=${pane}` }, { replace: true });
-    } else {
-        handleParamsChange({ sidePane: pane, view: null, right: null });
-    }
-  }, [handleParamsChange, navigate, location.pathname]);
-
-  const closeSidePane = useCallback(() => {
-    // This should close any kind of side pane, including dataItem
-    handleParamsChange({ sidePane: null, view: null, right: null, itemId: null });
-  }, [handleParamsChange]);
-
-  const toggleSidePane = useCallback((pane: AppShellState['sidePaneContent']) => {
-    if (sidePane === pane) {
-      closeSidePane();
-    } else {
-      openSidePane(pane);
-    }
-  }, [sidePane, openSidePane, closeSidePane]);
-
-  const toggleSplitView = useCallback(() => {
-    if (bodyState === BODY_STATES.SIDE_PANE) {
-      handleParamsChange({ view: 'split', right: sidePane, sidePane: null });
-    } else if (bodyState === BODY_STATES.SPLIT_VIEW) {
-      handleParamsChange({ sidePane: right, view: null, right: null });
-    } else { // From normal
-      const paneContent = pageToPaneMap[currentActivePage] || 'details';
-      handleParamsChange({ view: 'split', right: paneContent, sidePane: null });
-    }
-  }, [bodyState, sidePane, right, currentActivePage, handleParamsChange]);
-  
-  const setNormalView = useCallback(() => {
-      handleParamsChange({ sidePane: null, view: null, right: null });
-  }, [handleParamsChange]);
-
-  const switchSplitPanes = useCallback(() => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    const newSidePaneContent = pageToPaneMap[currentActivePage];
-    const newActivePage = Object.entries(pageToPaneMap).find(
-      ([, value]) => value === sidePaneContent
-    )?.[0] as ActivePage | undefined;
-
-    if (newActivePage && newSidePaneContent) {
-      navigate(`/${newActivePage}?view=split&right=${newSidePaneContent}`, { replace: true });
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  const closeSplitPane = useCallback((paneToClose: 'main' | 'right') => {
-    if (bodyState !== BODY_STATES.SPLIT_VIEW) return;
-    if (paneToClose === 'right') {
-      navigate(`/${currentActivePage}`, { replace: true });
-    } else { // Closing main pane
-      const pageToBecomeActive = Object.entries(pageToPaneMap).find(
-        ([, value]) => value === sidePaneContent
-      )?.[0] as ActivePage | undefined;
-      
-      if (pageToBecomeActive) {
-        navigate(`/${pageToBecomeActive}`, { replace: true });
-      } else {
-        navigate(`/dashboard`, { replace: true });
-      }
-    }
-  }, [bodyState, currentActivePage, sidePaneContent, navigate]);
-  
-  // DataDemo actions
-  const setViewMode = (mode: ViewMode) => handleParamsChange({ dataView: mode === 'list' ? null : mode });
-  const setGroupBy = (val: string) => handleParamsChange({ groupBy: val === 'none' ? null : val }, true);
-  const setActiveGroupTab = (tab: string) => handleParamsChange({ tab: tab === 'all' ? null : tab });
-  const setFilters = (newFilters: FilterConfig) => {
-    handleParamsChange({ q: newFilters.searchTerm, status: newFilters.status, priority: newFilters.priority }, true);
-  }
-  const setSort = (config: SortConfig<string> | null) => {
-    if (!config) {
-      handleParamsChange({ sort: null }, true);
-    } else {
-      handleParamsChange({ sort: `${config.key}-${config.direction}` }, true);
-    }
-  }
-  const setTableSort = (field: string) => {
-    let newSort: string | null = `${field}-desc`;
-    if (sortConfig && sortConfig.key === field) {
-      if (sortConfig.direction === 'desc') newSort = `${field}-asc`;
-      else if (sortConfig.direction === 'asc') newSort = null;
-    }
-    handleParamsChange({ sort: newSort }, true);
-  };
-  const setPage = (newPage: number) => handleParamsChange({ page: newPage > 1 ? newPage.toString() : null });
-
-  // Calendar specific actions
-  const setCalendarDateProp = (prop: CalendarDateProp<string>) => handleParamsChange({ calDate: prop === 'dueDate' ? null : prop });
-  const setCalendarDisplayProps = (props: CalendarDisplayProp<string>[]) => {
-    // Check for default state to keep URL clean
-    const isDefault = props.length === 0;
-    handleParamsChange({ calDisplay: isDefault ? null : props.join(',') });
-  };
-  const setCalendarItemLimit = (limit: number | 'all') => handleParamsChange({ calLimit: limit === 3 ? null : String(limit) });
-  const setCalendarColorProp = (prop: CalendarColorProp<string>) => handleParamsChange({ calColor: prop === 'none' ? null : prop });
-
-  const onItemSelect = useCallback((item: GenericItem) => {
-		handleParamsChange({ itemId: item.id, sidePane: null });
-	}, [handleParamsChange]);
-
-  const setMessagingView = (view: TaskView) => handleParamsChange({ messagingView: view });
-
-  // The final active item ID is either from the path (main view) or a search param (pane view)
-  const itemId = pathItemId || sidePaneItemId;
-
-  return useMemo(() => ({
-    // State
-    bodyState,
-    sidePaneContent,
-    currentActivePage,
-    pathItemId, // Expose for main content decisions
-    itemId,
-    messagingView,
-    // DataDemo State
-    viewMode,
-    page,
-    groupBy,
-    activeGroupTab,
-    filters,
-    sortConfig,
-    calendarDateProp,
-    calendarDisplayProps,
-    calendarItemLimit,
-    calendarColorProp,
-    // Actions
-    navigateTo,
-    openSidePane,
-    closeSidePane,
-    toggleSidePane,
-    toggleSplitView,
-    setNormalView,
-    switchSplitPanes,
-    setMessagingView,
-    closeSplitPane,
-    // DataDemo Actions
-    onItemSelect,
-    setViewMode,
-    setGroupBy,
-    setActiveGroupTab,
-    setFilters,
-    setSort,
-    setTableSort,
-    setPage,
-    setCalendarDateProp,
-    setCalendarDisplayProps,
-    setCalendarItemLimit,
-    setCalendarColorProp,
-  }), [
-    bodyState, sidePaneContent, currentActivePage, pathItemId, itemId, messagingView, viewMode,
-    page, groupBy, activeGroupTab, filters, sortConfig, calendarDateProp,
-    calendarDisplayProps, calendarItemLimit, calendarColorProp,
-    navigateTo, openSidePane, closeSidePane, toggleSidePane, toggleSplitView, setNormalView, setMessagingView,
-    switchSplitPanes, closeSplitPane, onItemSelect, setViewMode, setGroupBy, setActiveGroupTab, setFilters,
-    setSort, setTableSort, setPage, setCalendarDateProp, setCalendarDisplayProps, setCalendarItemLimit, setCalendarColorProp
-  ]);
-}
-```
-
 ## File: src/pages/DataDemo/index.tsx
 ```typescript
 import { useRef, useEffect, useCallback } from "react";
@@ -2297,6 +1965,8 @@ export default function DataDemoPage() {
     setViewMode,
     onItemSelect,
     pathItemId,
+    calendarDate,
+    setCalendarDate,
   } = useAppViewManager();
 
   const selectedItem = useSelectedItem(pathItemId);
@@ -2457,6 +2127,8 @@ export default function DataDemoPage() {
         activeGroupTab={activeGroupTab}
         page={page}
         // Callbacks
+        calendarDate={calendarDate}
+        onCalendarDateChange={setCalendarDate}
         onViewModeChange={setViewMode}
         onFiltersChange={setFilters}
         onSortChange={setSort}

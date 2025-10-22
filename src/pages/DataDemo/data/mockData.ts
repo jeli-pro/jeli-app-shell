@@ -521,6 +521,35 @@ export const mockDataItems: GenericItem[] = [
     }
   },
   {
+    id: '25',
+    title: 'Uncategorized Project Task',
+    description: 'This is a task that has no status and should appear in the "Uncategorized" column in Kanban view.',
+    category: 'Development',
+    status: undefined as any,
+    priority: 'low',
+    assignee: {
+      name: 'John Doe',
+      avatar: '🧑‍💻',
+      email: 'john.doe@company.com'
+    },
+    metrics: {
+      views: 10,
+      likes: 1,
+      shares: 0,
+      completion: 5
+    },
+    tags: ['Uncategorized', 'Task'],
+    createdAt: '2024-01-26T10:00:00Z',
+    updatedAt: '2024-01-26T10:00:00Z',
+    dueDate: '2024-03-10T23:59:59Z',
+    thumbnail: '📝',
+    content: {
+      summary: 'A sample task without a status.',
+      details: 'This task is used for testing the uncategorized column in the Kanban view.',
+      attachments: []
+    }
+  },
+  {
     id: '17',
     title: 'Mobile App Redesign Project',
     description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',

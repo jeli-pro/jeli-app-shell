@@ -1,0 +1,1456 @@
+uuid: b0999557-0136-47e0-8353-066b3b24578b
+projectId: jeli-app-shell
+createdAt: '2025-10-22T03:19:47.462Z'
+gitCommitMsg: >-
+  feat(kanban): add uncategorized column for items without group value
+
+  This commit enhances the Kanban view to handle items that lack a value for the
+  selected `groupBy` field.
+
+  - The data grouping logic in `DynamicView.tsx` is now more robust,
+    correctly bucketing items with `null`, `undefined`, or empty string
+    values into an 'N/A' group.
+  - The `KanbanView` component now renders this 'N/A' group as a visually
+    distinct "Uncategorized" column.
+  - Drag-and-drop functionality is updated to correctly handle items
+    moved into the "Uncategorized" column by setting their group-by
+    property to `undefined`.
+  - Added a test item to the mock data to verify this new functionality.
+promptSummary: >-
+  The user wants to add an "Uncategorized" column to the Kanban view for items
+  that do not have a value for the grouped-by field.
+reasoning:
+  - >-
+    To address the requirement for an "Uncategorized" column in the Kanban view,
+    I'll implement a three-part solution.
+  - >-
+    First, I'll make the data grouping logic in `DynamicView.tsx` more robust.
+    The current implementation can miscategorize items with `null` or
+    `undefined` group values. I will update it to consistently group all such
+    items under a special `N/A` key.
+  - >-
+    Second, I'll enhance the `KanbanView.tsx` component. It will now recognize
+    the `N/A` group key and render a column with the title "Uncategorized" and a
+    distinct color. I'll also modify the drag-and-drop handler so that when an
+    item is moved to this column, its grouping property is correctly set to
+    `undefined` in the data store.
+  - >-
+    Finally, to ensure these changes work as expected, I'll add a new item to
+    `mockData.ts` with an undefined `status`. This will serve as a test case,
+    verifying that the "Uncategorized" column appears and functions correctly
+    when the view is grouped by status.
+  - 'Here are the code changes:'
+  - >-
+    I'll start by updating the data grouping logic in the main `DynamicView`
+    component.
+  - >-
+    Next, I'll modify the `KanbanView` to handle the new `N/A` group, display it
+    as "Uncategorized", and manage drag-and-drop state updates correctly.
+  - >-
+    Finally, I'll add a test data item to the mock data to verify the new
+    "Uncategorized" column functionality.
+operations:
+  - type: write
+    path: src/features/dynamic-view/DynamicView.tsx
+    content: >+
+      --- src/features/dynamic-view/DynamicView.tsx
+
+      +++ src/features/dynamic-view/DynamicView.tsx
+
+      @@ -107,12 +107,13 @@
+           if (groupBy === 'none' || viewMode !== 'kanban') {
+               return null;
+           }
+           return (items as TItem[]).reduce((acc, item) => {
+      -        const groupKey = String(item[groupBy as keyof TItem]) || 'N/A';
+
+      +        const groupValue = item[groupBy as keyof TItem];
+
+      +        const groupKey = (groupValue === null || groupValue === undefined
+      || groupValue === '') ? 'N/A' : String(groupValue);
+               if (!acc[groupKey]) {
+      -            acc[groupKey] = [] as TItem[];
+
+      +            acc[groupKey] = [];
+               }
+               acc[groupKey].push(item);
+               return acc;
+           }, {} as Record<string, TItem[]>);
+         }, [items, groupBy, viewMode]);
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/features/dynamic-view/components/views/KanbanView.tsx
+    content: >+
+      --- src/features/dynamic-view/components/views/KanbanView.tsx
+
+      +++ src/features/dynamic-view/components/views/KanbanView.tsx
+
+      @@ -124,7 +124,8 @@
+             
+             // Persist change to global store. The groupBy value tells us which property to update.
+             if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
+      -        onItemUpdate?.(itemId, { [groupBy]: targetColumnId } as
+      Partial<GenericItem>);
+
+      +        const updateValue = targetColumnId === 'N/A' ? undefined :
+      targetColumnId;
+
+      +        onItemUpdate?.(itemId, { [groupBy]: updateValue } as
+      Partial<GenericItem>);
+             }
+       
+           } catch (err) {
+      @@ -147,6 +148,7 @@
+         const statusColors: Record<string, string> = {
+           active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
+           low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
+      +    'N/A': 'bg-slate-400 dark:bg-slate-600',
+         };
+       
+         const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
+      @@ -165,7 +167,9 @@
+                 <div className="flex items-center justify-between mb-6">
+                   <div className="flex items-center gap-3 min-w-0">
+                     <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
+      -              <h3 className="font-semibold text-card-foreground
+      dark:text-neutral-100 capitalize truncate">{columnId}</h3>
+
+      +              <h3 className="font-semibold text-card-foreground
+      dark:text-neutral-100 capitalize truncate">
+
+      +                {columnId === 'N/A' ? 'Uncategorized' : columnId}
+
+      +              </h3>
+                     <span className="text-sm font-medium text-muted-foreground bg-background/50 rounded-full px-2 py-0.5">{items.length}</span>
+                   </div>
+                   <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/data/mockData.ts
+    content: >+
+      --- src/pages/DataDemo/data/mockData.ts
+
+      +++ src/pages/DataDemo/data/mockData.ts
+
+      @@ -522,5 +522,34 @@
+               { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+             ]
+           }
+      +  },
+
+      +  {
+
+      +    id: '25',
+
+      +    title: 'Uncategorized Project Task',
+
+      +    description: 'This is a task that has no status and should appear in
+      the "Uncategorized" column in Kanban view.',
+
+      +    category: 'Development',
+
+      +    status: undefined as any,
+
+      +    priority: 'low',
+
+      +    assignee: {
+
+      +      name: 'John Doe',
+
+      +      avatar: '🧑‍💻',
+
+      +      email: 'john.doe@company.com'
+
+      +    },
+
+      +    metrics: {
+
+      +      views: 10,
+
+      +      likes: 1,
+
+      +      shares: 0,
+
+      +      completion: 5
+
+      +    },
+
+      +    tags: ['Uncategorized', 'Task'],
+
+      +    createdAt: '2024-01-26T10:00:00Z',
+
+      +    updatedAt: '2024-01-26T10:00:00Z',
+
+      +    dueDate: '2024-03-10T23:59:59Z',
+
+      +    thumbnail: '📝',
+
+      +    content: {
+
+      +      summary: 'A sample task without a status.',
+
+      +      details: 'This task is used for testing the uncategorized column in
+      the Kanban view.',
+
+      +      attachments: []
+
+      +    }
+         }
+       ]
+
+    patchStrategy: standard-diff
+snapshot:
+  src/features/dynamic-view/DynamicView.tsx: >-
+    import { useMemo, useCallback, type ReactNode, useRef, useEffect } from
+    'react';
+
+    import { Loader2 } from 'lucide-react';
+
+    import { gsap } from 'gsap';
+
+    import { DynamicViewProvider } from
+    '@/features/dynamic-view/DynamicViewContext';
+
+    import type { ViewConfig, GenericItem, ViewMode, FilterConfig, SortConfig,
+    CalendarDateProp, CalendarDisplayProp, CalendarColorProp, StatItem,
+    GroupableField } from './types';
+
+    import { ViewControls } from './components/controls/ViewControls';
+
+    import { ViewModeSelector } from './components/controls/ViewModeSelector';
+
+    import { AnimatedLoadingSkeleton } from
+    './components/shared/AnimatedLoadingSkeleton';
+
+    import { ListView } from './components/views/ListView';
+
+    import { CardView } from './components/views/CardView';
+
+    import { TableView } from './components/views/TableView';
+
+    import { KanbanView } from './components/views/KanbanView';
+
+    import { CalendarView } from './components/views/CalendarView';
+
+    import { EmptyState } from './components/shared/EmptyState';
+
+    import { useAutoAnimateStats } from '@/hooks/useAutoAnimateStats.hook';
+
+    import { StatCard } from '@/components/shared/StatCard';
+
+
+    // Define the props for the controlled DynamicView component
+
+    export interface DynamicViewProps<TFieldId extends string, TItem extends
+    GenericItem> {
+      // Config
+      viewConfig: ViewConfig<TFieldId, TItem>;
+      
+      // Data & State
+      items: TItem[];
+      isLoading: boolean;
+      isInitialLoading: boolean;
+      totalItemCount: number;
+      hasMore: boolean;
+      
+      // Controlled State Props
+      viewMode: ViewMode;
+      filters: FilterConfig;
+      sortConfig: SortConfig<TFieldId> | null;
+      groupBy: GroupableField<TFieldId>;
+      activeGroupTab: string;
+      page: number;
+      selectedItemId?: string;
+      // Calendar-specific state
+      calendarDateProp?: CalendarDateProp<TFieldId>;
+      calendarDisplayProps?: CalendarDisplayProp<TFieldId>[];
+      calendarItemLimit?: 'all' | number;
+      calendarColorProp?: CalendarColorProp<TFieldId>;
+      calendarDate?: Date;
+      statsData?: StatItem[];
+
+      // State Change Callbacks
+      onViewModeChange: (mode: ViewMode) => void;
+      onFiltersChange: (filters: FilterConfig) => void;
+      onSortChange: (sort: SortConfig<TFieldId> | null) => void;
+      onGroupByChange: (group: GroupableField<TFieldId>) => void;
+      onActiveGroupTabChange: (tab: string) => void;
+      onPageChange: (page: number) => void;
+      onItemSelect: (item: TItem) => void;
+      onItemUpdate?: (itemId: string, updates: Partial<TItem>) => void;
+      // Calendar-specific callbacks
+      onCalendarDatePropChange?: (prop: CalendarDateProp<TFieldId>) => void;
+      onCalendarDisplayPropsChange?: (props: CalendarDisplayProp<TFieldId>[]) => void;
+      onCalendarItemLimitChange?: (limit: 'all' | number) => void;
+      onCalendarColorPropChange?: (prop: CalendarColorProp<TFieldId>) => void;
+      onCalendarDateChange?: (date: Date) => void;
+      
+      // Custom Renderers
+      renderHeaderControls?: () => ReactNode;
+      renderCta?: (viewMode: ViewMode, ctaProps: { colSpan?: number }) => ReactNode;
+      loaderRef?: React.Ref<HTMLDivElement>;
+      scrollContainerRef?: React.RefObject<HTMLElement>;
+    }
+
+
+    export function DynamicView<TFieldId extends string, TItem extends
+    GenericItem>({ viewConfig, ...rest }: DynamicViewProps<TFieldId, TItem>) {
+      
+      const { viewMode, isInitialLoading, isLoading, hasMore, items, groupBy, statsData, scrollContainerRef } = rest;
+      const statsRef = useRef<HTMLDivElement>(null);
+
+      // Auto-hide stats container on scroll down
+      useAutoAnimateStats(scrollContainerRef!, statsRef);
+
+      useEffect(() => {
+        // Animate stats cards in
+        if (!isInitialLoading && statsRef.current) {
+          gsap.fromTo(statsRef.current.children,
+            { y: 30, opacity: 0 },
+            {
+              duration: 0.5,
+              y: 0,
+              opacity: 1,
+              stagger: 0.08,
+              ease: "power2.out"
+            }
+          )
+        }
+      }, [isInitialLoading]);
+
+      const groupedData = useMemo(() => {
+        if (groupBy === 'none' || viewMode !== 'kanban') {
+            return null;
+        }
+        return (items as TItem[]).reduce((acc, item) => {
+            const groupKey = String(item[groupBy as keyof TItem]) || 'N/A';
+            if (!acc[groupKey]) {
+                acc[groupKey] = [] as TItem[];
+            }
+            acc[groupKey].push(item);
+            return acc;
+        }, {} as Record<string, TItem[]>);
+      }, [items, groupBy, viewMode]);
+
+      const renderViewForData = useCallback((data: TItem[], cta: ReactNode) => {
+        switch (viewMode) {
+            case 'table': return <TableView data={data} ctaElement={cta} />;
+            case 'cards': return <CardView data={data} ctaElement={cta} />;
+            case 'grid': return <CardView data={data} isGrid ctaElement={cta} />;
+            case 'list': default: return <ListView data={data} ctaElement={cta} />;
+        }
+      }, [viewMode]);
+
+      const renderContent = () => {
+        if (isInitialLoading) {
+          return <AnimatedLoadingSkeleton viewMode={viewMode} />;
+        }
+
+        if (viewMode === 'calendar') {
+            return <CalendarView data={items} />;
+        }
+
+        if (viewMode === 'kanban') {
+            return groupedData ? (
+              <KanbanView data={groupedData} />
+            ) : (
+              <div className="flex items-center justify-center h-96 text-muted-foreground">
+                Group data by a metric to use the Kanban view.
+              </div>
+            );
+        }
+        
+        if (items.length === 0 && !isInitialLoading) {
+            return <EmptyState />;
+        }
+        
+        const ctaProps = {
+            colSpan: viewMode === 'table' ? viewConfig.tableView.columns.length + 1 : undefined,
+        };
+        const ctaElement = rest.renderCta
+            ? rest.renderCta(viewMode, ctaProps)
+            : null;
+        
+        // This will be expanded later to handle group tabs
+        return renderViewForData(items, ctaElement);
+      };
+
+      return (
+        <DynamicViewProvider<TFieldId, TItem> viewConfig={viewConfig} {...rest}>
+          <div className="space-y-6">
+              <div className="space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                      <div className="flex-1">
+                          {rest.renderHeaderControls ? rest.renderHeaderControls() : (
+                              <>
+                                  <h1 className="text-2xl font-bold tracking-tight">Data Showcase</h1>
+                                  <p className="text-muted-foreground">
+                                      {isInitialLoading 
+                                          ? "Loading projects..." 
+                                          : `Showing ${items.length} of ${rest.totalItemCount} item(s)`}
+                                  </p>
+                              </>
+                          )}
+                      </div>
+                      <ViewModeSelector />
+                  </div>
+                  <ViewControls />
+              </div>
+
+              {!isInitialLoading && statsData && statsData.length > 0 && (
+                <div ref={statsRef} className="flex overflow-x-auto gap-6 pb-4 no-scrollbar">
+                  {statsData.map((stat) => (
+                    <StatCard
+                      className="w-64 md:w-72 flex-shrink-0"
+                      key={stat.title}
+                      title={stat.title}
+                      value={stat.value}
+                      change={stat.change}
+                      trend={stat.trend}
+                      icon={stat.icon}
+                      chartData={stat.chartData}
+                    />
+                  ))}
+                </div>
+              )}
+              
+              <div className="min-h-[500px]">
+                  {renderContent()}
+              </div>
+
+              {/* Loader for infinite scroll */}
+              <div ref={rest.loaderRef} className="flex justify-center items-center py-6">
+                {isLoading && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Loading more...</span>
+                  </div>
+                )}
+                {!isLoading && !hasMore && items.length > 0 && !isInitialLoading && groupBy === 'none' && viewMode !== 'calendar' && viewMode !== 'kanban' && (
+                  <p className="text-muted-foreground">You've reached the end.</p>
+                )}
+              </div>
+          </div>
+        </DynamicViewProvider>
+      );
+    }
+  src/features/dynamic-view/components/views/KanbanView.tsx: >-
+    import { useState, useEffect, Fragment } from "react";
+
+    import {
+      GripVertical,
+      Plus,
+    } from "lucide-react";
+
+    import type { GenericItem } from '../../types'
+
+    import { Card, CardContent } from "@/components/ui/card";
+
+    import { cn } from "@/lib/utils";
+
+    import { EmptyState } from "../shared/EmptyState";
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+    import { FieldRenderer } from '../shared/FieldRenderer'
+
+
+    interface KanbanCardProps {
+      item: GenericItem;
+      isDragging: boolean;
+    }
+
+
+    function KanbanCard({ item, isDragging, ...props }: KanbanCardProps &
+    React.HTMLAttributes<HTMLDivElement>) {
+      const { config, onItemSelect } = useDynamicView<string, GenericItem>();
+      const { kanbanView: viewConfig } = config;
+
+      return (
+        <Card
+          {...props}
+          data-draggable-id={item.id}
+          onClick={() => onItemSelect(item)}
+          className={cn(
+            "cursor-pointer transition-all duration-300 border bg-card/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-card/70 dark:hover:bg-neutral-700/70 active:cursor-grabbing",
+            isDragging && "opacity-50 ring-2 ring-primary ring-offset-2 ring-offset-background"
+          )}
+        >
+          <CardContent className="p-5">
+            <div className="space-y-4">
+              <div className="flex items-start justify-between">
+                <h4 className="font-semibold text-card-foreground dark:text-neutral-100 leading-tight">
+                  <FieldRenderer item={item} fieldId={viewConfig.cardFields.titleField} />
+                </h4>
+                <GripVertical className="w-5 h-5 text-muted-foreground/60 dark:text-neutral-400 cursor-grab flex-shrink-0" />
+              </div>
+
+              <p className="text-sm text-muted-foreground dark:text-neutral-300 leading-relaxed line-clamp-2">
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.descriptionField} />
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.priorityField} />
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.tagsField} />
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-border/30 dark:border-neutral-700/30">
+                <div className="flex items-center gap-4 text-muted-foreground/80 dark:text-neutral-400">
+                  <FieldRenderer item={item} fieldId={viewConfig.cardFields.dateField} />
+                  <FieldRenderer item={item} fieldId={viewConfig.cardFields.metricsField} />
+                </div>
+                <FieldRenderer item={item} fieldId={viewConfig.cardFields.assigneeField} options={{ compact: true, avatarClassName: 'w-8 h-8 ring-2 ring-white/50 dark:ring-neutral-700/50' }} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+
+    interface DataKanbanViewProps {
+      data: Record<string, GenericItem[]>;
+    }
+
+
+    export function KanbanView({ data }: DataKanbanViewProps) {
+      const [columns, setColumns] = useState(data);
+      const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+      const [dropIndicator, setDropIndicator] = useState<{ columnId: string; index: number } | null>(null);
+      const { groupBy, onItemUpdate } = useDynamicView<string, GenericItem>();
+
+      useEffect(() => {
+        setColumns(data);
+      }, [data]);
+
+      const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: GenericItem, sourceColumnId: string) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', JSON.stringify({ itemId: item.id, sourceColumnId }));
+        setDraggedItemId(item.id);
+      };
+
+      const getDropIndicatorIndex = (e: React.DragEvent, elements: HTMLElement[]) => {
+        const mouseY = e.clientY;
+        let closestIndex = elements.length;
+
+        elements.forEach((el, index) => {
+          const { top, height } = el.getBoundingClientRect();
+          const offset = mouseY - (top + height / 2);
+          if (offset < 0 && index < closestIndex) {
+            closestIndex = index;
+          }
+        });
+        return closestIndex;
+      };
+
+      const handleDragOverCardsContainer = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
+        e.preventDefault();
+        const container = e.currentTarget;
+        const draggableElements = Array.from(container.querySelectorAll('[data-draggable-id]')) as HTMLElement[];
+        const index = getDropIndicatorIndex(e, draggableElements);
+
+        if (dropIndicator?.columnId === columnId && dropIndicator.index === index) return;
+        setDropIndicator({ columnId, index });
+      };
+
+      const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetColumnId: string) => {
+        e.preventDefault();
+        setDropIndicator(null);
+        try {
+          const { itemId, sourceColumnId } = JSON.parse(e.dataTransfer.getData('text/plain'));
+
+          const droppedItem = columns[sourceColumnId]?.find(i => i.id === itemId);
+          if (!droppedItem) return;
+
+          // Update local state for immediate feedback
+          setColumns(prev => {
+            const newColumns = { ...prev };
+            const sourceCol = prev[sourceColumnId].filter(i => i.id !== itemId);
+
+            if (sourceColumnId === targetColumnId) {
+              const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : sourceCol.length;
+              sourceCol.splice(dropIndex, 0, droppedItem);
+              newColumns[sourceColumnId] = sourceCol;
+            } else {
+              const targetCol = [...prev[targetColumnId]];
+              const dropIndex = dropIndicator?.columnId === targetColumnId ? dropIndicator.index : targetCol.length;
+              targetCol.splice(dropIndex, 0, droppedItem);
+              
+              newColumns[sourceColumnId] = sourceCol;
+              newColumns[targetColumnId] = targetCol;
+            }
+            return newColumns;
+          });
+          
+          // Persist change to global store. The groupBy value tells us which property to update.
+          if (groupBy !== 'none' && sourceColumnId !== targetColumnId) {
+            onItemUpdate?.(itemId, { [groupBy]: targetColumnId } as Partial<GenericItem>);
+          }
+
+        } catch (err) {
+          console.error("Failed to parse drag data", err)
+        } finally {
+          setDraggedItemId(null);
+        }
+      };
+
+      const handleDragEnd = () => {
+        setDraggedItemId(null);
+        setDropIndicator(null);
+      };
+
+      const initialColumns = Object.entries(data);
+
+      if (!initialColumns || initialColumns.length === 0) {
+        return <EmptyState />;
+      }
+
+      const statusColors: Record<string, string> = {
+        active: "bg-blue-500", pending: "bg-yellow-500", completed: "bg-green-500", archived: "bg-gray-500",
+        low: "bg-green-500", medium: "bg-blue-500", high: "bg-orange-500", critical: "bg-red-500",
+      };
+
+      const DropIndicator = () => <div className="h-1 my-2 rounded-full bg-primary/60" />;
+
+      return (
+        <div className="flex items-start gap-6 pb-4 overflow-x-auto -mx-6 px-6">
+          {Object.entries(columns).map(([columnId, items]) => (
+            <div
+              key={columnId}
+              className={cn(
+                "w-80 flex-shrink-0 bg-card/20 dark:bg-neutral-900/20 backdrop-blur-xl rounded-3xl p-5 border border-border dark:border-neutral-700/50 transition-all duration-300",
+                dropIndicator?.columnId === columnId && "bg-primary/10 border-primary/30"
+              )}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={cn("w-3.5 h-3.5 rounded-full", statusColors[columnId] || "bg-muted-foreground")} />
+                  <h3 className="font-semibold text-card-foreground dark:text-neutral-100 capitalize truncate">{columnId}</h3>
+                  <span className="text-sm font-medium text-muted-foreground bg-background/50 rounded-full px-2 py-0.5">{items.length}</span>
+                </div>
+                <button className="p-1 rounded-full bg-card/30 dark:bg-neutral-800/30 hover:bg-card/50 dark:hover:bg-neutral-700/50 transition-colors">
+                  <Plus className="w-4 h-4 text-muted-foreground dark:text-neutral-300" />
+                </button>
+              </div>
+
+              <div
+                onDragOver={(e) => handleDragOverCardsContainer(e, columnId)}
+                onDrop={(e) => handleDrop(e, columnId)}
+                onDragLeave={() => setDropIndicator(null)}
+                className="space-y-4 min-h-[100px]"
+              >
+                {items.map((item, index) => (
+                  <Fragment key={item.id}>
+                    {dropIndicator?.columnId === columnId && dropIndicator.index === index && (
+                      <DropIndicator />
+                    )}
+                    <KanbanCard
+                      item={item}
+                      isDragging={draggedItemId === item.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, item, columnId)}
+                      onDragEnd={handleDragEnd}
+                    />
+                  </Fragment>
+                ))}
+                {dropIndicator?.columnId === columnId && dropIndicator.index === items.length && (
+                  <DropIndicator />
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+  src/pages/DataDemo/data/mockData.ts: |-
+
+    import type { GenericItem } from '@/features/dynamic-view/types';
+
+    export const mockDataItems: GenericItem[] = [
+      {
+        id: '1',
+        title: 'Mobile App Redesign Project',
+        description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',
+        category: 'Design',
+        status: 'active',
+        priority: 'high',
+        assignee: {
+          name: 'Sarah Chen',
+          avatar: '🎨',
+          email: 'sarah.chen@company.com'
+        },
+        metrics: {
+          views: 1247,
+          likes: 89,
+          shares: 23,
+          completion: 65
+        },
+        tags: ['UI/UX', 'Mobile', 'Accessibility', 'Figma'],
+        createdAt: '2024-01-15T09:00:00Z',
+        updatedAt: '2024-01-20T14:30:00Z',
+        dueDate: '2024-02-28T23:59:59Z',
+        thumbnail: '🎨',
+        content: {
+          summary: 'Redesigning the mobile app to improve user experience and accessibility compliance.',
+          details: 'This project involves a complete redesign of our mobile application interface. The focus is on creating a more intuitive user experience while ensuring full accessibility compliance. We\'re implementing modern design patterns and conducting extensive user testing.',
+          attachments: [
+            { name: 'Design_Mockups_v2.fig', type: 'Figma', size: '2.4 MB', url: '#' },
+            { name: 'User_Research_Report.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
+            { name: 'Accessibility_Guidelines.docx', type: 'Document', size: '850 KB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '2',
+        title: 'API Performance Optimization',
+        description: 'Optimize backend API endpoints to reduce response times and improve scalability for high-traffic scenarios.',
+        category: 'Development',
+        status: 'pending',
+        priority: 'critical',
+        assignee: {
+          name: 'Marcus Rodriguez',
+          avatar: '⚡',
+          email: 'marcus.rodriguez@company.com'
+        },
+        metrics: {
+          views: 892,
+          likes: 156,
+          shares: 45,
+          completion: 25
+        },
+        tags: ['Backend', 'Performance', 'API', 'Optimization'],
+        createdAt: '2024-01-18T11:15:00Z',
+        updatedAt: '2024-01-22T16:45:00Z',
+        dueDate: '2024-01-30T23:59:59Z',
+        thumbnail: '⚡',
+        content: {
+          summary: 'Critical performance improvements needed for API endpoints experiencing high latency.',
+          details: 'Our API endpoints are experiencing significant performance issues during peak traffic. This optimization project will focus on database query optimization, caching strategies, and implementing rate limiting to ensure consistent performance.',
+          attachments: [
+            { name: 'Performance_Analysis.xlsx', type: 'Spreadsheet', size: '3.2 MB', url: '#' },
+            { name: 'Database_Schema_Updates.sql', type: 'SQL', size: '45 KB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '3',
+        title: 'Customer Feedback Dashboard',
+        description: 'Build a comprehensive dashboard for analyzing customer feedback trends and sentiment analysis.',
+        category: 'Analytics',
+        status: 'completed',
+        priority: 'medium',
+        assignee: {
+          name: 'Emma Thompson',
+          avatar: '📊',
+          email: 'emma.thompson@company.com'
+        },
+        metrics: {
+          views: 2341,
+          likes: 234,
+          shares: 67,
+          completion: 100
+        },
+        tags: ['Dashboard', 'Analytics', 'Customer Experience', 'Data Viz'],
+        createdAt: '2024-01-05T08:30:00Z',
+        updatedAt: '2024-01-19T17:20:00Z',
+        thumbnail: '📊',
+        content: {
+          summary: 'Successfully launched customer feedback dashboard with real-time analytics.',
+          details: 'Completed the development of a comprehensive customer feedback dashboard that provides real-time insights into customer sentiment, trending topics, and satisfaction metrics. The dashboard includes interactive visualizations and automated reporting.',
+          attachments: [
+            { name: 'Dashboard_Demo.mp4', type: 'Video', size: '15.7 MB', url: '#' },
+            { name: 'User_Guide.pdf', type: 'PDF', size: '2.1 MB', url: '#' },
+            { name: 'Technical_Specs.md', type: 'Markdown', size: '23 KB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '4',
+        title: 'Security Audit & Compliance',
+        description: 'Comprehensive security audit of all systems and implementation of compliance measures for data protection.',
+        category: 'Security',
+        status: 'active',
+        priority: 'critical',
+        assignee: {
+          name: 'David Kim',
+          avatar: '🔒',
+          email: 'david.kim@company.com'
+        },
+        metrics: {
+          views: 567,
+          likes: 78,
+          shares: 12,
+          completion: 45
+        },
+        tags: ['Security', 'Compliance', 'GDPR', 'Audit'],
+        createdAt: '2024-01-20T10:00:00Z',
+        updatedAt: '2024-01-23T13:15:00Z',
+        dueDate: '2024-03-15T23:59:59Z',
+        thumbnail: '🔒',
+        content: {
+          summary: 'Ongoing security audit to ensure compliance with data protection regulations.',
+          details: 'Comprehensive security assessment covering all systems, applications, and data handling processes. The audit includes penetration testing, vulnerability assessments, and implementation of GDPR compliance measures.',
+          attachments: [
+            { name: 'Security_Checklist.xlsx', type: 'Spreadsheet', size: '1.5 MB', url: '#' },
+            { name: 'Compliance_Report_Draft.pdf', type: 'PDF', size: '4.2 MB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '5',
+        title: 'AI-Powered Content Recommendations',
+        description: 'Implement machine learning algorithms to provide personalized content recommendations for users.',
+        category: 'AI/ML',
+        status: 'pending',
+        priority: 'medium',
+        assignee: {
+          name: 'Priya Patel',
+          avatar: '🤖',
+          email: 'priya.patel@company.com'
+        },
+        metrics: {
+          views: 1456,
+          likes: 201,
+          shares: 89,
+          completion: 15
+        },
+        tags: ['Machine Learning', 'AI', 'Recommendations', 'Personalization'],
+        createdAt: '2024-01-22T14:20:00Z',
+        updatedAt: '2024-01-24T09:10:00Z',
+        dueDate: '2024-04-10T23:59:59Z',
+        thumbnail: '🤖',
+        content: {
+          summary: 'Building AI-driven recommendation system to enhance user engagement.',
+          details: 'Development of a sophisticated recommendation engine using machine learning algorithms. The system will analyze user behavior patterns, content preferences, and engagement metrics to provide highly personalized content suggestions.',
+          attachments: [
+            { name: 'ML_Model_Proposal.pdf', type: 'PDF', size: '3.8 MB', url: '#' },
+            { name: 'Training_Data_Analysis.ipynb', type: 'Jupyter Notebook', size: '892 KB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '6',
+        title: 'Cloud Infrastructure Migration',
+        description: 'Migrate legacy systems to cloud infrastructure for improved scalability and cost efficiency.',
+        category: 'Infrastructure',
+        status: 'active',
+        priority: 'high',
+        assignee: {
+          name: 'Alex Johnson',
+          avatar: '☁️',
+          email: 'alex.johnson@company.com'
+        },
+        metrics: {
+          views: 734,
+          likes: 92,
+          shares: 34,
+          completion: 70
+        },
+        tags: ['Cloud', 'Migration', 'AWS', 'Infrastructure'],
+        createdAt: '2024-01-10T07:45:00Z',
+        updatedAt: '2024-01-24T11:30:00Z',
+        dueDate: '2024-02-15T23:59:59Z',
+        thumbnail: '☁️',
+        content: {
+          summary: 'Migrating critical systems to cloud infrastructure for better performance and scalability.',
+          details: 'Comprehensive migration of our legacy on-premise infrastructure to AWS cloud services. This includes database migration, application containerization, and implementation of auto-scaling capabilities.',
+          attachments: [
+            { name: 'Migration_Plan.pdf', type: 'PDF', size: '5.1 MB', url: '#' },
+            { name: 'Cost_Analysis.xlsx', type: 'Spreadsheet', size: '1.9 MB', url: '#' },
+            { name: 'Architecture_Diagram.png', type: 'Image', size: '2.3 MB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '7',
+        title: 'User Onboarding Experience',
+        description: 'Design and implement an intuitive onboarding flow to improve new user activation rates.',
+        category: 'Product',
+        status: 'completed',
+        priority: 'medium',
+        assignee: {
+          name: 'Lisa Zhang',
+          avatar: '🚀',
+          email: 'lisa.zhang@company.com'
+        },
+        metrics: {
+          views: 1876,
+          likes: 298,
+          shares: 156,
+          completion: 100
+        },
+        tags: ['Onboarding', 'UX', 'Product', 'Conversion'],
+        createdAt: '2024-01-02T12:00:00Z',
+        updatedAt: '2024-01-16T18:45:00Z',
+        thumbnail: '🚀',
+        content: {
+          summary: 'Successfully launched new user onboarding experience with 40% improvement in activation rates.',
+          details: 'Designed and implemented a streamlined onboarding flow that guides new users through key product features. The new experience includes interactive tutorials, progress tracking, and personalized setup recommendations.',
+          attachments: [
+            { name: 'Onboarding_Flow.sketch', type: 'Sketch', size: '4.7 MB', url: '#' },
+            { name: 'A_B_Test_Results.pdf', type: 'PDF', size: '1.4 MB', url: '#' },
+            { name: 'User_Journey_Map.png', type: 'Image', size: '3.2 MB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '8',
+        title: 'Real-time Collaboration Features',
+        description: 'Implement real-time collaborative editing and communication features for team productivity.',
+        category: 'Development',
+        status: 'active',
+        priority: 'high',
+        assignee: {
+          name: 'Jordan Miller',
+          avatar: '👥',
+          email: 'jordan.miller@company.com'
+        },
+        metrics: {
+          views: 1123,
+          likes: 167,
+          shares: 78,
+          completion: 55
+        },
+        tags: ['Collaboration', 'Real-time', 'WebSocket', 'Team Tools'],
+        createdAt: '2024-01-14T15:30:00Z',
+        updatedAt: '2024-01-25T10:20:00Z',
+        dueDate: '2024-03-01T23:59:59Z',
+        thumbnail: '👥',
+        content: {
+          summary: 'Building real-time collaboration features to enhance team productivity and communication.',
+          details: 'Development of real-time collaborative editing capabilities using WebSocket technology. Features include live cursor tracking, simultaneous editing, instant messaging, and presence indicators for team members.',
+          attachments: [
+            { name: 'Technical_Architecture.pdf', type: 'PDF', size: '2.8 MB', url: '#' },
+            { name: 'WebSocket_Implementation.js', type: 'JavaScript', size: '67 KB', url: '#' },
+            { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '9',
+        title: 'Mobile App Redesign Project',
+        description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',
+        category: 'Design',
+        status: 'active',
+        priority: 'high',
+        assignee: {
+          name: 'Sarah Chen',
+          avatar: '🎨',
+          email: 'sarah.chen@company.com'
+        },
+        metrics: {
+          views: 1247,
+          likes: 89,
+          shares: 23,
+          completion: 65
+        },
+        tags: ['UI/UX', 'Mobile', 'Accessibility', 'Figma'],
+        createdAt: '2024-01-15T09:00:00Z',
+        updatedAt: '2024-01-20T14:30:00Z',
+        dueDate: '2024-02-28T23:59:59Z',
+        thumbnail: '🎨',
+        content: {
+          summary: 'Redesigning the mobile app to improve user experience and accessibility compliance.',
+          details: 'This project involves a complete redesign of our mobile application interface. The focus is on creating a more intuitive user experience while ensuring full accessibility compliance. We\'re implementing modern design patterns and conducting extensive user testing.',
+          attachments: [
+            { name: 'Design_Mockups_v2.fig', type: 'Figma', size: '2.4 MB', url: '#' },
+            { name: 'User_Research_Report.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
+            { name: 'Accessibility_Guidelines.docx', type: 'Document', size: '850 KB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '10',
+        title: 'API Performance Optimization',
+        description: 'Optimize backend API endpoints to reduce response times and improve scalability for high-traffic scenarios.',
+        category: 'Development',
+        status: 'pending',
+        priority: 'critical',
+        assignee: {
+          name: 'Marcus Rodriguez',
+          avatar: '⚡',
+          email: 'marcus.rodriguez@company.com'
+        },
+        metrics: {
+          views: 892,
+          likes: 156,
+          shares: 45,
+          completion: 25
+        },
+        tags: ['Backend', 'Performance', 'API', 'Optimization'],
+        createdAt: '2024-01-18T11:15:00Z',
+        updatedAt: '2024-01-22T16:45:00Z',
+        dueDate: '2024-01-30T23:59:59Z',
+        thumbnail: '⚡',
+        content: {
+          summary: 'Critical performance improvements needed for API endpoints experiencing high latency.',
+          details: 'Our API endpoints are experiencing significant performance issues during peak traffic. This optimization project will focus on database query optimization, caching strategies, and implementing rate limiting to ensure consistent performance.',
+          attachments: [
+            { name: 'Performance_Analysis.xlsx', type: 'Spreadsheet', size: '3.2 MB', url: '#' },
+            { name: 'Database_Schema_Updates.sql', type: 'SQL', size: '45 KB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '11',
+        title: 'Customer Feedback Dashboard',
+        description: 'Build a comprehensive dashboard for analyzing customer feedback trends and sentiment analysis.',
+        category: 'Analytics',
+        status: 'completed',
+        priority: 'medium',
+        assignee: {
+          name: 'Emma Thompson',
+          avatar: '📊',
+          email: 'emma.thompson@company.com'
+        },
+        metrics: {
+          views: 2341,
+          likes: 234,
+          shares: 67,
+          completion: 100
+        },
+        tags: ['Dashboard', 'Analytics', 'Customer Experience', 'Data Viz'],
+        createdAt: '2024-01-05T08:30:00Z',
+        updatedAt: '2024-01-19T17:20:00Z',
+        thumbnail: '📊',
+        content: {
+          summary: 'Successfully launched customer feedback dashboard with real-time analytics.',
+          details: 'Completed the development of a comprehensive customer feedback dashboard that provides real-time insights into customer sentiment, trending topics, and satisfaction metrics. The dashboard includes interactive visualizations and automated reporting.',
+          attachments: [
+            { name: 'Dashboard_Demo.mp4', type: 'Video', size: '15.7 MB', url: '#' },
+            { name: 'User_Guide.pdf', type: 'PDF', size: '2.1 MB', url: '#' },
+            { name: 'Technical_Specs.md', type: 'Markdown', size: '23 KB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '12',
+        title: 'Security Audit & Compliance',
+        description: 'Comprehensive security audit of all systems and implementation of compliance measures for data protection.',
+        category: 'Security',
+        status: 'active',
+        priority: 'critical',
+        assignee: {
+          name: 'David Kim',
+          avatar: '🔒',
+          email: 'david.kim@company.com'
+        },
+        metrics: {
+          views: 567,
+          likes: 78,
+          shares: 12,
+          completion: 45
+        },
+        tags: ['Security', 'Compliance', 'GDPR', 'Audit'],
+        createdAt: '2024-01-20T10:00:00Z',
+        updatedAt: '2024-01-23T13:15:00Z',
+        dueDate: '2024-03-15T23:59:59Z',
+        thumbnail: '🔒',
+        content: {
+          summary: 'Ongoing security audit to ensure compliance with data protection regulations.',
+          details: 'Comprehensive security assessment covering all systems, applications, and data handling processes. The audit includes penetration testing, vulnerability assessments, and implementation of GDPR compliance measures.',
+          attachments: [
+            { name: 'Security_Checklist.xlsx', type: 'Spreadsheet', size: '1.5 MB', url: '#' },
+            { name: 'Compliance_Report_Draft.pdf', type: 'PDF', size: '4.2 MB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '13',
+        title: 'AI-Powered Content Recommendations',
+        description: 'Implement machine learning algorithms to provide personalized content recommendations for users.',
+        category: 'AI/ML',
+        status: 'pending',
+        priority: 'medium',
+        assignee: {
+          name: 'Priya Patel',
+          avatar: '🤖',
+          email: 'priya.patel@company.com'
+        },
+        metrics: {
+          views: 1456,
+          likes: 201,
+          shares: 89,
+          completion: 15
+        },
+        tags: ['Machine Learning', 'AI', 'Recommendations', 'Personalization'],
+        createdAt: '2024-01-22T14:20:00Z',
+        updatedAt: '2024-01-24T09:10:00Z',
+        dueDate: '2024-04-10T23:59:59Z',
+        thumbnail: '🤖',
+        content: {
+          summary: 'Building AI-driven recommendation system to enhance user engagement.',
+          details: 'Development of a sophisticated recommendation engine using machine learning algorithms. The system will analyze user behavior patterns, content preferences, and engagement metrics to provide highly personalized content suggestions.',
+          attachments: [
+            { name: 'ML_Model_Proposal.pdf', type: 'PDF', size: '3.8 MB', url: '#' },
+            { name: 'Training_Data_Analysis.ipynb', type: 'Jupyter Notebook', size: '892 KB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '14',
+        title: 'Cloud Infrastructure Migration',
+        description: 'Migrate legacy systems to cloud infrastructure for improved scalability and cost efficiency.',
+        category: 'Infrastructure',
+        status: 'active',
+        priority: 'high',
+        assignee: {
+          name: 'Alex Johnson',
+          avatar: '☁️',
+          email: 'alex.johnson@company.com'
+        },
+        metrics: {
+          views: 734,
+          likes: 92,
+          shares: 34,
+          completion: 70
+        },
+        tags: ['Cloud', 'Migration', 'AWS', 'Infrastructure'],
+        createdAt: '2024-01-10T07:45:00Z',
+        updatedAt: '2024-01-24T11:30:00Z',
+        dueDate: '2024-02-15T23:59:59Z',
+        thumbnail: '☁️',
+        content: {
+          summary: 'Migrating critical systems to cloud infrastructure for better performance and scalability.',
+          details: 'Comprehensive migration of our legacy on-premise infrastructure to AWS cloud services. This includes database migration, application containerization, and implementation of auto-scaling capabilities.',
+          attachments: [
+            { name: 'Migration_Plan.pdf', type: 'PDF', size: '5.1 MB', url: '#' },
+            { name: 'Cost_Analysis.xlsx', type: 'Spreadsheet', size: '1.9 MB', url: '#' },
+            { name: 'Architecture_Diagram.png', type: 'Image', size: '2.3 MB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '15',
+        title: 'User Onboarding Experience',
+        description: 'Design and implement an intuitive onboarding flow to improve new user activation rates.',
+        category: 'Product',
+        status: 'completed',
+        priority: 'medium',
+        assignee: {
+          name: 'Lisa Zhang',
+          avatar: '🚀',
+          email: 'lisa.zhang@company.com'
+        },
+        metrics: {
+          views: 1876,
+          likes: 298,
+          shares: 156,
+          completion: 100
+        },
+        tags: ['Onboarding', 'UX', 'Product', 'Conversion'],
+        createdAt: '2024-01-02T12:00:00Z',
+        updatedAt: '2024-01-16T18:45:00Z',
+        thumbnail: '🚀',
+        content: {
+          summary: 'Successfully launched new user onboarding experience with 40% improvement in activation rates.',
+          details: 'Designed and implemented a streamlined onboarding flow that guides new users through key product features. The new experience includes interactive tutorials, progress tracking, and personalized setup recommendations.',
+          attachments: [
+            { name: 'Onboarding_Flow.sketch', type: 'Sketch', size: '4.7 MB', url: '#' },
+            { name: 'A_B_Test_Results.pdf', type: 'PDF', size: '1.4 MB', url: '#' },
+            { name: 'User_Journey_Map.png', type: 'Image', size: '3.2 MB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '16',
+        title: 'Real-time Collaboration Features',
+        description: 'Implement real-time collaborative editing and communication features for team productivity.',
+        category: 'Development',
+        status: 'active',
+        priority: 'high',
+        assignee: {
+          name: 'Jordan Miller',
+          avatar: '👥',
+          email: 'jordan.miller@company.com'
+        },
+        metrics: {
+          views: 1123,
+          likes: 167,
+          shares: 78,
+          completion: 55
+        },
+        tags: ['Collaboration', 'Real-time', 'WebSocket', 'Team Tools'],
+        createdAt: '2024-01-14T15:30:00Z',
+        updatedAt: '2024-01-25T10:20:00Z',
+        dueDate: '2024-03-01T23:59:59Z',
+        thumbnail: '👥',
+        content: {
+          summary: 'Building real-time collaboration features to enhance team productivity and communication.',
+          details: 'Development of real-time collaborative editing capabilities using WebSocket technology. Features include live cursor tracking, simultaneous editing, instant messaging, and presence indicators for team members.',
+          attachments: [
+            { name: 'Technical_Architecture.pdf', type: 'PDF', size: '2.8 MB', url: '#' },
+            { name: 'WebSocket_Implementation.js', type: 'JavaScript', size: '67 KB', url: '#' },
+            { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '17',
+        title: 'Mobile App Redesign Project',
+        description: 'Complete overhaul of the mobile application user interface with focus on accessibility and modern design patterns.',
+        category: 'Design',
+        status: 'active',
+        priority: 'high',
+        assignee: {
+          name: 'Sarah Chen',
+          avatar: '🎨',
+          email: 'sarah.chen@company.com'
+        },
+        metrics: {
+          views: 1247,
+          likes: 89,
+          shares: 23,
+          completion: 65
+        },
+        tags: ['UI/UX', 'Mobile', 'Accessibility', 'Figma'],
+        createdAt: '2024-01-15T09:00:00Z',
+        updatedAt: '2024-01-20T14:30:00Z',
+        dueDate: '2024-02-28T23:59:59Z',
+        thumbnail: '🎨',
+        content: {
+          summary: 'Redesigning the mobile app to improve user experience and accessibility compliance.',
+          details: 'This project involves a complete redesign of our mobile application interface. The focus is on creating a more intuitive user experience while ensuring full accessibility compliance. We\'re implementing modern design patterns and conducting extensive user testing.',
+          attachments: [
+            { name: 'Design_Mockups_v2.fig', type: 'Figma', size: '2.4 MB', url: '#' },
+            { name: 'User_Research_Report.pdf', type: 'PDF', size: '1.8 MB', url: '#' },
+            { name: 'Accessibility_Guidelines.docx', type: 'Document', size: '850 KB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '18',
+        title: 'API Performance Optimization',
+        description: 'Optimize backend API endpoints to reduce response times and improve scalability for high-traffic scenarios.',
+        category: 'Development',
+        status: 'pending',
+        priority: 'critical',
+        assignee: {
+          name: 'Marcus Rodriguez',
+          avatar: '⚡',
+          email: 'marcus.rodriguez@company.com'
+        },
+        metrics: {
+          views: 892,
+          likes: 156,
+          shares: 45,
+          completion: 25
+        },
+        tags: ['Backend', 'Performance', 'API', 'Optimization'],
+        createdAt: '2024-01-18T11:15:00Z',
+        updatedAt: '2024-01-22T16:45:00Z',
+        dueDate: '2024-01-30T23:59:59Z',
+        thumbnail: '⚡',
+        content: {
+          summary: 'Critical performance improvements needed for API endpoints experiencing high latency.',
+          details: 'Our API endpoints are experiencing significant performance issues during peak traffic. This optimization project will focus on database query optimization, caching strategies, and implementing rate limiting to ensure consistent performance.',
+          attachments: [
+            { name: 'Performance_Analysis.xlsx', type: 'Spreadsheet', size: '3.2 MB', url: '#' },
+            { name: 'Database_Schema_Updates.sql', type: 'SQL', size: '45 KB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '19',
+        title: 'Customer Feedback Dashboard',
+        description: 'Build a comprehensive dashboard for analyzing customer feedback trends and sentiment analysis.',
+        category: 'Analytics',
+        status: 'completed',
+        priority: 'medium',
+        assignee: {
+          name: 'Emma Thompson',
+          avatar: '📊',
+          email: 'emma.thompson@company.com'
+        },
+        metrics: {
+          views: 2341,
+          likes: 234,
+          shares: 67,
+          completion: 100
+        },
+        tags: ['Dashboard', 'Analytics', 'Customer Experience', 'Data Viz'],
+        createdAt: '2024-01-05T08:30:00Z',
+        updatedAt: '2024-01-19T17:20:00Z',
+        thumbnail: '📊',
+        content: {
+          summary: 'Successfully launched customer feedback dashboard with real-time analytics.',
+          details: 'Completed the development of a comprehensive customer feedback dashboard that provides real-time insights into customer sentiment, trending topics, and satisfaction metrics. The dashboard includes interactive visualizations and automated reporting.',
+          attachments: [
+            { name: 'Dashboard_Demo.mp4', type: 'Video', size: '15.7 MB', url: '#' },
+            { name: 'User_Guide.pdf', type: 'PDF', size: '2.1 MB', url: '#' },
+            { name: 'Technical_Specs.md', type: 'Markdown', size: '23 KB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '20',
+        title: 'Security Audit & Compliance',
+        description: 'Comprehensive security audit of all systems and implementation of compliance measures for data protection.',
+        category: 'Security',
+        status: 'active',
+        priority: 'critical',
+        assignee: {
+          name: 'David Kim',
+          avatar: '🔒',
+          email: 'david.kim@company.com'
+        },
+        metrics: {
+          views: 567,
+          likes: 78,
+          shares: 12,
+          completion: 45
+        },
+        tags: ['Security', 'Compliance', 'GDPR', 'Audit'],
+        createdAt: '2024-01-20T10:00:00Z',
+        updatedAt: '2024-01-23T13:15:00Z',
+        dueDate: '2024-03-15T23:59:59Z',
+        thumbnail: '🔒',
+        content: {
+          summary: 'Ongoing security audit to ensure compliance with data protection regulations.',
+          details: 'Comprehensive security assessment covering all systems, applications, and data handling processes. The audit includes penetration testing, vulnerability assessments, and implementation of GDPR compliance measures.',
+          attachments: [
+            { name: 'Security_Checklist.xlsx', type: 'Spreadsheet', size: '1.5 MB', url: '#' },
+            { name: 'Compliance_Report_Draft.pdf', type: 'PDF', size: '4.2 MB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '21',
+        title: 'AI-Powered Content Recommendations',
+        description: 'Implement machine learning algorithms to provide personalized content recommendations for users.',
+        category: 'AI/ML',
+        status: 'pending',
+        priority: 'medium',
+        assignee: {
+          name: 'Priya Patel',
+          avatar: '🤖',
+          email: 'priya.patel@company.com'
+        },
+        metrics: {
+          views: 1456,
+          likes: 201,
+          shares: 89,
+          completion: 15
+        },
+        tags: ['Machine Learning', 'AI', 'Recommendations', 'Personalization'],
+        createdAt: '2024-01-22T14:20:00Z',
+        updatedAt: '2024-01-24T09:10:00Z',
+        dueDate: '2024-04-10T23:59:59Z',
+        thumbnail: '🤖',
+        content: {
+          summary: 'Building AI-driven recommendation system to enhance user engagement.',
+          details: 'Development of a sophisticated recommendation engine using machine learning algorithms. The system will analyze user behavior patterns, content preferences, and engagement metrics to provide highly personalized content suggestions.',
+          attachments: [
+            { name: 'ML_Model_Proposal.pdf', type: 'PDF', size: '3.8 MB', url: '#' },
+            { name: 'Training_Data_Analysis.ipynb', type: 'Jupyter Notebook', size: '892 KB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '22',
+        title: 'Cloud Infrastructure Migration',
+        description: 'Migrate legacy systems to cloud infrastructure for improved scalability and cost efficiency.',
+        category: 'Infrastructure',
+        status: 'active',
+        priority: 'high',
+        assignee: {
+          name: 'Alex Johnson',
+          avatar: '☁️',
+          email: 'alex.johnson@company.com'
+        },
+        metrics: {
+          views: 734,
+          likes: 92,
+          shares: 34,
+          completion: 70
+        },
+        tags: ['Cloud', 'Migration', 'AWS', 'Infrastructure'],
+        createdAt: '2024-01-10T07:45:00Z',
+        updatedAt: '2024-01-24T11:30:00Z',
+        dueDate: '2024-02-15T23:59:59Z',
+        thumbnail: '☁️',
+        content: {
+          summary: 'Migrating critical systems to cloud infrastructure for better performance and scalability.',
+          details: 'Comprehensive migration of our legacy on-premise infrastructure to AWS cloud services. This includes database migration, application containerization, and implementation of auto-scaling capabilities.',
+          attachments: [
+            { name: 'Migration_Plan.pdf', type: 'PDF', size: '5.1 MB', url: '#' },
+            { name: 'Cost_Analysis.xlsx', type: 'Spreadsheet', size: '1.9 MB', url: '#' },
+            { name: 'Architecture_Diagram.png', type: 'Image', size: '2.3 MB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '23',
+        title: 'User Onboarding Experience',
+        description: 'Design and implement an intuitive onboarding flow to improve new user activation rates.',
+        category: 'Product',
+        status: 'completed',
+        priority: 'medium',
+        assignee: {
+          name: 'Lisa Zhang',
+          avatar: '🚀',
+          email: 'lisa.zhang@company.com'
+        },
+        metrics: {
+          views: 1876,
+          likes: 298,
+          shares: 156,
+          completion: 100
+        },
+        tags: ['Onboarding', 'UX', 'Product', 'Conversion'],
+        createdAt: '2024-01-02T12:00:00Z',
+        updatedAt: '2024-01-16T18:45:00Z',
+        thumbnail: '🚀',
+        content: {
+          summary: 'Successfully launched new user onboarding experience with 40% improvement in activation rates.',
+          details: 'Designed and implemented a streamlined onboarding flow that guides new users through key product features. The new experience includes interactive tutorials, progress tracking, and personalized setup recommendations.',
+          attachments: [
+            { name: 'Onboarding_Flow.sketch', type: 'Sketch', size: '4.7 MB', url: '#' },
+            { name: 'A_B_Test_Results.pdf', type: 'PDF', size: '1.4 MB', url: '#' },
+            { name: 'User_Journey_Map.png', type: 'Image', size: '3.2 MB', url: '#' }
+          ]
+        }
+      },
+      {
+        id: '24',
+        title: 'Real-time Collaboration Features',
+        description: 'Implement real-time collaborative editing and communication features for team productivity.',
+        category: 'Development',
+        status: 'active',
+        priority: 'high',
+        assignee: {
+          name: 'Jordan Miller',
+          avatar: '👥',
+          email: 'jordan.miller@company.com'
+        },
+        metrics: {
+          views: 1123,
+          likes: 167,
+          shares: 78,
+          completion: 55
+        },
+        tags: ['Collaboration', 'Real-time', 'WebSocket', 'Team Tools'],
+        createdAt: '2024-01-14T15:30:00Z',
+        updatedAt: '2024-01-25T10:20:00Z',
+        dueDate: '2024-03-01T23:59:59Z',
+        thumbnail: '👥',
+        content: {
+          summary: 'Building real-time collaboration features to enhance team productivity and communication.',
+          details: 'Development of real-time collaborative editing capabilities using WebSocket technology. Features include live cursor tracking, simultaneous editing, instant messaging, and presence indicators for team members.',
+          attachments: [
+            { name: 'Technical_Architecture.pdf', type: 'PDF', size: '2.8 MB', url: '#' },
+            { name: 'WebSocket_Implementation.js', type: 'JavaScript', size: '67 KB', url: '#' },
+            { name: 'UI_Mockups.fig', type: 'Figma', size: '3.1 MB', url: '#' }
+          ]
+        }
+      }
+    ]
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 573
