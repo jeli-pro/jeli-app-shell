@@ -56,6 +56,7 @@ import {
 import { ViewModeSwitcher } from './ViewModeSwitcher';
 import { cn } from '@/lib/utils';
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+import type { ViewId } from '@/views/viewRegistry';
 
 interface MyWorkspace extends Workspace {
   logo: string;
@@ -136,7 +137,7 @@ export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement, Sideb
               <AppMenuItem icon={Database} label="Data Demo" page="data-demo"  />
               <MessagingSidebarItems />
               <AppMenuItem icon={Search} label="Search" />
-              <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+              <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" />
             </SidebarSection>
             
             <SidebarSection title="Workspace" collapsible defaultExpanded>
@@ -200,22 +201,19 @@ interface AppMenuItemProps {
   children?: React.ReactNode;
   isSubItem?: boolean;
   page?: ActivePage;
-  opensInSidePane?: boolean;
   onClick?: () => void;
   isActive?: boolean;
 }
 
-const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, opensInSidePane = false, onClick, isActive: isActiveProp }) => {
+const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, hasActions, children, isSubItem = false, page, onClick, isActive: isActiveProp }) => {
   const compactMode = useAppShellStore(state => state.compactMode);
   const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
   const { isCollapsed } = useSidebar();
   const viewManager = useAppViewManager();
 
-  const calculatedIsActive = (
-    (!opensInSidePane && page && viewManager.currentActivePage === page)
-  ) || (
-    (opensInSidePane && page && viewManager.sidePaneContent === page)
-  );
+  const calculatedIsActive =
+    (page && viewManager.mainViewId === page) ||
+    (page && viewManager.rightPaneViewId === page);
 
   const isActive = isActiveProp ?? calculatedIsActive;
 
@@ -225,11 +223,11 @@ const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge, has
       return;
     }
     if (page) {
-      if (opensInSidePane) {
-        viewManager.toggleSidePane(page as any);
-      } else {
-        viewManager.navigateTo(page);
-      }
+      // For context-aware actions like 'notifications' from a sidebar nav link,
+      // we use trigger() with a source. For all others, a simple trigger
+      // will execute the defaultBehavior from the viewRegistry.
+      const source = page === 'notifications' ? 'navClick' : undefined;
+      viewManager.trigger(page as ViewId, source);
     }
   };
 

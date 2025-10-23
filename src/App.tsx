@@ -159,16 +159,7 @@ function TopBarPageControls() {
 // The main App component that composes the shell
 function ComposedApp() {
   const viewManager = useAppViewManager();
-  const location = useLocation();
-  const params = useParams();
   const { setBodyState, setSidePaneContent } = useAppShellStore.getState(); // Non-reactive state setters
-
-  // The right pane's content is derived from the URL via the viewManager hook.
-  // This derived value is then used to update the global store.
-  const rightViewId = React.useMemo(() => {
-    if (viewManager.sidePaneContent === 'dataItem') return 'dataItemDetail';
-    return viewManager.sidePaneContent;
-  }, [viewManager.sidePaneContent]);
 
   // Sync URL-derived state to the global Zustand store.
   // This allows descendant components (like AppShell) to react to layout changes
@@ -176,17 +167,13 @@ function ComposedApp() {
   // subscriptions in other hooks.
   useEffect(() => {
     setBodyState(viewManager.bodyState);
-    setSidePaneContent(rightViewId);
-  }, [viewManager.bodyState, rightViewId, setBodyState, setSidePaneContent]);
+    // The view manager now provides the definitive ID for the right pane.
+    // We cast it for the store, which uses a string union. This might be an area for future refactoring.
+    setSidePaneContent(viewManager.rightPaneViewId as any);
+  }, [viewManager.bodyState, viewManager.rightPaneViewId, setBodyState, setSidePaneContent]);
 
-  // Determine mainViewId from the route path
-  const pathSegments = location.pathname.split('/').filter(Boolean);
-  let mainViewId: ViewId | null = (pathSegments[0] as ViewId) || 'dashboard';
-  
-  // Handle detail views that are part of the main content
-  if (mainViewId === 'data-demo' && params.itemId) {
-    mainViewId = 'dataItemDetail';
-  }
+  // The view manager is now the single source of truth for which views to render.
+  const { mainViewId, rightPaneViewId } = viewManager;
 
   return (
     <AppShellProvider
@@ -204,7 +191,7 @@ function ComposedApp() {
           <TopBar breadcrumbs={<AppBreadcrumbs />} pageControls={<TopBarPageControls />} />
         }
         mainContent={<MainContent viewId={mainViewId} />}
-        rightPane={<RightPane viewId={rightViewId} />}
+        rightPane={<RightPane viewId={rightPaneViewId} />}
       />
     </AppShellProvider>
   );

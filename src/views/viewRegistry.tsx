@@ -5,9 +5,12 @@ import {
   Component,
   Bell,
   Database,
-  MessageSquare,
   SlidersHorizontal,
+  FileText,
+  Inbox,
 } from 'lucide-react';
+import type { BodyState, SidebarState } from '@/lib/utils';
+import { SIDEBAR_STATES } from '@/lib/utils';
 
 // --- Lazy load components for better code splitting ---
 import React from 'react';
@@ -20,6 +23,7 @@ const NotificationsPage = React.lazy(() => import('@/pages/Notifications').then(
 const DataDemoPage = React.lazy(() => import('@/pages/DataDemo'));
 const MessagingPage = React.lazy(() => import('@/pages/Messaging'));
 const DataDetailContent = React.lazy(() => import('@/pages/DataDemo/components/DataDetailContent').then(module => ({ default: module.DataDetailContent })));
+const MessagingContent = React.lazy(() => import('@/pages/Messaging/components/MessagingContent').then(module => ({ default: module.MessagingContent })));
 
 export type ViewId = 
   | 'dashboard'
@@ -29,14 +33,29 @@ export type ViewId =
   | 'data-demo'
   | 'messaging'
   | 'dataItemDetail'
-  | 'details';
+  | 'messagingPage'
+  | 'messagingContextPanel';
 
 export interface ViewRegistration {
   id: ViewId;
-  component: React.ComponentType<any>;
+  component?: React.ComponentType<any>; // Component is optional for composite views
   title: string;
   icon: LucideIcon;
   hasOwnScrolling?: boolean;
+  
+  // New behavioral properties
+  isNavigable?: boolean; // Can it be navigated to via URL and appear in menus?
+  renderTarget?: ('main' | 'pane')[]; // Where can this view be rendered?
+  allowedBodyStates?: BodyState[]; // What layouts can this view exist in?
+  defaultBehavior?: 'navigate' | 'openPane' | 'openSplit'; // Default action when triggered without context
+  triggerBehaviors?: Record<string, 'navigate' | 'openPane' | 'openSplit'>; // Context-aware actions
+  compositeView?: { // For "app-within-an-app" layouts
+    main: ViewId;
+    right: ViewId;
+  };
+  onNavigate?: { // Side-effects on navigation
+    sidebar?: SidebarState;
+  };
 }
 
 const suspenseWrapper = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
@@ -51,57 +70,100 @@ export const viewRegistry: Record<ViewId, ViewRegistration> = {
     component: suspenseWrapper(DashboardContent),
     title: 'Dashboard',
     icon: LayoutDashboard,
+    isNavigable: true,
+    renderTarget: ['main', 'pane'],
+    allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+    defaultBehavior: 'navigate',
   },
   settings: {
     id: 'settings',
     component: suspenseWrapper(SettingsPage),
     title: 'Settings',
     icon: Settings,
+    isNavigable: true,
+    renderTarget: ['main', 'pane'],
+    allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+    defaultBehavior: 'navigate',
+    triggerBehaviors: {
+      iconClick: 'openPane',
+    },
   },
   toaster: {
     id: 'toaster',
     component: suspenseWrapper(ToasterDemo),
     title: 'Toaster Demo',
     icon: Component,
+    isNavigable: true,
+    renderTarget: ['main', 'pane'],
+    allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+    defaultBehavior: 'navigate',
   },
   notifications: {
     id: 'notifications',
     component: suspenseWrapper(NotificationsPage),
     title: 'Notifications',
     icon: Bell,
+    isNavigable: true,
+    renderTarget: ['main', 'pane'],
+    allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+    defaultBehavior: 'navigate',
+    triggerBehaviors: {
+      navClick: 'openPane',
+    },
   },
   'data-demo': {
     id: 'data-demo',
     component: suspenseWrapper(DataDemoPage),
     title: 'Data Showcase',
     icon: Database,
+    isNavigable: true,
+    renderTarget: ['main'],
+    allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+    defaultBehavior: 'navigate',
   },
   messaging: {
     id: 'messaging',
-    component: suspenseWrapper(MessagingPage),
+    isNavigable: true,
     title: 'Messaging',
-    icon: MessageSquare,
+    icon: Inbox,
+    renderTarget: [], // It doesn't render a component itself
+    allowedBodyStates: ['split_view', 'fullscreen'],
+    defaultBehavior: 'navigate',
+    compositeView: {
+      main: 'messagingPage',
+      right: 'messagingContextPanel',
+    },
+    onNavigate: { sidebar: SIDEBAR_STATES.COLLAPSED },
+  },
+  messagingPage: {
+    id: 'messagingPage',
+    component: suspenseWrapper(MessagingPage),
+    title: 'Inbox',
+    icon: Inbox, // icon is required, even if not shown
+    isNavigable: false,
+    renderTarget: ['main'],
+    allowedBodyStates: ['split_view', 'fullscreen'],
     hasOwnScrolling: true,
+  },
+  messagingContextPanel: {
+    id: 'messagingContextPanel',
+    component: suspenseWrapper(MessagingContent),
+    title: 'Task Details',
+    icon: SlidersHorizontal, // icon is required
+    isNavigable: false,
+    renderTarget: ['pane'],
+    allowedBodyStates: ['side_pane', 'split_view', 'fullscreen'],
   },
   dataItemDetail: {
     id: 'dataItemDetail',
     component: suspenseWrapper(DataDetailContent),
     title: 'Item Details',
-    icon: Database,
+    icon: FileText,
+    isNavigable: false,
+    renderTarget: ['main', 'pane'],
+    allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+    defaultBehavior: 'openPane',
     hasOwnScrolling: true,
-  },
-  details: {
-    id: 'details',
-    component: () => (
-      <div className="p-6">
-        <p className="text-muted-foreground">
-          This is the side pane. It can be used to display contextual
-          information, forms, or actions related to the main content.
-        </p>
-      </div>
-    ),
-    title: 'Details Panel',
-    icon: SlidersHorizontal,
   },
 };
 

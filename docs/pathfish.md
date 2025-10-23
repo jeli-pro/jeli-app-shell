@@ -1,89 +1,79 @@
-✔ Written: src/views/viewRegistry.ts (+111, -0)
-✔ Written: src/components/layout/ViewRenderer.tsx (+56, -0)
-✔ Written: src/components/layout/MainContent.tsx (+11, -10)
-✔ Written: src/components/layout/RightPane.tsx (+19, -26)
-✔ Deleted: src/components/layout/ViewModeSwitcher.tsx:81:31 - error TS2322: Type '"dataItemDetail"' is not assignable to type '"settings" | "toaster" | "notifications" | "messaging" | "details" | "main" | "dataDemo" | "dataItem"'.
+src/components/global/CommandPalette.tsx:67:69 - error TS2551: Property 'openSidePane' does not exist on type '{ mainViewId: "dashboard" | "settings" | "toaster" | "notifications" | "data-demo" | "messaging" | "dataItemDetail" | "messagingPage" | "messagingContextPanel"; rightPaneViewId: ViewId | null; ... 10 more ...; setMessagingView: (view: TaskView) => void; }'. Did you mean 'openPane'?
 
-81       messaging: 'messaging', dataItemDetail: 'dataItemDetail',
-                                 ~~~~~~~~~~~~~~
+67           <CommandItem onSelect={() => runCommand(() => viewManager.openSidePane('settings'))}>
+                                                                       ~~~~~~~~~~~~
 
-src/components/layout/ViewRenderer.tsx:1:1 - error TS6133: 'React' is declared but its value is never read.
+  src/hooks/useAppViewManager.hook.ts:237:5
+    237     openPane,
+            ~~~~~~~~
+    'openPane' is declared here.
 
-1 import React from 'react';
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/components/layout/ViewModeSwitcher.tsx:25:5 - error TS2339: Property 'toggleSplitView' does not exist on type '{ mainViewId: "dashboard" | "settings" | "toaster" | "notifications" | "data-demo" | "messaging" | "dataItemDetail" | "messagingPage" | "messagingContextPanel"; rightPaneViewId: ViewId | null; ... 10 more ...; setMessagingView: (view: TaskView) => void; }'.
 
-src/components/layout/ViewRenderer.tsx:19:40 - error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string | undefined'.
+25     toggleSplitView,
+       ~~~~~~~~~~~~~~~
+
+src/components/layout/ViewModeSwitcher.tsx:26:5 - error TS2339: Property 'setNormalView' does not exist on type '{ mainViewId: "dashboard" | "settings" | "toaster" | "notifications" | "data-demo" | "messaging" | "dataItemDetail" | "messagingPage" | "messagingContextPanel"; rightPaneViewId: ViewId | null; ... 10 more ...; setMessagingView: (view: TaskView) => void; }'.
+
+26     setNormalView,
+       ~~~~~~~~~~~~~
+
+src/components/layout/ViewModeSwitcher.tsx:28:5 - error TS2339: Property 'switchSplitPanes' does not exist on type '{ mainViewId: "dashboard" | "settings" | "toaster" | "notifications" | "data-demo" | "messaging" | "dataItemDetail" | "messagingPage" | "messagingContextPanel"; rightPaneViewId: ViewId | null; ... 10 more ...; setMessagingView: (view: TaskView) => void; }'.
+
+28     switchSplitPanes,
+       ~~~~~~~~~~~~~~~~
+
+src/components/layout/ViewModeSwitcher.tsx:29:5 - error TS2339: Property 'closeSplitPane' does not exist on type '{ mainViewId: "dashboard" | "settings" | "toaster" | "notifications" | "data-demo" | "messaging" | "dataItemDetail" | "messagingPage" | "messagingContextPanel"; rightPaneViewId: ViewId | null; ... 10 more ...; setMessagingView: (view: TaskView) => void; }'.
+
+29     closeSplitPane,
+       ~~~~~~~~~~~~~~
+
+src/components/layout/ViewModeSwitcher.tsx:85:20 - error TS2345: Argument of type '"settings" | "toaster" | "notifications" | "messaging" | "details" | "main" | "dataDemo" | "dataItem"' is not assignable to parameter of type 'ViewId'.
+  Type '"details"' is not assignable to type 'ViewId'.
+
+85     toggleSidePane(paneContent);
+                      ~~~~~~~~~~~
+
+src/components/layout/ViewModeSwitcher.tsx:93:18 - error TS2345: Argument of type 'string' is not assignable to parameter of type 'ViewId'.
+
+93       navigateTo(targetPage);
+                    ~~~~~~~~~~
+
+src/components/layout/ViewModeSwitcher.tsx:125:22 - error TS2345: Argument of type 'string' is not assignable to parameter of type 'ViewId'.
+
+125           navigateTo(targetPage);
+                         ~~~~~~~~~~
+
+src/components/layout/ViewRenderer.tsx:44:20 - error TS2604: JSX element type 'Component' does not have any construct or call signatures.
+
+44   const content = <Component {...componentProps} />;
+                      ~~~~~~~~~
+
+src/components/layout/ViewRenderer.tsx:44:20 - error TS2786: 'Component' cannot be used as a JSX component.
+  Its type 'ComponentType<any> | undefined' is not a valid JSX element type.
+    Type 'undefined' is not assignable to type 'ElementType'.
+
+44   const content = <Component {...componentProps} />;
+                      ~~~~~~~~~
+
+src/pages/DataDemo/index.tsx:44:40 - error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string | undefined'.
   Type 'null' is not assignable to type 'string | undefined'.
 
-19   const selectedItem = useSelectedItem(pathItemId || sidePaneItemId);
-                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+44   const selectedItem = useSelectedItem(viewManager.itemId);
+                                          ~~~~~~~~~~~~~~~~~~
 
-src/features/dynamic-view/components/shared/DetailPanel.tsx:18:46 - error TS6196: 'DetailViewSection' is declared but never used.
+src/pages/Messaging/index.tsx:73:21 - error TS2322: Type '{ conversationId: string | undefined; }' is not assignable to type 'IntrinsicAttributes'.
+  Property 'conversationId' does not exist on type 'IntrinsicAttributes'.
 
-18 import type { GenericItem, DetailViewConfig, DetailViewSection } from '../../types'
-                                                ~~~~~~~~~~~~~~~~~
+73         <TaskDetail conversationId={conversationId} />
+                       ~~~~~~~~~~~~~~
 
-src/features/dynamic-view/components/shared/DetailPanel.tsx:53:26 - error TS2345: Argument of type 'readonly DetailViewSection<TFieldId>[]' is not assignable to parameter of type 'DetailViewSection<TFieldId>[]'.
-  The type 'readonly DetailViewSection<TFieldId>[]' is 'readonly' and cannot be assigned to the mutable type 'DetailViewSection<TFieldId>[]'.
+src/views/viewRegistry.tsx:8:3 - error TS6133: 'MessageSquare' is declared but its value is never read.
 
-53         return arrayMove(currentSections, oldIndex, newIndex);
-                            ~~~~~~~~~~~~~~~
-
-src/features/dynamic-view/components/shared/EditableField.tsx:139:48 - error TS2352: Conversion of type '{ assignee: { name: string; email: string; avatar: string; }; }' to type 'TItem' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
-  'TItem' could be instantiated with an arbitrary type which could be unrelated to '{ assignee: { name: string; email: string; avatar: string; }; }'.
-
-139                           <FieldRenderer item={{ assignee: user } as TItem} fieldId={'assignee' as TFieldId} />
-                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-src/features/dynamic-view/components/shared/EventTooltipContent.tsx:12:11 - error TS2339: Property 'config' does not exist on type '{ statusField: string; priorityField: string; assigneeField: string; dateField: string; }'.
-
-12   const { config } = {
-             ~~~~~~
-
-src/features/dynamic-view/components/shared/EventTooltipContent.tsx:15:5 - error TS2353: Object literal may only specify known properties, and 'statusField' does not exist in type '{ config: any; }'.
-
-15     statusField: 'status',
-       ~~~~~~~~~~~
-
-src/features/dynamic-view/components/shared/EventTooltipContent.tsx:16:5 - error TS2353: Object literal may only specify known properties, and 'priorityField' does not exist in type '{ config: any; }'.
-
-16     priorityField: 'priority',
-       ~~~~~~~~~~~~~
-
-src/features/dynamic-view/components/shared/EventTooltipContent.tsx:17:5 - error TS2353: Object literal may only specify known properties, and 'assigneeField' does not exist in type '{ config: any; }'.
-
-17     assigneeField: 'assignee',
-       ~~~~~~~~~~~~~
-
-src/features/dynamic-view/components/shared/EventTooltipContent.tsx:18:5 - error TS2353: Object literal may only specify known properties, and 'dateField' does not exist in type '{ config: any; }'.
-
-18     dateField: 'dueDate'
-       ~~~~~~~~~
-
-src/pages/Messaging/components/ActivityFeed.tsx:1:8 - error TS6133: 'React' is declared but its value is never read.
-
-1 import React, { forwardRef } from 'react';
-         ~~~~~
-
-src/pages/Messaging/components/TaskList.tsx:150:77 - error TS2322: Type '{ className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & LucideProps'.
-  Property 'title' does not exist on type 'IntrinsicAttributes & LucideProps'.
-
-150                           {isHandledByOther && <Eye className="w-3.5 h-3.5" title="Being handled by another user" />}
-                                                                                ~~~~~
-
-src/pages/Messaging/index.tsx:3:1 - error TS6133: 'useAppShellStore' is declared but its value is never read.
-
-3 import { useAppShellStore } from "@/store/appShell.store";
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-src/pages/Messaging/index.tsx:54:9 - error TS6133: 'conversationId' is declared but its value is never read.
-
-54   const { conversationId } = useParams<{ conversationId?: string }>();
-           ~~~~~~~~~~~~~~~~~~
+8   MessageSquare,
+    ~~~~~~~~~~~~~
 
 
-Found 15 errors.
+Found 13 errors.
 
-error: "tsc" exited with code 1src/hooks/useRightPaneContent.hook.tsx
-✔ Written: src/App.tsx (+49, -59)
-`
+error: "tsc" exited with code 1

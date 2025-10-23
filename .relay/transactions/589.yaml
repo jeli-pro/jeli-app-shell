@@ -1,0 +1,553 @@
+uuid: 4a3e2e0e-afc6-4d2c-882d-106f363c4ab5
+projectId: jeli-app-shell
+createdAt: '2025-10-23T04:19:37.754Z'
+gitCommitMsg: >-
+  fix(routing): Correct path generation for virtual views
+
+  The `useAppViewManager` was incorrectly generating navigation paths for views
+  that rely on URL parameters (e.g., `dataItemDetail` which maps to
+  `/data-demo/:itemId`). Actions like `setNormalView` or `closeSplitPane` would
+  attempt to navigate to the abstract view ID (e.g., `/dataItemDetail`) instead
+  of its canonical, routable path.
+
+  This commit introduces a `getPathForView` helper within the hook to correctly
+  translate a view ID and its associated URL parameters into a valid path. This
+  helper is now used by `setNormalView` and `closeSplitPane`, resolving the "No
+  routes matched" error.
+
+  Additionally, this commit removes redundant prop-drilling in
+  `ViewRenderer.tsx` for messaging components, which now correctly source their
+  required data from URL hooks.
+promptSummary: >-
+  The user is experiencing routing errors after a large refactor. The
+  application is trying to navigate to invalid paths like `/dataItemDetail`
+  instead of `/data-demo/123`. The fix involves teaching the view manager to
+  correctly translate abstract view IDs back into their corresponding URL paths.
+reasoning:
+  - >-
+    I see the chaos the refactoring has wrought. The `No routes matched` error
+    is a cry from the machine, a symptom of a deeper schism between our abstract
+    view IDs and the concrete reality of our URL routes. We created a powerful
+    declarative system, but we neglected to teach it how to translate its
+    intentions back into the language of the browser's address bar.
+  - >-
+    The core of the problem lies in actions like `setNormalView` or
+    `closeSplitPane`. When you were on a page like `/data-demo/123`, our system
+    correctly identified the main view as `dataItemDetail`. However, when you
+    tried to close a side pane, it naively tried to navigate to
+    `/${mainViewId}`, which became the non-existent route `/dataItemDetail`,
+    leading to the crash.
+  - 'My plan is twofold:'
+  - >-
+    1.  **Teach the `useAppViewManager` to Speak URL:** I will implement a new
+    helper function within the view manager that can translate a virtual
+    `viewId` (like `dataItemDetail`) back into its canonical, routable path
+    (e.g., `/data-demo/123`), using the dynamic parameters from the URL. All
+    internal navigation actions will use this translator, ensuring they always
+    generate valid routes.
+  - >-
+    2.  **Streamline Data Flow:** I've also spotted a relic of the old system in
+    `ViewRenderer.tsx`. It was attempting to pass a `conversationId` prop to the
+    `messaging` view, which is not only incorrect (the view is now
+    `messagingPage`) but also redundant, as our newer components intelligently
+    pull this information from the URL themselves. I will remove this
+    unnecessary code.
+  - >-
+    These fixes will resolve the routing errors and bring our application's
+    behavior fully in line with the new, declarative architecture.
+  - '---'
+  - '### Part 1: Fix View-to-Path Translation'
+  - >-
+    I will update the `useAppViewManager` hook to correctly generate paths for
+    views that use URL parameters, such as `dataItemDetail`. This will fix the
+    "No routes matched" error.
+  - '### Part 2: Clean Up View Renderer'
+  - >-
+    I'll remove the outdated and unnecessary prop-drilling logic for the
+    messaging view from the `ViewRenderer`.
+  - '---'
+operations:
+  - type: write
+    path: src/hooks/useAppViewManager.hook.ts
+    content: >+
+      --- src/hooks/useAppViewManager.hook.ts
+
+      +++ src/hooks/useAppViewManager.hook.ts
+
+      @@ -37,12 +37,28 @@
+             mainViewId: derivedMainViewId, 
+             rightPaneViewId: derivedRightPaneViewId, 
+             bodyState: derivedBodyState
+           };
+      -  }, [location.pathname, searchParams, params.itemId]);
+
+      +  }, [location.pathname, searchParams, params.itemId,
+      params.conversationId]);
+       
+         const messagingView = searchParams.get('messagingView') as TaskView | null;
+         const currentActivePage = (location.pathname.split('/')[1] || 'dashboard') as ViewId;
+       
+         // --- PRIVATE ACTION EXECUTORS ---
+      +
+
+      +  const getPathForView = useCallback((viewId: ViewId | null, viewParams:
+      typeof params): string => {
+
+      +    if (!viewId) return '/dashboard'; // Fallback to dashboard
+
+      +    if (viewId === 'dataItemDetail' && viewParams.itemId) {
+
+      +        return `/data-demo/${viewParams.itemId}`;
+
+      +    }
+
+      +    // When dealing with a composite view, the "page" is the parent route
+
+      +    if ((viewId === 'messagingPage' || viewId ===
+      'messagingContextPanel') && viewParams.conversationId) {
+
+      +      return `/messaging/${viewParams.conversationId}`;
+
+      +    }
+
+      +    if (viewId === 'messagingPage' || viewId === 'messagingContextPanel')
+      {
+
+      +      return '/messaging';
+
+      +    }
+
+      +    return `/${viewId}`;
+
+      +  }, []);
+       
+         const _executeNavigate = useCallback((view: ViewRegistration, payload?: any) => {
+           if (view.onNavigate?.sidebar) {
+             setSidebarState(view.onNavigate.sidebar);
+      @@ -148,8 +164,9 @@
+         }, [rightPaneViewId, bodyState, closeSidePane, trigger]);
+       
+         const setNormalView = useCallback(() => {
+      -    navigate(`/${mainViewId}`, { replace: true });
+
+      -  }, [mainViewId, navigate]);
+
+      +    // We want to navigate to the path of the main content view, clearing
+      search params.
+
+      +    const path = getPathForView(mainViewId, params);
+
+      +    navigate(path, { replace: true });
+
+      +  }, [mainViewId, params, navigate, getPathForView]);
+       
+         const toggleSplitView = useCallback((rightViewId: ViewId = 'settings') => {
+           if (bodyState === BODY_STATES.SPLIT_VIEW) {
+      @@ -164,12 +181,13 @@
+             return;
+           }
+           if (pane === 'right') {
+      -      navigate(`/${mainViewId}`, { replace: true });
+
+      +      const path = getPathForView(mainViewId as ViewId, params);
+
+      +      navigate(path, { replace: true });
+           } else if (rightPaneViewId) {
+             const rightView = getViewById(rightPaneViewId);
+             if (rightView?.isNavigable) navigate(`/${rightPaneViewId}`, { replace: true });
+             else navigate('/dashboard', { replace: true });
+           } else setNormalView();
+      -  }, [bodyState, mainViewId, rightPaneViewId, navigate, setNormalView]);
+
+      +  }, [bodyState, mainViewId, rightPaneViewId, navigate, setNormalView,
+      getPathForView, params]);
+       
+         const setMessagingView = (view: TaskView) => {
+           setSearchParams(prev => {
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/ViewRenderer.tsx
+    content: |+
+      --- src/components/layout/ViewRenderer.tsx
+      +++ src/components/layout/ViewRenderer.tsx
+      @@ -35,10 +35,6 @@
+             );
+           }
+           componentProps = { item: selectedItem };
+      -  } else if (viewId === 'messaging') {
+      -    componentProps = { conversationId };
+         }
+       
+         const content = <Component {...componentProps} />;
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useAppViewManager.hook.ts: >-
+    import { useMemo, useCallback } from 'react';
+
+    import { useSearchParams, useNavigate, useLocation, useParams } from
+    'react-router-dom';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import type { TaskView } from '@/pages/Messaging/types';
+
+    import { BODY_STATES, BodyState } from '@/lib/utils';
+
+    import { getViewById, type ViewId, type ViewRegistration } from
+    '@/views/viewRegistry';
+
+
+    /**
+     * A centralized hook to manage and synchronize all URL-based view states.
+     * This is the single source of truth for view modes, side panes, split views,
+     * and page-specific parameters. It acts as an executor for the declarative
+     * rules defined in the `viewRegistry`.
+     */
+    export function useAppViewManager() {
+      const [searchParams, setSearchParams] = useSearchParams();
+      const navigate = useNavigate();
+      const location = useLocation();
+      const params = useParams<{ itemId?: string; conversationId?: string }>();
+
+      const { setSidebarState } = useAppShellStore.getState();
+
+      // --- DERIVED STATE FROM URL & VIEW REGISTRY ---
+
+      const { mainViewId, rightPaneViewId, bodyState } = useMemo(() => {
+        const path = location.pathname.split('/')[1] || 'dashboard';
+        const viewFromPath = getViewById(path);
+        
+        const sidePaneParam = searchParams.get('sidePane');
+        const viewParam = searchParams.get('view');
+        const rightParam = searchParams.get('right');
+        const itemIdParam = searchParams.get('itemId');
+
+        let derivedMainViewId: ViewId | null = (path as ViewId) || 'dashboard';
+        let derivedRightPaneViewId: ViewId | null = null;
+        let derivedBodyState: BodyState = BODY_STATES.NORMAL;
+
+        if (viewFromPath?.compositeView) {
+          derivedMainViewId = viewFromPath.compositeView.main;
+          derivedRightPaneViewId = viewFromPath.compositeView.right;
+          derivedBodyState = BODY_STATES.SPLIT_VIEW;
+        } else if (sidePaneParam) {
+          derivedRightPaneViewId = sidePaneParam as ViewId;
+          derivedBodyState = BODY_STATES.SIDE_PANE;
+        } else if (viewParam === 'split' && rightParam) {
+          derivedRightPaneViewId = rightParam as ViewId;
+          derivedBodyState = BODY_STATES.SPLIT_VIEW;
+        }
+
+        // Handle item detail views specially
+        if (derivedMainViewId === 'data-demo' && params.itemId) {
+          derivedMainViewId = 'dataItemDetail';
+        } else if (itemIdParam) {
+          derivedRightPaneViewId = 'dataItemDetail';
+          // If there's an itemId, it could be a side pane or part of a split
+          if (derivedBodyState !== BODY_STATES.SPLIT_VIEW) {
+              derivedBodyState = BODY_STATES.SIDE_PANE;
+          }
+        }
+
+        return { 
+          mainViewId: derivedMainViewId, 
+          rightPaneViewId: derivedRightPaneViewId, 
+          bodyState: derivedBodyState
+        };
+      }, [location.pathname, searchParams, params.itemId]);
+
+      const messagingView = searchParams.get('messagingView') as TaskView | null;
+      const currentActivePage = (location.pathname.split('/')[1] || 'dashboard') as ViewId;
+
+      // --- PRIVATE ACTION EXECUTORS ---
+
+      const _executeNavigate = useCallback((view: ViewRegistration, payload?: any) => {
+        if (view.onNavigate?.sidebar) {
+          setSidebarState(view.onNavigate.sidebar);
+        }
+        
+        let path = `/${view.id}`;
+        if (view.id === 'dataItemDetail' && payload?.itemId) {
+            path = `/data-demo/${payload.itemId}`;
+        }
+
+        navigate(path);
+      }, [navigate, setSidebarState]);
+
+      const _executeOpenPane = useCallback((view: ViewRegistration, payload?: any) => {
+        if (!view.renderTarget?.includes('pane')) {
+          console.warn(`View "${view.id}" cannot be rendered in a pane.`);
+          return;
+        }
+        
+        setSearchParams(prev => {
+            prev.delete('view');
+            prev.delete('right');
+            if (view.id === 'dataItemDetail' && payload?.itemId) {
+                prev.set('itemId', payload.itemId);
+                prev.delete('sidePane');
+            } else {
+                prev.set('sidePane', view.id);
+                prev.delete('itemId');
+            }
+            return prev;
+        }, { replace: true });
+
+      }, [setSearchParams]);
+
+      const _executeOpenSplit = useCallback((view: ViewRegistration, payload?: any) => {
+        // A composite view is triggered by navigating to its main route
+        if (view.compositeView) {
+          _executeNavigate(view, payload);
+          return;
+        }
+        
+        if (!view.renderTarget?.includes('pane')) {
+          console.warn(`View "${view.id}" cannot be rendered in a split view's right pane.`);
+          return;
+        }
+        
+        setSearchParams(prev => {
+            prev.set('view', 'split');
+            prev.delete('sidePane');
+            if (view.id === 'dataItemDetail' && payload?.itemId) {
+                prev.set('itemId', payload.itemId);
+                prev.delete('right');
+            } else {
+                prev.set('right', view.id);
+                prev.delete('itemId');
+            }
+            return prev;
+        }, { replace: true });
+      }, [setSearchParams, _executeNavigate]);
+
+      // --- PUBLIC API ---
+
+      const trigger = useCallback((viewId: ViewId, source?: string, payload?: any) => {
+        const view = getViewById(viewId);
+        if (!view) {
+          console.error(`View with id "${viewId}" not found in registry.`);
+          return;
+        }
+        
+        const behavior = (source && view.triggerBehaviors?.[source]) || view.defaultBehavior || 'navigate';
+        
+        // TODO: Add check for allowedBodyStates
+        
+        switch (behavior) {
+          case 'navigate':
+            _executeNavigate(view, payload);
+            break;
+          case 'openPane':
+            _executeOpenPane(view, payload);
+            break;
+          case 'openSplit':
+            _executeOpenSplit(view, payload);
+            break;
+          default:
+            console.warn(`Unknown behavior "${behavior}" for view "${viewId}".`);
+            _executeNavigate(view, payload);
+        }
+      }, [_executeNavigate, _executeOpenPane, _executeOpenSplit]);
+      
+      const navigateTo = useCallback((page: ViewId, navParams?: Record<string, string | null>) => {
+        // This is a simplified navigate, for complex behaviors, use trigger.
+        let path = `/${page}`;
+        if (page === 'dataItemDetail' && navParams?.itemId) {
+            path = `/data-demo/${navParams.itemId}`;
+        }
+        
+        const newSearchParams = new URLSearchParams(searchParams);
+        if (navParams) {
+          for (const [key, value] of Object.entries(navParams)) {
+            if (value === null || value === undefined) {
+              newSearchParams.delete(key);
+            } else {
+              newSearchParams.set(key, value);
+            }
+          }
+        }
+        
+        const view = getViewById(page);
+        if (view?.onNavigate?.sidebar) {
+          setSidebarState(view.onNavigate.sidebar);
+        }
+
+        navigate({ pathname: path, search: newSearchParams.toString() });
+      }, [navigate, searchParams, setSidebarState]);
+      
+      const openPane = useCallback((viewId: ViewId, payload?: any) => {
+        const view = getViewById(viewId);
+        if (view) {
+          _executeOpenPane(view, payload);
+        }
+      }, [_executeOpenPane]);
+
+      const closeSidePane = useCallback(() => {
+        setSearchParams(prev => {
+            prev.delete('sidePane');
+            prev.delete('itemId');
+            // if we were in a split view, revert to normal by clearing view and right
+            if (prev.get('view') === 'split') {
+              prev.delete('view');
+              prev.delete('right');
+            }
+            return prev;
+        }, { replace: true });
+      }, [setSearchParams]);
+
+      const toggleSidePane = useCallback((viewId: ViewId) => {
+        if (rightPaneViewId === viewId && bodyState === BODY_STATES.SIDE_PANE) {
+            closeSidePane();
+        } else {
+            trigger(viewId, 'openPane');
+        }
+      }, [rightPaneViewId, bodyState, closeSidePane, trigger]);
+
+      const setNormalView = useCallback(() => {
+        navigate(`/${mainViewId}`, { replace: true });
+      }, [mainViewId, navigate]);
+
+      const toggleSplitView = useCallback((rightViewId: ViewId = 'settings') => {
+        if (bodyState === BODY_STATES.SPLIT_VIEW) {
+          setNormalView();
+        } else {
+          trigger(rightViewId, 'openSplit');
+        }
+      }, [bodyState, setNormalView, trigger]);
+
+      const switchSplitPanes = useCallback(() => {
+        if (bodyState !== BODY_STATES.SPLIT_VIEW || !mainViewId || !rightPaneViewId) return;
+
+        const mainView = getViewById(mainViewId);
+        const rightView = getViewById(rightPaneViewId);
+
+        if (mainView?.isNavigable && rightView?.isNavigable) {
+          navigate(`/${rightPaneViewId}?view=split&right=${mainViewId}`, { replace: true });
+        } else {
+          console.warn("Cannot switch panes: one or both views are not navigable.", { mainViewId, rightPaneViewId });
+        }
+      }, [bodyState, mainViewId, rightPaneViewId, navigate]);
+
+      const closeSplitPane = useCallback((pane: 'main' | 'right') => {
+        if (bodyState !== BODY_STATES.SPLIT_VIEW || !mainViewId) {
+          setNormalView();
+          return;
+        }
+        if (pane === 'right') {
+          navigate(`/${mainViewId}`, { replace: true });
+        } else if (rightPaneViewId) {
+          const rightView = getViewById(rightPaneViewId);
+          if (rightView?.isNavigable) navigate(`/${rightPaneViewId}`, { replace: true });
+          else navigate('/dashboard', { replace: true });
+        } else setNormalView();
+      }, [bodyState, mainViewId, rightPaneViewId, navigate, setNormalView]);
+
+      const setMessagingView = (view: TaskView) => {
+        setSearchParams(prev => {
+            prev.set('messagingView', view);
+            return prev;
+        }, { replace: true });
+      };
+
+      const itemId = params.itemId || searchParams.get('itemId');
+      
+      return useMemo(() => ({
+        // State
+        mainViewId,
+        rightPaneViewId,
+        bodyState,
+        itemId,
+        conversationId: params.conversationId,
+        messagingView,
+        currentActivePage,
+
+        // Actions
+        trigger,
+        navigateTo,
+        openPane,
+        closeSidePane,
+        toggleSidePane,
+        setNormalView,
+        toggleSplitView,
+        switchSplitPanes,
+        closeSplitPane,
+        setMessagingView,
+      }), [
+        mainViewId, rightPaneViewId, bodyState, itemId, params.conversationId, messagingView, currentActivePage,
+        trigger, navigateTo, openPane, closeSidePane, toggleSidePane, setNormalView, toggleSplitView, switchSplitPanes, closeSplitPane, setMessagingView
+      ]);
+    }
+  src/components/layout/ViewRenderer.tsx: |-
+    import { useParams, useSearchParams } from 'react-router-dom';
+    import { cn } from '@/lib/utils';
+    import { getViewById, type ViewId } from '@/views/viewRegistry';
+    import { useSelectedItem } from '@/pages/DataDemo/store/dataDemo.store';
+
+    interface ViewRendererProps {
+      viewId: ViewId | string | null;
+      className?: string;
+    }
+
+    export function ViewRenderer({ viewId, className }: ViewRendererProps) {
+      const view = getViewById(viewId);
+      const { conversationId, itemId: pathItemId } = useParams();
+      const [searchParams] = useSearchParams();
+      const sidePaneItemId = searchParams.get('itemId');
+
+      // Specific logic for views that need props
+      const selectedItem = useSelectedItem(pathItemId || sidePaneItemId || undefined);
+
+      if (!view) {
+        return (
+          <div className="p-6 text-muted-foreground">
+            View not found: {viewId}
+          </div>
+        );
+      }
+
+      const { component: Component, hasOwnScrolling } = view;
+
+      if (!Component) {
+        return (
+          <div className="p-6 text-muted-foreground">
+            View has no component to render: {viewId}
+          </div>
+        );
+      }
+
+      let componentProps: any = {};
+      if (viewId === 'dataItemDetail') {
+        if (!selectedItem) {
+          return (
+            <div className="p-6 text-muted-foreground">
+              Item not found.
+            </div>
+          );
+        }
+        componentProps = { item: selectedItem };
+      } else if (viewId === 'messaging') {
+        componentProps = { conversationId };
+      }
+
+      const content = <Component {...componentProps} />;
+
+      if (hasOwnScrolling) {
+        return content;
+      }
+
+      return (
+        <div className={cn("h-full overflow-y-auto", className)}>
+          {content}
+        </div>
+      );
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 589

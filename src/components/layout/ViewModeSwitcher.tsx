@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { gsap } from 'gsap';
-import { cn } from '@/lib/utils'
-import { useAppShellStore, type AppShellState } from '@/store/appShell.store'
+import { cn } from '@/lib/utils';
+import { useAppShellStore } from '@/store/appShell.store';
 import { BODY_STATES } from '@/lib/utils'
 import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
 import {
@@ -12,24 +12,27 @@ import {
   Minimize,
   Layers,
   X,
-  ArrowLeftRight
-} from 'lucide-react'
+  ArrowLeftRight,
+} from 'lucide-react';
+import { getViewById, type ViewId } from '@/views/viewRegistry';
 
-export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right', targetPage?: string }) {
+export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'; targetPage?: ViewId }) {
   const bodyState = useAppShellStore(s => s.bodyState);
   const fullscreenTarget = useAppShellStore(s => s.fullscreenTarget);
   const { toggleFullscreen } = useAppShellStore.getState();
   const {
     currentActivePage,
-    toggleSidePane,
     toggleSplitView,
     setNormalView,
     navigateTo,
+    toggleSidePane,
     switchSplitPanes,
     closeSplitPane,
+    itemId,
   } = useAppViewManager();
 
   const activePage = targetPage || currentActivePage;
+  const view = getViewById(activePage);
   const [isExpanded, setIsExpanded] = useState(false);
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -75,14 +78,14 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
     }
   }, [isExpanded, bodyState]); // re-run if bodyState changes to recalc buttons
 
+  const canBeSidePane = view?.renderTarget?.includes('pane');
+  // For split view, the *current* page must support being the main pane in that layout.
+  // The right pane's ability to be a pane is checked by the view manager.
+  const canBeSplitView = view?.allowedBodyStates?.includes('split_view');
+
   const handleSidePaneClick = () => {
-    const pageToPaneMap: Record<string, AppShellState['sidePaneContent']> = {
-      dashboard: 'main', settings: 'settings', toaster: 'toaster', notifications: 'notifications', 'data-demo': 'dataDemo',
-      messaging: 'messaging', dataItemDetail: 'dataItem',
-    };
-    const basePage = activePage.split('/')[0] as keyof typeof pageToPaneMap;
-    const paneContent = pageToPaneMap[basePage] || 'details';
-    toggleSidePane(paneContent);
+    const payload = (activePage === 'dataItemDetail' && itemId) ? { itemId } : undefined;
+    toggleSidePane(activePage, payload);
   }
 
   const handleNormalViewClick = () => {
@@ -90,7 +93,8 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
       toggleFullscreen();
     }
     if (targetPage && targetPage !== currentActivePage) {
-      navigateTo(targetPage);
+      const navParams = (targetPage === 'dataItemDetail' && itemId) ? { itemId } : undefined;
+      navigateTo(targetPage, navParams);
     } else {
       setNormalView();
     }
@@ -109,20 +113,23 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
       onClick: handleSidePaneClick,
       active: bodyState === BODY_STATES.SIDE_PANE,
       title: "Side Pane View",
-      icon: <PanelRightOpen className="w-4 h-4" />
+      icon: <PanelRightOpen className="w-4 h-4" />,
+      disabled: !canBeSidePane,
     },
     {
       id: 'split-view',
       onClick: () => toggleSplitView(),
       active: bodyState === BODY_STATES.SPLIT_VIEW,
       title: "Split View",
-      icon: <SplitSquareHorizontal className="w-4 h-4" />
+      icon: <SplitSquareHorizontal className="w-4 h-4" />,
+      disabled: !canBeSplitView,
     },
     {
       id: 'fullscreen',
       onClick: () => {
-        if (targetPage && targetPage !== currentActivePage ) {
-          navigateTo(targetPage);
+        if (targetPage && targetPage !== currentActivePage) {
+          const navParams = (targetPage === 'dataItemDetail' && itemId) ? { itemId } : undefined;
+          navigateTo(targetPage, navParams);
           setTimeout(() => toggleFullscreen(pane), 50);
         } else {
           toggleFullscreen(pane);
@@ -169,9 +176,10 @@ export function ViewModeSwitcher({ pane, targetPage }: { pane?: 'main' | 'right'
         <button
           key={btn.id}
           ref={el => buttonRefs.current[index] = el}
-          onClick={btn.onClick}
+          onClick={btn.disabled ? undefined : btn.onClick}
+          disabled={btn.disabled}
           className={cn(
-            'h-8 w-0 flex items-center justify-center rounded-full hover:bg-accent transition-colors group opacity-0',
+            'h-8 w-0 flex items-center justify-center rounded-full hover:bg-accent transition-colors group opacity-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent',
             btn.active && 'bg-accent text-accent-foreground',
             btn.id === 'close' && 'hover:bg-destructive/20'
           )}

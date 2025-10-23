@@ -7,13 +7,16 @@ import { NotesPanel } from './NotesPanel';
 import { TaskHeader } from './TaskHeader';
 import { AnimatedTabs } from '@/components/ui/animated-tabs';
 import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
 
 interface MessagingContentProps {
-  conversationId?: string;
+  // Note: conversationId is now derived from the URL via useAppViewManager hook
+  // to ensure it's in sync with the composite view's state.
 }
 
-export const MessagingContent: React.FC<MessagingContentProps> = ({ conversationId }) => {
+export const MessagingContent: React.FC<MessagingContentProps> = () => {
   const [activeTab, setActiveTab] = useState('contact');
+  const { conversationId } = useAppViewManager();
   const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
   
   const tabs = useMemo(() => [

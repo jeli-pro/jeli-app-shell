@@ -64,7 +64,7 @@ export function CommandPalette() {
             <span>Toggle Fullscreen</span>
             <CommandShortcut>⌘F</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => viewManager.openSidePane('settings'))}>
+          <CommandItem onSelect={() => runCommand(() => viewManager.openPane('settings'))}>
             <PanelRight className="mr-2 h-4 w-4" />
             <span>Open Settings in Side Pane</span>
             <CommandShortcut>⌥S</CommandShortcut>

@@ -1,0 +1,269 @@
+uuid: c25cfb8c-5f80-4df2-9b2f-7a57a15998f8
+projectId: jeli-app-shell
+createdAt: '2025-10-23T04:33:06.761Z'
+gitCommitMsg: >-
+  fix(views): Allow data-demo page to host side panes and split views
+
+  The view registry configuration for the 'data-demo' view incorrectly
+  restricted its allowed layouts to 'normal' and 'fullscreen'. This prevented
+  the view manager from opening a side pane (like for 'dataItemDetail') while on
+  the data-demo page, as it correctly enforces layout constraints on the main
+  view.
+
+  This commit updates the `allowedBodyStates` for 'data-demo' to include
+  'side_pane' and 'split_view', aligning it with other primary views and
+  enabling the intended functionality of opening item details in an overlay.
+promptSummary: >-
+  The user reported that opening an item detail from the data-demo page fails
+  with an error about the main view not allowing a side pane layout.
+reasoning:
+  - >-
+    You've found a classic "the guard is working, but the guest list is wrong"
+    problem. My apologies, that was a critical oversight in the configuration.
+  - >-
+    The error message you provided is perfect: `Cannot open side pane: Main view
+    "data-demo" does not allow the "side_pane" layout.`
+  - >-
+    This tells us the new view manager is working exactly as intended. It's
+    correctly checking the rules in the `viewRegistry` before changing the
+    layout. The problem is that I forgot to update the rules for the `data-demo`
+    page itself. I only defined what `dataItemDetail` could do, but not what
+    layouts the `data-demo` page could exist within.
+  - >-
+    To fix this, I will update the `data-demo` entry in `viewRegistry.tsx` to
+    allow it to be part of `side_pane` and `split_view` layouts, which will
+    permit the item detail pane to open correctly.
+operations:
+  - type: write
+    path: src/views/viewRegistry.tsx
+    content: >+
+      --- src/views/viewRegistry.tsx
+
+      +++ src/views/viewRegistry.tsx
+
+      @@ -107,7 +107,7 @@
+           icon: Database,
+           isNavigable: true,
+           renderTarget: ['main'],
+      -    allowedBodyStates: ['normal', 'fullscreen'],
+
+      +    allowedBodyStates: ['normal', 'side_pane', 'split_view',
+      'fullscreen'],
+           defaultBehavior: 'navigate',
+         },
+         messaging: {
+
+    patchStrategy: standard-diff
+snapshot:
+  src/views/viewRegistry.tsx: >-
+    import type { LucideIcon } from 'lucide-react';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      Database,
+      SlidersHorizontal,
+      FileText,
+      Inbox,
+    } from 'lucide-react';
+
+    import type { BodyState, SidebarState } from '@/lib/utils';
+
+    import { SIDEBAR_STATES } from '@/lib/utils';
+
+
+    // --- Lazy load components for better code splitting ---
+
+    import React from 'react';
+
+
+    // Correctly typed lazy imports
+
+    const DashboardContent = React.lazy(() =>
+    import('@/pages/Dashboard').then(module => ({ default:
+    module.DashboardContent })));
+
+    const SettingsPage = React.lazy(() => import('@/pages/Settings').then(module
+    => ({ default: module.SettingsPage })));
+
+    const ToasterDemo = React.lazy(() =>
+    import('@/pages/ToasterDemo').then(module => ({ default: module.ToasterDemo
+    })));
+
+    const NotificationsPage = React.lazy(() =>
+    import('@/pages/Notifications').then(module => ({ default:
+    module.NotificationsPage })));
+
+    const DataDemoPage = React.lazy(() => import('@/pages/DataDemo'));
+
+    const MessagingPage = React.lazy(() => import('@/pages/Messaging'));
+
+    const DataDetailContent = React.lazy(() =>
+    import('@/pages/DataDemo/components/DataDetailContent').then(module => ({
+    default: module.DataDetailContent })));
+
+    const MessagingContent = React.lazy(() =>
+    import('@/pages/Messaging/components/MessagingContent').then(module => ({
+    default: module.MessagingContent })));
+
+
+    export type ViewId = 
+      | 'dashboard'
+      | 'settings'
+      | 'toaster'
+      | 'notifications'
+      | 'data-demo'
+      | 'messaging'
+      | 'dataItemDetail'
+      | 'messagingPage'
+      | 'messagingContextPanel';
+
+    export interface ViewRegistration {
+      id: ViewId;
+      component?: React.ComponentType<any>; // Component is optional for composite views
+      title: string;
+      icon: LucideIcon;
+      hasOwnScrolling?: boolean;
+      
+      // New behavioral properties
+      isNavigable?: boolean; // Can it be navigated to via URL and appear in menus?
+      renderTarget?: ('main' | 'pane')[]; // Where can this view be rendered?
+      allowedBodyStates?: BodyState[]; // What layouts can this view exist in?
+      defaultBehavior?: 'navigate' | 'openPane' | 'openSplit'; // Default action when triggered without context
+      triggerBehaviors?: Record<string, 'navigate' | 'openPane' | 'openSplit'>; // Context-aware actions
+      compositeView?: { // For "app-within-an-app" layouts
+        main: ViewId;
+        right: ViewId;
+      };
+      onNavigate?: { // Side-effects on navigation
+        sidebar?: SidebarState;
+      };
+    }
+
+
+    const suspenseWrapper = (Component:
+    React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
+      <React.Suspense fallback={<div className="p-6">Loading...</div>}>
+        <Component {...props} />
+      </React.Suspense>
+    );
+
+
+    export const viewRegistry: Record<ViewId, ViewRegistration> = {
+      dashboard: {
+        id: 'dashboard',
+        component: suspenseWrapper(DashboardContent),
+        title: 'Dashboard',
+        icon: LayoutDashboard,
+        isNavigable: true,
+        renderTarget: ['main', 'pane'],
+        allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+        defaultBehavior: 'navigate',
+      },
+      settings: {
+        id: 'settings',
+        component: suspenseWrapper(SettingsPage),
+        title: 'Settings',
+        icon: Settings,
+        isNavigable: true,
+        renderTarget: ['main', 'pane'],
+        allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+        defaultBehavior: 'navigate',
+        triggerBehaviors: {
+          iconClick: 'openPane',
+        },
+      },
+      toaster: {
+        id: 'toaster',
+        component: suspenseWrapper(ToasterDemo),
+        title: 'Toaster Demo',
+        icon: Component,
+        isNavigable: true,
+        renderTarget: ['main', 'pane'],
+        allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+        defaultBehavior: 'navigate',
+      },
+      notifications: {
+        id: 'notifications',
+        component: suspenseWrapper(NotificationsPage),
+        title: 'Notifications',
+        icon: Bell,
+        isNavigable: true,
+        renderTarget: ['main', 'pane'],
+        allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+        defaultBehavior: 'navigate',
+        triggerBehaviors: {
+          navClick: 'openPane',
+        },
+      },
+      'data-demo': {
+        id: 'data-demo',
+        component: suspenseWrapper(DataDemoPage),
+        title: 'Data Showcase',
+        icon: Database,
+        isNavigable: true,
+        renderTarget: ['main'],
+        allowedBodyStates: ['normal', 'fullscreen'],
+        defaultBehavior: 'navigate',
+      },
+      messaging: {
+        id: 'messaging',
+        isNavigable: true,
+        title: 'Messaging',
+        icon: Inbox,
+        renderTarget: [], // It doesn't render a component itself
+        allowedBodyStates: ['split_view', 'fullscreen'],
+        defaultBehavior: 'navigate',
+        compositeView: {
+          main: 'messagingPage',
+          right: 'messagingContextPanel',
+        },
+        onNavigate: { sidebar: SIDEBAR_STATES.COLLAPSED },
+      },
+      messagingPage: {
+        id: 'messagingPage',
+        component: suspenseWrapper(MessagingPage),
+        title: 'Inbox',
+        icon: Inbox, // icon is required, even if not shown
+        isNavigable: false,
+        renderTarget: ['main'],
+        allowedBodyStates: ['split_view', 'fullscreen'],
+        hasOwnScrolling: true,
+      },
+      messagingContextPanel: {
+        id: 'messagingContextPanel',
+        component: suspenseWrapper(MessagingContent),
+        title: 'Task Details',
+        icon: SlidersHorizontal, // icon is required
+        isNavigable: false,
+        renderTarget: ['pane'],
+        allowedBodyStates: ['side_pane', 'split_view', 'fullscreen'],
+      },
+      dataItemDetail: {
+        id: 'dataItemDetail',
+        component: suspenseWrapper(DataDetailContent),
+        title: 'Item Details',
+        icon: FileText,
+        isNavigable: false,
+        renderTarget: ['main', 'pane'],
+        allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+        defaultBehavior: 'openPane',
+        hasOwnScrolling: true,
+      },
+    };
+
+
+    export const getViewById = (id: string | null | undefined): ViewRegistration
+    | null => {
+      if (!id) return null;
+      return viewRegistry[id as ViewId] || null;
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 592

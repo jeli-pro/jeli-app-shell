@@ -1,0 +1,267 @@
+uuid: c32c54f5-5643-4705-8e7c-482455b5d19d
+projectId: jeli-app-shell
+createdAt: '2025-10-23T04:07:05.160Z'
+gitCommitMsg: >-
+  refactor(messaging): decompose messaging page for composite view
+
+  Refactors the messaging feature to align with the new composite view
+  architecture.
+
+  - The main `MessagingPage` now correctly consumes the `conversationId` from
+  the URL and passes it to its child `TaskDetail` component. - The
+  `MessagingContent` component, which serves as the right-hand context panel,
+  now uses the `useAppViewManager` hook to derive the `conversationId` directly
+  from the URL. This decouples it from its parent and ensures it's always in
+  sync with the global view state.
+
+  This completes the structural changes required for the `viewRegistry` to
+  manage the three-pane messaging layout declaratively.
+promptSummary: >-
+  The user requested the execution of Part 4 of the refactoring plan, which
+  involves decomposing the Messaging page to align with the composite view
+  architecture specified in the docs.
+reasoning:
+  - >-
+    Excellent. With the core architecture in place, we now address Part 4:
+    decomposing the monolithic `Messaging` page into a true composite view, as
+    foretold in the `viewRegistry`. This will separate the main content
+    (list/detail) from the right-hand context panel, allowing them to be managed
+    independently by the `AppShell`.
+  - '### Part 4, Step 1: Restructure Messaging Components'
+  - >-
+    First, I'll modify the main `MessagingPage` component. It's already
+    structured as a two-pane view (list and detail), which is perfect for its
+    role as the `main` content area. My change will ensure it correctly reads
+    the `conversationId` from the URL and passes it to the `TaskDetail`
+    component, wiring it into the application's routing state.
+  - >-
+    Next, I will update `MessagingContent`, the component designated for the
+    `right` pane of our composite view. To ensure it remains synchronized with
+    the URL and decoupled from its parent renderer (`RightPane.tsx`), I will
+    have it use the `useAppViewManager` hook directly to get the active
+    `conversationId`. This makes the component self-sufficient and robustly tied
+    to the single source of truth—the URL.
+  - >-
+    With these changes, the `Messaging` feature is now properly decomposed. The
+    `viewRegistry` can orchestrate its layout as a composite view, and both
+    constituent components will correctly reflect the application's state from
+    the URL.
+operations:
+  - type: write
+    path: src/pages/Messaging/index.tsx
+    content: |+
+      --- src/pages/Messaging/index.tsx
+      +++ src/pages/Messaging/index.tsx
+      @@ -43,7 +43,7 @@
+       };
+       
+       export default function MessagingPage() {
+      -  useParams<{ conversationId?: string }>();
+      +  const { conversationId } = useParams<{ conversationId?: string }>();
+         const containerRef = useRef<HTMLDivElement>(null);
+       
+         const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);
+      @@ -59,7 +59,7 @@
+               <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+             </div>
+             <div className="flex-1 min-w-0 h-full">
+      -        <TaskDetail />
+      +        <TaskDetail conversationId={conversationId} />
+             </div>
+           </div>
+         );
+       }
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/MessagingContent.tsx
+    content: >+
+      --- src/pages/Messaging/components/MessagingContent.tsx
+
+      +++ src/pages/Messaging/components/MessagingContent.tsx
+
+      @@ -7,14 +7,16 @@
+       import { TaskHeader } from './TaskHeader';
+       import { AnimatedTabs } from '@/components/ui/animated-tabs';
+       import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+      +import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+       
+       interface MessagingContentProps {
+      -  conversationId?: string;
+
+      +  // Note: conversationId is now derived from the URL via
+      useAppViewManager hook
+
+      +  // to ensure it's in sync with the composite view's state.
+       }
+       
+      -export const MessagingContent: React.FC<MessagingContentProps> = ({
+      conversationId }) => {
+
+      +export const MessagingContent: React.FC<MessagingContentProps> = () => {
+         const [activeTab, setActiveTab] = useState('contact');
+      +  const { conversationId } = useAppViewManager();
+         const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
+         
+         const tabs = useMemo(() => [
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/Messaging/index.tsx: |-
+    import { useState, useRef, useEffect, useCallback } from "react";
+    import { useParams } from "react-router-dom";
+    import { TaskList } from "./components/TaskList";
+    import { TaskDetail } from "./components/TaskDetail";
+    import { cn } from "@/lib/utils";
+
+    const useResizableMessagingPanes = (
+      containerRef: React.RefObject<HTMLDivElement>,
+      initialWidth: number = 320
+    ) => {
+      const [isResizing, setIsResizing] = useState(false);
+      const [listWidth, setListWidth] = useState(initialWidth);
+
+      const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsResizing(true);
+      }, []);
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing || !containerRef.current) return;
+          const containerRect = containerRef.current.getBoundingClientRect();
+          const newWidth = e.clientX - containerRect.left;
+          // Constraints for the conversation list pane
+          setListWidth(Math.max(280, Math.min(newWidth, containerRect.width - 500)));
+        };
+
+        const handleMouseUp = () => {
+          setIsResizing(false);
+        };
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          window.addEventListener('mousemove', handleMouseMove);
+          window.addEventListener('mouseup', handleMouseUp, { once: true });
+        }
+
+        return () => {
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+          if (document.body) {
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+          }
+        };
+      }, [isResizing, containerRef]);
+
+      return { listWidth, handleMouseDown, isResizing };
+    };
+
+    export default function MessagingPage() {
+      useParams<{ conversationId?: string }>();
+      const containerRef = useRef<HTMLDivElement>(null);
+
+      const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);
+
+      return (
+        <div 
+          ref={containerRef}
+          className={cn(
+            "h-full w-full flex bg-background",
+            isResizing && "cursor-col-resize select-none"
+          )}
+        >
+          <div style={{ width: `${listWidth}px` }} className="flex-shrink-0 h-full">
+            <TaskList />
+          </div>
+          <div onMouseDown={handleMouseDown} className="w-2 flex-shrink-0 cursor-col-resize group flex items-center justify-center">
+            <div className="w-0.5 h-full bg-border group-hover:bg-primary transition-colors duration-200" />
+          </div>
+          <div className="flex-1 min-w-0 h-full">
+            <TaskDetail />
+          </div>
+        </div>
+      );
+    }
+  src/pages/Messaging/components/MessagingContent.tsx: >-
+    import React, { useState, useMemo } from 'react';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { ContactInfoPanel } from './ContactInfoPanel';
+
+    import { AIInsightsPanel } from './AIInsightsPanel';
+
+    import { ActivityPanel } from './ActivityPanel';
+
+    import { NotesPanel } from './NotesPanel';
+
+    import { TaskHeader } from './TaskHeader';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import { TechOrbitDisplay } from '@/components/effects/OrbitingCircles';
+
+
+    interface MessagingContentProps {
+      conversationId?: string;
+    }
+
+
+    export const MessagingContent: React.FC<MessagingContentProps> = ({
+    conversationId }) => {
+      const [activeTab, setActiveTab] = useState('contact');
+      const task = useMessagingStore(state => conversationId ? state.getTaskById(conversationId) : undefined);
+      
+      const tabs = useMemo(() => [
+        { id: 'contact', label: 'Contact' },
+        { id: 'ai', label: 'AI Insights' },
+        { id: 'activity', label: 'Activity' },
+        { id: 'notes', label: 'Notes' },
+      ], []);
+
+      if (!task) {
+        return (
+          <div className="h-full flex-1 flex flex-col items-center justify-center bg-background p-6 relative overflow-hidden">
+            <TechOrbitDisplay text="Context" />
+            <div className="text-center z-10 bg-background/50 backdrop-blur-sm p-6 rounded-lg">
+                <h3 className="mt-4 text-lg font-medium">Select a Task</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    Task details and contact information will appear here.
+                </p>
+            </div>
+          </div>
+        );
+      }
+      
+      return (
+        <div className="h-full flex-1 flex flex-col bg-background overflow-hidden" data-testid="messaging-content-scroll-pane">
+          <div className="flex-shrink-0 border-b p-6">
+            <TaskHeader task={task} />
+          </div>
+          <AnimatedTabs 
+            tabs={tabs} 
+            activeTab={activeTab} 
+            onTabChange={setActiveTab} 
+            size="sm" 
+            className="px-6 border-b flex-shrink-0"
+            wrapperClassName="flex-1 flex flex-col min-h-0"
+            contentClassName="flex-1 min-h-0"
+          >
+            <div className="p-6 h-full overflow-y-auto"><ContactInfoPanel contact={task.contact} /></div>
+            <div className="p-6 h-full overflow-y-auto"><AIInsightsPanel task={task} /></div>
+            <div className="p-6 h-full overflow-y-auto"><ActivityPanel contact={task.contact} /></div>
+            <div className="p-6 h-full overflow-y-auto"><NotesPanel contact={task.contact} /></div>
+          </AnimatedTabs>
+        </div>
+      );
+    };
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 586

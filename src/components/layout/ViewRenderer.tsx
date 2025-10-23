@@ -27,6 +27,14 @@ export function ViewRenderer({ viewId, className }: ViewRendererProps) {
 
   const { component: Component, hasOwnScrolling } = view;
 
+  if (!Component) {
+    return (
+      <div className="p-6 text-muted-foreground">
+        View has no component to render: {viewId}
+      </div>
+    );
+  }
+
   let componentProps: any = {};
   if (viewId === 'dataItemDetail') {
     if (!selectedItem) {
@@ -37,8 +45,6 @@ export function ViewRenderer({ viewId, className }: ViewRendererProps) {
       );
     }
     componentProps = { item: selectedItem };
-  } else if (viewId === 'messaging') {
-    componentProps = { conversationId };
   }
 
   const content = <Component {...componentProps} />;

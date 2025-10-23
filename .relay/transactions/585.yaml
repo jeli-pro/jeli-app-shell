@@ -1,0 +1,964 @@
+uuid: b859b7df-1b07-4e6e-a20c-c46643c16ac2
+projectId: jeli-app-shell
+createdAt: '2025-10-23T04:04:59.744Z'
+gitCommitMsg: >-
+  refactor(views): align UI components with new AppViewManager API
+
+  Updates UI components to use the new declarative `useAppViewManager` hook,
+  completing the transition to the "Hyper-Explicit" view registry model.
+
+  - `EnhancedSidebar`: `AppMenuItem` now uses `viewManager.trigger()` instead of
+  hardcoded navigation/pane logic. The `opensInSidePane` prop is removed, as
+  this behavior is now controlled by the `viewRegistry`. - `TopBar`: The
+  settings icon `onClick` now uses `viewManager.trigger('settings',
+  'iconClick')` to provide context to the view manager. - `DataDemoPage`: The
+  `onItemSelect` callback is updated to use `viewManager.trigger()` to handle
+  opening item details, allowing the `viewRegistry` to determine the default
+  behavior (opening in a pane). The component now correctly uses the view
+  manager to determine when to render a detail view as its main content.
+promptSummary: >-
+  The user requested to execute Part 3 of a multi-part refactoring plan. This
+  involved updating UI components like the Sidebar, TopBar, and DataDemo page to
+  use the new `useAppViewManager` hook's declarative API (`trigger`,
+  `navigateTo`).
+reasoning:
+  - >-
+    Executing Part 3 of our grand design. We shall now update our UI components
+    to speak the new, declarative language of the `viewRegistry` through our
+    loyal executor, the `AppViewManager`.
+  - >-
+    First, I will refactor the `EnhancedSidebar`. The `AppMenuItem` component
+    will be purged of its imperative `opensInSidePane` logic. Instead, its
+    `onClick` handler will now use `viewManager.trigger()`. This allows the
+    `viewRegistry` to dictate the outcome—a simple navigation for most, but a
+    contextual pane for 'Notifications', just as the prophecy foretold. Its
+    sense of "activeness" will also be sharpened, now correctly identifying
+    itself whether it's in the main content area or the right pane.
+  - >-
+    Next, the `TopBar`'s settings icon will be brought into the new world. Its
+    `onClick` event will now issue a contextual trigger:
+    `viewManager.trigger('settings', 'iconClick')`. The view manager will
+    consult the registry, see the `iconClick` rule, and dutifully open the
+    settings in a side pane.
+  - >-
+    Finally, I will turn to the `DataDemo` page. Its `onItemSelect` action,
+    which currently uses a now-defunct API, will be updated to correctly call
+    `viewManager.trigger('dataItemDetail', ...)`. When a user selects an item,
+    this trigger will execute the view's `defaultBehavior`, which the registry
+    defines as `openPane`, fulfilling the specification. The page will also be
+    updated to correctly determine when to render the detail view as its main
+    content, guided by the `mainViewId` provided by our new view manager.
+  - >-
+    The `CommandPalette` and `TaskList` components already appear to be in
+    compliance with the new order, so they will be spared the hammer of
+    refactoring.
+  - '### Step 1: Refactor Sidebar & TopBar'
+  - >-
+    First, I'll update `EnhancedSidebar.tsx` to use the new `trigger` API and
+    remove the outdated `opensInSidePane` prop.
+  - >-
+    Next, I'll update the `TopBar` to use a contextual trigger for the settings
+    icon.
+  - '### Step 2: Refactor Data-Driven View Triggers'
+  - >-
+    I will now update the `DataDemo` page to use the `useAppViewManager` hook
+    correctly for selecting an item and displaying its detail view.
+operations:
+  - type: write
+    path: src/components/layout/EnhancedSidebar.tsx
+    content: >+
+      --- src/components/layout/EnhancedSidebar.tsx
+
+      +++ src/components/layout/EnhancedSidebar.tsx
+
+      @@ -29,6 +29,7 @@
+       import { ViewModeSwitcher } from './ViewModeSwitcher';
+       import { cn } from '@/lib/utils';
+       import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+      +import type { ViewId } from '@/views/viewRegistry';
+       
+       interface MyWorkspace extends Workspace {
+         logo: string;
+      @@ -95,29 +96,28 @@
+         children?: React.ReactNode;
+         isSubItem?: boolean;
+         page?: ActivePage;
+      -  opensInSidePane?: boolean;
+         onClick?: () => void;
+         isActive?: boolean;
+       }
+       
+      -const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label,
+      badge, hasActions, children, isSubItem = false, page, opensInSidePane =
+      false, onClick, isActive: isActiveProp }) => {
+
+      +const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label,
+      badge, hasActions, children, isSubItem = false, page, onClick, isActive:
+      isActiveProp }) => {
+         const compactMode = useAppShellStore(state => state.compactMode);
+         const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
+         const { isCollapsed } = useSidebar();
+         const viewManager = useAppViewManager();
+       
+      -  const calculatedIsActive = (
+
+      -    (!opensInSidePane && page && viewManager.currentActivePage === page)
+
+      -  ) || (
+
+      -    (opensInSidePane && page && viewManager.sidePaneContent === page)
+
+      -  );
+
+      +  const calculatedIsActive =
+
+      +    (page && viewManager.mainViewId === page) ||
+
+      +    (page && viewManager.rightPaneViewId === page);
+       
+         const isActive = isActiveProp ?? calculatedIsActive;
+       
+         const handleClick = () => {
+           if (onClick) {
+             onClick();
+             return;
+           }
+           if (page) {
+      -      if (opensInSidePane) {
+
+      -        viewManager.toggleSidePane(page as any);
+
+      -      } else {
+
+      -        viewManager.navigateTo(page);
+
+      -      }
+
+      +      // For context-aware actions like 'notifications' from a sidebar
+      nav link,
+
+      +      // we use trigger() with a source. For all others, a simple trigger
+
+      +      // will execute the defaultBehavior from the viewRegistry.
+
+      +      const source = page === 'notifications' ? 'navClick' : undefined;
+
+      +      viewManager.trigger(page as ViewId, source);
+           }
+         };
+       
+      @@ -176,7 +176,7 @@
+                     <AppMenuItem icon={Database} label="Data Demo" page="data-demo"  />
+                     <MessagingSidebarItems />
+                     <AppMenuItem icon={Search} label="Search" />
+      -              <AppMenuItem icon={Bell} label="Notifications" badge={3}
+      page="notifications" opensInSidePane />
+
+      +              <AppMenuItem icon={Bell} label="Notifications" badge={3}
+      page="notifications" />
+                   </SidebarSection>
+                   
+                   <SidebarSection title="Workspace" collapsible defaultExpanded>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/TopBar.tsx
+    content: |+
+      --- src/components/layout/TopBar.tsx
+      +++ src/components/layout/TopBar.tsx
+      @@ -52,7 +52,7 @@
+               </button>
+       
+               <button
+      -          onClick={() => viewManager.toggleSidePane('settings')}
+      +          onClick={() => viewManager.trigger('settings', 'iconClick')}
+                 className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                 title="Settings"
+               >
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -12,10 +12,10 @@
+       import { useDataDemoStore, useSelectedItem } from "./store/dataDemo.store";
+       import { AddDataItemCta } from "@/features/dynamic-view/components/shared/AddDataItemCta";
+       import { DataDetailContent } from "./components/DataDetailContent";
+      -
+       import { dataDemoViewConfig } from "./DataDemo.config";
+       import type { StatItem } from "@/features/dynamic-view/types";
+       
+       export default function DataDemoPage() {
+      -  const { pathItemId, onItemSelect } = useAppViewManager();
+
+      +  const viewManager = useAppViewManager();
+         const {
+           viewMode,
+           groupBy,
+      @@ -32,7 +32,7 @@
+           setCalendarDate,
+         } = useDataDemoParams();
+       
+      -  const selectedItem = useSelectedItem(pathItemId);
+
+      +  const selectedItem = useSelectedItem(viewManager.itemId);
+       
+         const {
+           items: allItems,
+      @@ -51,7 +51,6 @@
+       
+         // Note: The `DynamicViewProvider` needs `GenericItem[]`.
+         // Our store uses `GenericItem` so no cast is needed.
+      -
+         // Calculate stats from data
+         const totalItems = mockDataItems.length;
+         const { showScrollToBottom, scrollToBottom, handleScroll } =
+      @@ -140,7 +139,6 @@
+           (node: Element | null) => {
+             if (isLoading) return;
+             if (observer.current) observer.current.disconnect();
+      -
+             observer.current = new IntersectionObserver((entries) => {
+               if (entries[0].isIntersecting && hasMore) {
+                 setPage(page + 1);
+      @@ -151,7 +149,7 @@
+           [isLoading, hasMore, page, setPage],
+         );
+       
+      -  if (pathItemId && selectedItem) {
+
+      +  if (viewManager.mainViewId === 'dataItemDetail' && viewManager.itemId
+      && selectedItem) {
+           // Render detail view as the main content
+           return <DataDetailContent item={selectedItem} />;
+         }
+      @@ -176,7 +174,7 @@
+               onGroupByChange={setGroupBy}
+               onActiveGroupTabChange={setActiveGroupTab}
+               onPageChange={setPage}
+               onItemUpdate={updateItem}
+      -        onItemSelect={(item) => onItemSelect(item.id)}
+
+      +        onItemSelect={(item) => viewManager.trigger('dataItemDetail',
+      'itemClick', { itemId: item.id })}
+               loaderRef={loaderRef}
+               scrollContainerRef={scrollRef}
+               statsData={stats}
+
+    patchStrategy: standard-diff
+snapshot:
+  src/components/layout/EnhancedSidebar.tsx: >-
+    import React from 'react';
+
+    import {
+      Home,
+      Settings,
+      HelpCircle,
+      Component,
+      Rocket,
+      MoreHorizontal,
+      Bell,
+      Search,
+      FileText,
+      Star,
+      Trash2,
+      FolderOpen,
+      Mail,
+      Bookmark,
+      Download,
+      User,
+      Plus,
+      Database,
+      PanelLeftClose,
+      Inbox,
+      UserX,
+      CheckCircle2,
+    } from 'lucide-react';
+
+    import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
+
+    import {
+      Workspaces,
+      WorkspaceTrigger,
+      WorkspaceContent,
+      type Workspace,
+    } from './WorkspaceSwitcher';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu';
+
+    import {
+      Sidebar,
+      SidebarContent,
+      SidebarHeader,
+      SidebarTitle,
+      SidebarBody,
+      SidebarFooter,
+      SidebarSection,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './Sidebar';
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+    import { cn } from '@/lib/utils';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+
+    interface MyWorkspace extends Workspace {
+      logo: string;
+      plan: string;
+    }
+
+
+    const mockWorkspaces: MyWorkspace[] = [
+      { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+      { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+      { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+    ];
+
+
+    const SidebarWorkspaceTrigger = () => {
+      const { isCollapsed, compactMode } = useSidebar();
+
+      return (
+        <WorkspaceTrigger
+          collapsed={isCollapsed}
+          className={cn(
+            'rounded-xl transition-colors hover:bg-accent/50 w-full',
+            isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+          )}
+          avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+        />
+      );
+    };
+
+
+    const SidebarToggleButton = () => {
+      const { isCollapsed } = useSidebar();
+      const { toggleSidebar } = useAppShellStore.getState();
+
+      if (isCollapsed) return null;
+
+      return (
+        <button
+          onClick={toggleSidebar}
+          className="ml-auto h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
+          title="Collapse Sidebar"
+        >
+          <PanelLeftClose className="w-5 h-5" />
+        </button>
+      );
+    };
+
+
+    interface SidebarProps {
+      onMouseEnter?: () => void;
+      onMouseLeave?: () => void;
+    }
+
+
+    export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement,
+    SidebarProps>(
+      ({ onMouseEnter, onMouseLeave }, ref) => {
+        const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+        const compactMode = useAppShellStore(s => s.compactMode);
+        const appName = useAppShellStore(s => s.appName);
+        const appLogo = useAppShellStore(s => s.appLogo);
+        const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+        return (
+          <Sidebar
+            ref={ref}
+            style={{ width: sidebarWidth }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+          >
+            <SidebarContent>
+              <SidebarHeader>
+                {appLogo || (
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <Rocket className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <SidebarTitle>{appName}</SidebarTitle>
+                <SidebarToggleButton />
+              </SidebarHeader>
+
+              <SidebarBody>
+                <SidebarSection title="Main">
+                  <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+                  <AppMenuItem icon={Database} label="Data Demo" page="data-demo"  />
+                  <MessagingSidebarItems />
+                  <AppMenuItem icon={Search} label="Search" />
+                  <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" opensInSidePane />
+                </SidebarSection>
+                
+                <SidebarSection title="Workspace" collapsible defaultExpanded>
+                  <AppMenuItem icon={FileText} label="Documents" hasActions>
+                    <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                    <AppMenuItem icon={Star} label="Starred" isSubItem />
+                    <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+                  </AppMenuItem>
+                  <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+                  <AppMenuItem icon={Mail} label="Messages" badge={12} />
+                </SidebarSection>
+                
+                <SidebarSection title="Personal" collapsible>
+                  <AppMenuItem icon={Bookmark} label="Bookmarks" />
+                  <AppMenuItem icon={Star} label="Favorites" />
+                  <AppMenuItem icon={Download} label="Downloads" />
+                </SidebarSection>
+
+                <SidebarSection title="Components" collapsible defaultExpanded>
+                  <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+                </SidebarSection>
+              </SidebarBody>
+
+              <SidebarFooter>
+                <SidebarSection>
+                  <AppMenuItem icon={User} label="Profile" />
+                  <AppMenuItem icon={Settings} label="Settings" page="settings" />
+                  <AppMenuItem icon={HelpCircle} label="Help" />
+                </SidebarSection>
+
+                <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+                  <Workspaces
+                    workspaces={mockWorkspaces}
+                    selectedWorkspaceId={selectedWorkspace.id}
+                    onWorkspaceChange={(ws) => setSelectedWorkspace(ws as MyWorkspace)}
+                  >
+                    <SidebarWorkspaceTrigger />
+                    <WorkspaceContent>
+                      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                        <Plus className="h-4 w-4" />
+                        <span>Create Workspace</span>
+                      </button>
+                    </WorkspaceContent>
+                  </Workspaces>
+                </div>
+              </SidebarFooter>
+            </SidebarContent>
+          </Sidebar>
+        );
+      },
+    ));
+
+    EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+
+    // Example of a reusable menu item component built with the new Sidebar
+    primitives
+
+    interface AppMenuItemProps {
+      icon: React.ElementType;
+      label: string;
+      badge?: number;
+      hasActions?: boolean;
+      children?: React.ReactNode;
+      isSubItem?: boolean;
+      page?: ActivePage;
+      opensInSidePane?: boolean;
+      onClick?: () => void;
+      isActive?: boolean;
+    }
+
+
+    const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge,
+    hasActions, children, isSubItem = false, page, opensInSidePane = false,
+    onClick, isActive: isActiveProp }) => {
+      const compactMode = useAppShellStore(state => state.compactMode);
+      const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
+      const { isCollapsed } = useSidebar();
+      const viewManager = useAppViewManager();
+
+      const calculatedIsActive = (
+        (!opensInSidePane && page && viewManager.currentActivePage === page)
+      ) || (
+        (opensInSidePane && page && viewManager.sidePaneContent === page)
+      );
+
+      const isActive = isActiveProp ?? calculatedIsActive;
+
+      const handleClick = () => {
+        if (onClick) {
+          onClick();
+          return;
+        }
+        if (page) {
+          if (opensInSidePane) {
+            viewManager.toggleSidePane(page as any);
+          } else {
+            viewManager.navigateTo(page);
+          }
+        }
+      };
+
+      return (
+        <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleClick}
+              isActive={isActive}
+              draggable={!!page}
+              onDragStart={(_e) => {
+                if (page) {
+                  // set dragged page in AppShell store
+                  setDraggedPage(page);
+                }
+              }}
+              onDragEnd={() => {
+                setDraggedPage(null);
+                setDragHoverTarget(null);
+              }}
+            >
+              <SidebarIcon>
+                <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+              </SidebarIcon>
+              <SidebarLabel>{label}</SidebarLabel>
+              {badge && <SidebarBadge>{badge}</SidebarBadge>}
+              <SidebarTooltip label={label} badge={badge} />
+            </SidebarMenuButton>
+
+            {page && !isCollapsed && ( // Always render switcher if there's a page
+              <div className={cn(
+                "absolute top-1/2 -translate-y-1/2 z-10",
+                "opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
+                "transition-opacity pointer-events-none group-hover/item:pointer-events-auto",
+                // If there are actions, move left to make space for the action button
+                hasActions ? "right-10" : "right-2"
+              )}>
+                <ViewModeSwitcher targetPage={page} />
+              </div>
+            )}
+
+            {hasActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start">
+                  <DropdownMenuItem>
+                    <span>Edit {label}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <span>Delete {label}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </SidebarMenuItem>
+          {!isCollapsed && children && (
+            <div className="space-y-1 mt-1">{children}</div>
+          )}
+        </div>
+      );
+    };
+
+
+    const MessagingSidebarItems = () => {
+      const { currentActivePage, messagingView, navigateTo } = useAppViewManager();
+      const totalUnread = 7; // Mock data, could come from a store
+
+      return (
+        <AppMenuItem
+          icon={Mail}
+          label="Messaging"
+          badge={totalUnread}
+          page="messaging"
+          isActive={currentActivePage === 'messaging'}
+          onClick={() => navigateTo('messaging', { messagingView: 'all_open' })}
+        >
+          <AppMenuItem
+            icon={Inbox}
+            label="All Open"
+            isSubItem
+            page="messaging"
+            isActive={currentActivePage === 'messaging' && (messagingView === 'all_open' || !messagingView)}
+            onClick={() => navigateTo('messaging', { messagingView: 'all_open' })}
+          />
+          <AppMenuItem
+            icon={UserX}
+            label="Unassigned"
+            isSubItem
+            page="messaging"
+            isActive={currentActivePage === 'messaging' && messagingView === 'unassigned'}
+            onClick={() => navigateTo('messaging', { messagingView: 'unassigned' })}
+          />
+          <AppMenuItem
+            icon={CheckCircle2}
+            label="Done"
+            isSubItem
+            page="messaging"
+            isActive={currentActivePage === 'messaging' && messagingView === 'done'}
+            onClick={() => navigateTo('messaging', { messagingView: 'done' })}
+          />
+        </AppMenuItem>
+      );
+    };
+  src/components/layout/TopBar.tsx: |-
+    import React from 'react';
+    import {
+      Moon, 
+      Sun,
+      Settings,
+      Command,
+      Zap,
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+    import { UserDropdown } from './UserDropdown'
+    import { ViewModeSwitcher } from './ViewModeSwitcher'
+    import { useAppShellStore } from '@/store/appShell.store'
+
+    interface TopBarProps {
+      breadcrumbs?: React.ReactNode
+      pageControls?: React.ReactNode
+    }
+
+    export const TopBar = React.memo(({
+      breadcrumbs,
+      pageControls,
+    }: TopBarProps) => {
+      const bodyState = useAppShellStore(s => s.bodyState)
+      const isDarkMode = useAppShellStore(s => s.isDarkMode);
+      const { 
+        setCommandPaletteOpen,
+        toggleDarkMode,
+      } = useAppShellStore.getState();
+      const viewManager = useAppViewManager();
+
+      return (
+        <div className={cn(
+          "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
+        )}>
+          {/* Left Section - Sidebar Controls & Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            {breadcrumbs}
+          </div>
+
+          {/* Right Section - page controls, and global controls */}
+          <div className="flex items-center gap-3">
+            {pageControls}
+
+            {/* Separator */}
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-3">
+
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                title="Command Palette (Ctrl+K)"
+              >
+                <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Quick Actions"
+            >
+              <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
+
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Theme and Settings */}
+            <button
+              onClick={toggleDarkMode}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <button
+              onClick={() => viewManager.toggleSidePane('settings')}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+            <UserDropdown />
+            </div>
+          </div>
+        </div>
+      )
+    });
+  src/pages/DataDemo/index.tsx: >
+    import { useRef, useEffect, useCallback } from "react";
+
+    import {
+      Layers,
+      AlertTriangle,
+      PlayCircle,
+      TrendingUp,
+      CheckCircle,
+      Clock,
+      Archive,
+      PlusCircle,
+    } from "lucide-react";
+
+    import { DynamicView } from "@/features/dynamic-view/DynamicView";
+
+    import { PageLayout } from "@/components/shared/PageLayout";
+
+    import { useScrollToBottom } from "@/hooks/useScrollToBottom.hook";
+
+    import { ScrollToBottomButton } from
+    "@/components/shared/ScrollToBottomButton";
+
+    import { mockDataItems } from "./data/mockData";
+
+    import { useDataDemoParams } from "./hooks/useDataDemoParams.hook";
+
+    import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+    import { useDataDemoStore, useSelectedItem } from "./store/dataDemo.store";
+
+    import { AddDataItemCta } from
+    "@/features/dynamic-view/components/shared/AddDataItemCta";
+
+    import { DataDetailContent } from "./components/DataDetailContent";
+
+
+    import { dataDemoViewConfig } from "./DataDemo.config";
+
+    import type { StatItem } from "@/features/dynamic-view/types";
+
+
+    export default function DataDemoPage() {
+      const { pathItemId, onItemSelect } = useAppViewManager();
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+        setFilters,
+        setViewMode,
+        calendarDate,
+        setCalendarDate,
+      } = useDataDemoParams();
+
+      const selectedItem = useSelectedItem(pathItemId);
+
+      const {
+        items: allItems,
+        hasMore,
+        isLoading,
+        isInitialLoading,
+        totalItemCount,
+        loadData,
+        updateItem,
+      } = useDataDemoStore((state) => ({
+        items: state.items,
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+        updateItem: state.updateItem,
+      }));
+
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Note: The `DynamicViewProvider` needs `GenericItem[]`.
+      // Our store uses `GenericItem` so no cast is needed.
+
+      // Calculate stats from data
+      const totalItems = mockDataItems.length;
+      const { showScrollToBottom, scrollToBottom, handleScroll } =
+        useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(
+        (item) => item.status === "active",
+      ).length;
+      const highPriorityItems = mockDataItems.filter(
+        (item) => item.priority === "high" || item.priority === "critical",
+      ).length;
+      const avgCompletion =
+        totalItems > 0
+          ? Math.round(
+              mockDataItems.reduce(
+                (acc, item) => acc + item.metrics.completion,
+                0,
+              ) / totalItems,
+            )
+          : 0;
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          chartData: [120, 125, 122, 130, 135, 138, 142],
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week",
+          trend: "up" as const,
+          chartData: [45, 50, 48, 55, 53, 60, 58],
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          chartData: [25, 26, 28, 27, 26, 24, 23],
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          chartData: [65, 68, 70, 69, 72, 75, 78],
+        },
+        {
+          title: "Completion Rate",
+          value: "88%",
+          icon: <CheckCircle className="w-5 h-5" />,
+          change: "+1.5% this month",
+          trend: "up" as const,
+          chartData: [80, 82, 81, 84, 85, 87, 88],
+        },
+        {
+          title: "Overdue Items",
+          value: "8",
+          icon: <Clock className="w-5 h-5" />,
+          change: "-3 this week",
+          trend: "down" as const,
+        },
+        {
+          title: "New This Week",
+          value: "12",
+          icon: <PlusCircle className="w-5 h-5" />,
+          change: "+2 from last week",
+          trend: "up" as const,
+        },
+        {
+          title: "Archived Projects",
+          value: "153",
+          icon: <Archive className="w-5 h-5" />,
+          change: "+20 this month",
+          trend: "up" as const,
+        },
+      ];
+
+      useEffect(() => {
+        loadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === "calendar" || viewMode === "kanban",
+        });
+      }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+
+      if (pathItemId && selectedItem) {
+        // Render detail view as the main content
+        return <DataDetailContent item={selectedItem} />;
+      }
+
+      return (
+        <PageLayout scrollRef={scrollRef} onScroll={handleScroll}>
+          <DynamicView
+            viewConfig={dataDemoViewConfig}
+            items={allItems}
+            isLoading={isLoading}
+            isInitialLoading={isInitialLoading}
+            totalItemCount={totalItemCount}
+            hasMore={hasMore}
+            // Controlled state
+            viewMode={viewMode}
+            filters={filters}
+            sortConfig={sortConfig}
+            groupBy={groupBy}
+            activeGroupTab={activeGroupTab}
+            page={page}
+            // Callbacks
+            calendarDate={calendarDate}
+            onCalendarDateChange={setCalendarDate}
+            onViewModeChange={setViewMode}
+            onFiltersChange={setFilters}
+            onSortChange={setSort}
+            onGroupByChange={setGroupBy}
+            onActiveGroupTabChange={setActiveGroupTab}
+            onPageChange={setPage}
+            onItemUpdate={updateItem}
+            onItemSelect={(item) => onItemSelect(item.id)}
+            loaderRef={loaderRef}
+            scrollContainerRef={scrollRef}
+            statsData={stats}
+            // Custom Renderers
+            renderCta={(viewMode, ctaProps) => (
+              <AddDataItemCta viewMode={viewMode} colSpan={ctaProps.colSpan} />
+            )}
+          />
+
+          <ScrollToBottomButton
+            isVisible={showScrollToBottom}
+            onClick={scrollToBottom}
+          />
+        </PageLayout>
+      );
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 585

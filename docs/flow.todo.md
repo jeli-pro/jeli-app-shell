@@ -33,7 +33,7 @@ make the app shell architecture/app view management more decoupled so the consum
 
 because right now, every page is not having the same behavior like some page view mode switching to fullscreen but having broken layout, switching to another view mode sometimes works flowly like setting/notification page sometimes not.
 
-but each page can inform to props that like wanted to open as what view at default/initial,  wanted to having how much size spread on splitting view, etc... but everything should feel like vscode content where can be put anywhere in any pane or tabs
+but each page can inform to props that like wanted to open as what view at default/initial, wanted to having how much size spread on splitting view, etc... but everything should feel like vscode content where can be put anywhere in any pane or tabs
 
 === HALF
 
@@ -224,7 +224,27 @@ split view mode : loosing view mode switcher hover on pane active left:right pan
 
 view mode switcher actions not working well from overlay side pane: especially fullscreen,and normal mode
 
+===
 
+restore split-view layout
+
+  Re-implements the split-view functionality for the messaging page by
+  decoupling TaskList and TaskDetail into distinct, registered views.
+
+  1. Remove the monolithic `MessagingPage` component.
+  2. Convert `TaskList` and `TaskDetail` into lazy-loaded default exports.
+  3. Create `viewRegistry.ts` and register every application view in it.
+  4. Update `useAppViewManager` so it reads the `conversationId` from the URL and, when present, activates a split view with `messagingDetail` rendered in the right pane.
+  5. In `App.tsx`, change the `/messaging` route so it renders `messagingList` as the main view.
+  6. Modify `ViewRenderer` to forward the required props to the `messagingDetail` view.
+  7. Verify that the split-view layout now appears correctly on the messaging page.
+
+  This change restores the intended UX while adhering to the new decoupled
+  view management architecture.
+
+=== DOING
+
+make the view management to fully comply with docs/screen-view.spec.md
 
 === DONE
 

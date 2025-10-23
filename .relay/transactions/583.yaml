@@ -1,0 +1,495 @@
+uuid: 44f195d8-04f7-4148-bd08-8e6d97c385b5
+projectId: jeli-app-shell
+createdAt: '2025-10-23T03:58:16.661Z'
+gitCommitMsg: >-
+  feat(views): enhance viewRegistry with behavioral metadata
+
+  Refactors the `viewRegistry` to serve as a comprehensive behavioral
+  specification, aligning with the "Hyper-Explicit" architecture defined in the
+  screen view spec.
+
+  - Extends the `ViewRegistration` type to include declarative properties
+    such as `isNavigable`, `renderTarget`, `allowedBodyStates`,
+    `defaultBehavior`, `triggerBehaviors`, and `compositeView`.
+  - Updates all existing view definitions to populate this new metadata. -
+  Re-architects the 'messaging' view as a composite view, splitting it
+    into a virtual parent (`messaging`) and two child components
+    (`messagingPage`, `messagingContextPanel`).
+  - Removes the obsolete 'details' placeholder view. - Adds lazy loading for
+  `MessagingContent`.
+promptSummary: >-
+  Execute Part 1 of the view management refactor. This involves updating the
+  types in `viewRegistry.tsx` to include new behavioral metadata and then
+  populating the registry with this new information for each view, as specified
+  in `docs/screen-view.spec.md`.
+reasoning:
+  - >-
+    I shall begin by executing Part 1 of our grand design. The `viewRegistry`
+    will be elevated from a mere list of components to the very constitution of
+    our application's view layer, as foretold in the sacred
+    `screen-view.spec.md`.
+  - >-
+    First, I will expand the `ViewRegistration` type to include the new
+    behavioral metadata: where a view can be rendered, the layouts it permits,
+    and how it responds to user actions. I will also update the list of valid
+    `ViewId`s to accommodate the new composite structure for the Messaging view
+    and remove the old placeholder.
+  - >-
+    With the new structure in place, I will meticulously update each entry in
+    the `viewRegistry`. Standard views like `dashboard` and `settings` will be
+    defined with their allowed states and default behaviors. Critically,
+    context-aware `triggerBehaviors` will be added to `settings` and
+    `notifications` to handle specific interaction sources like icon clicks. The
+    `messaging` view will be refactored into a "virtual" composite view that
+    orchestrates its two child components, `messagingPage` and
+    `messagingContextPanel`, each with its own specific constraints. This
+    initial, foundational step will set the stage for rewriting the view manager
+    to read and execute these declarative rules.
+operations:
+  - type: write
+    path: src/views/viewRegistry.tsx
+    content: >+
+      --- src/views/viewRegistry.tsx
+
+      +++ src/views/viewRegistry.tsx
+
+      @@ -5,17 +5,24 @@
+         Bell,
+         Database,
+         MessageSquare,
+         SlidersHorizontal,
+      +  FileText,
+
+      +  Inbox,
+       } from 'lucide-react';
+      +import type { BodyState, SidebarState } from '@/lib/utils';
+
+      +import { SIDEBAR_STATES } from '@/lib/utils';
+       
+       // --- Lazy load components for better code splitting ---
+       import React from 'react';
+       
+       // Correctly typed lazy imports
+       const DashboardContent = React.lazy(() => import('@/pages/Dashboard').then(module => ({ default: module.DashboardContent })));
+       const SettingsPage = React.lazy(() => import('@/pages/Settings').then(module => ({ default: module.SettingsPage })));
+       const ToasterDemo = React.lazy(() => import('@/pages/ToasterDemo').then(module => ({ default: module.ToasterDemo })));
+       const NotificationsPage = React.lazy(() => import('@/pages/Notifications').then(module => ({ default: module.NotificationsPage })));
+       const DataDemoPage = React.lazy(() => import('@/pages/DataDemo'));
+       const MessagingPage = React.lazy(() => import('@/pages/Messaging'));
+       const DataDetailContent = React.lazy(() => import('@/pages/DataDemo/components/DataDetailContent').then(module => ({ default: module.DataDetailContent })));
+      +const MessagingContent = React.lazy(() =>
+      import('@/pages/Messaging/components/MessagingContent').then(module => ({
+      default: module.MessagingContent })));
+       
+       export type ViewId = 
+         | 'dashboard'
+      @@ -25,14 +32,31 @@
+         | 'data-demo'
+         | 'messaging'
+         | 'dataItemDetail'
+      -  | 'details';
+
+      +  | 'messagingPage'
+
+      +  | 'messagingContextPanel';
+       
+       export interface ViewRegistration {
+         id: ViewId;
+      -  component: React.ComponentType<any>;
+
+      +  component?: React.ComponentType<any>; // Component is optional for
+      composite views
+         title: string;
+         icon: LucideIcon;
+         hasOwnScrolling?: boolean;
+      +  
+
+      +  // New behavioral properties
+
+      +  isNavigable?: boolean; // Can it be navigated to via URL and appear in
+      menus?
+
+      +  renderTarget?: ('main' | 'pane')[]; // Where can this view be rendered?
+
+      +  allowedBodyStates?: BodyState[]; // What layouts can this view exist
+      in?
+
+      +  defaultBehavior?: 'navigate' | 'openPane' | 'openSplit'; // Default
+      action when triggered without context
+
+      +  triggerBehaviors?: Record<string, 'navigate' | 'openPane' |
+      'openSplit'>; // Context-aware actions
+
+      +  compositeView?: { // For "app-within-an-app" layouts
+
+      +    main: ViewId;
+
+      +    right: ViewId;
+
+      +  };
+
+      +  onNavigate?: { // Side-effects on navigation
+
+      +    sidebar?: SidebarState;
+
+      +  };
+       }
+       
+       const suspenseWrapper = (Component: React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
+      @@ -46,58 +70,102 @@
+           id: 'dashboard',
+           component: suspenseWrapper(DashboardContent),
+           title: 'Dashboard',
+           icon: LayoutDashboard,
+      +    isNavigable: true,
+
+      +    renderTarget: ['main', 'pane'],
+
+      +    allowedBodyStates: ['normal', 'side_pane', 'split_view',
+      'fullscreen'],
+
+      +    defaultBehavior: 'navigate',
+         },
+         settings: {
+           id: 'settings',
+           component: suspenseWrapper(SettingsPage),
+           title: 'Settings',
+           icon: Settings,
+      +    isNavigable: true,
+
+      +    renderTarget: ['main', 'pane'],
+
+      +    allowedBodyStates: ['normal', 'side_pane', 'split_view',
+      'fullscreen'],
+
+      +    defaultBehavior: 'navigate',
+
+      +    triggerBehaviors: {
+
+      +      iconClick: 'openPane',
+
+      +    },
+         },
+         toaster: {
+           id: 'toaster',
+           component: suspenseWrapper(ToasterDemo),
+           title: 'Toaster Demo',
+           icon: Component,
+      +    isNavigable: true,
+
+      +    renderTarget: ['main', 'pane'],
+
+      +    allowedBodyStates: ['normal', 'side_pane', 'split_view',
+      'fullscreen'],
+
+      +    defaultBehavior: 'navigate',
+         },
+         notifications: {
+           id: 'notifications',
+           component: suspenseWrapper(NotificationsPage),
+           title: 'Notifications',
+           icon: Bell,
+      +    isNavigable: true,
+
+      +    renderTarget: ['main', 'pane'],
+
+      +    allowedBodyStates: ['normal', 'side_pane', 'split_view',
+      'fullscreen'],
+
+      +    defaultBehavior: 'navigate',
+
+      +    triggerBehaviors: {
+
+      +      navClick: 'openPane',
+
+      +    },
+         },
+         'data-demo': {
+           id: 'data-demo',
+           component: suspenseWrapper(DataDemoPage),
+           title: 'Data Showcase',
+           icon: Database,
+      +    isNavigable: true,
+
+      +    renderTarget: ['main'],
+
+      +    allowedBodyStates: ['normal', 'fullscreen'],
+
+      +    defaultBehavior: 'navigate',
+         },
+         messaging: {
+           id: 'messaging',
+      -    component: suspenseWrapper(MessagingPage),
+
+      +    isNavigable: true,
+           title: 'Messaging',
+      -    icon: MessageSquare,
+
+      +    icon: Inbox,
+
+      +    renderTarget: [], // It doesn't render a component itself
+
+      +    allowedBodyStates: ['split_view', 'fullscreen'],
+
+      +    defaultBehavior: 'navigate',
+
+      +    compositeView: {
+
+      +      main: 'messagingPage',
+
+      +      right: 'messagingContextPanel',
+
+      +    },
+
+      +    onNavigate: { sidebar: SIDEBAR_STATES.COLLAPSED },
+
+      +  },
+
+      +  messagingPage: {
+
+      +    id: 'messagingPage',
+
+      +    component: suspenseWrapper(MessagingPage),
+
+      +    title: 'Inbox',
+
+      +    icon: Inbox, // icon is required, even if not shown
+
+      +    isNavigable: false,
+
+      +    renderTarget: ['main'],
+
+      +    allowedBodyStates: ['split_view', 'fullscreen'],
+
+      +    hasOwnScrolling: true,
+
+      +  },
+
+      +  messagingContextPanel: {
+
+      +    id: 'messagingContextPanel',
+
+      +    component: suspenseWrapper(MessagingContent),
+
+      +    title: 'Task Details',
+
+      +    icon: SlidersHorizontal, // icon is required
+
+      +    isNavigable: false,
+
+      +    renderTarget: ['pane'],
+
+      +    allowedBodyStates: ['side_pane', 'split_view', 'fullscreen'],
+
+      +  },
+
+      +  dataItemDetail: {
+
+      +    id: 'dataItemDetail',
+
+      +    component: suspenseWrapper(DataDetailContent),
+
+      +    title: 'Item Details',
+
+      +    icon: FileText,
+
+      +    isNavigable: false,
+
+      +    renderTarget: ['main', 'pane'],
+
+      +    allowedBodyStates: ['normal', 'side_pane', 'split_view',
+      'fullscreen'],
+
+      +    defaultBehavior: 'openPane',
+           hasOwnScrolling: true,
+         },
+      -  dataItemDetail: {
+
+      -    id: 'dataItemDetail',
+
+      -    component: suspenseWrapper(DataDetailContent),
+
+      -    title: 'Item Details',
+
+      -    icon: Database,
+
+      -    hasOwnScrolling: true,
+
+      -  },
+
+      -  details: {
+
+      -    id: 'details',
+
+      -    component: () => (
+
+      -      <div className="p-6">
+
+      -        <p className="text-muted-foreground">
+
+      -          This is the side pane. It can be used to display contextual
+
+      -          information, forms, or actions related to the main content.
+
+      -        </p>
+
+      -      </div>
+
+      -    ),
+
+      -    title: 'Details Panel',
+
+      -    icon: SlidersHorizontal,
+
+      -  },
+       };
+       
+       export const getViewById = (id: string | null | undefined): ViewRegistration | null => {
+
+    patchStrategy: standard-diff
+snapshot:
+  src/views/viewRegistry.tsx: >-
+    import type { LucideIcon } from 'lucide-react';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      Database,
+      MessageSquare,
+      SlidersHorizontal,
+    } from 'lucide-react';
+
+
+    // --- Lazy load components for better code splitting ---
+
+    import React from 'react';
+
+
+    // Correctly typed lazy imports
+
+    const DashboardContent = React.lazy(() =>
+    import('@/pages/Dashboard').then(module => ({ default:
+    module.DashboardContent })));
+
+    const SettingsPage = React.lazy(() => import('@/pages/Settings').then(module
+    => ({ default: module.SettingsPage })));
+
+    const ToasterDemo = React.lazy(() =>
+    import('@/pages/ToasterDemo').then(module => ({ default: module.ToasterDemo
+    })));
+
+    const NotificationsPage = React.lazy(() =>
+    import('@/pages/Notifications').then(module => ({ default:
+    module.NotificationsPage })));
+
+    const DataDemoPage = React.lazy(() => import('@/pages/DataDemo'));
+
+    const MessagingPage = React.lazy(() => import('@/pages/Messaging'));
+
+    const DataDetailContent = React.lazy(() =>
+    import('@/pages/DataDemo/components/DataDetailContent').then(module => ({
+    default: module.DataDetailContent })));
+
+
+    export type ViewId = 
+      | 'dashboard'
+      | 'settings'
+      | 'toaster'
+      | 'notifications'
+      | 'data-demo'
+      | 'messaging'
+      | 'dataItemDetail'
+      | 'details';
+
+    export interface ViewRegistration {
+      id: ViewId;
+      component: React.ComponentType<any>;
+      title: string;
+      icon: LucideIcon;
+      hasOwnScrolling?: boolean;
+    }
+
+
+    const suspenseWrapper = (Component:
+    React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
+      <React.Suspense fallback={<div className="p-6">Loading...</div>}>
+        <Component {...props} />
+      </React.Suspense>
+    );
+
+
+    export const viewRegistry: Record<ViewId, ViewRegistration> = {
+      dashboard: {
+        id: 'dashboard',
+        component: suspenseWrapper(DashboardContent),
+        title: 'Dashboard',
+        icon: LayoutDashboard,
+      },
+      settings: {
+        id: 'settings',
+        component: suspenseWrapper(SettingsPage),
+        title: 'Settings',
+        icon: Settings,
+      },
+      toaster: {
+        id: 'toaster',
+        component: suspenseWrapper(ToasterDemo),
+        title: 'Toaster Demo',
+        icon: Component,
+      },
+      notifications: {
+        id: 'notifications',
+        component: suspenseWrapper(NotificationsPage),
+        title: 'Notifications',
+        icon: Bell,
+      },
+      'data-demo': {
+        id: 'data-demo',
+        component: suspenseWrapper(DataDemoPage),
+        title: 'Data Showcase',
+        icon: Database,
+      },
+      messaging: {
+        id: 'messaging',
+        component: suspenseWrapper(MessagingPage),
+        title: 'Messaging',
+        icon: MessageSquare,
+        hasOwnScrolling: true,
+      },
+      dataItemDetail: {
+        id: 'dataItemDetail',
+        component: suspenseWrapper(DataDetailContent),
+        title: 'Item Details',
+        icon: Database,
+        hasOwnScrolling: true,
+      },
+      details: {
+        id: 'details',
+        component: () => (
+          <div className="p-6">
+            <p className="text-muted-foreground">
+              This is the side pane. It can be used to display contextual
+              information, forms, or actions related to the main content.
+            </p>
+          </div>
+        ),
+        title: 'Details Panel',
+        icon: SlidersHorizontal,
+      },
+    };
+
+
+    export const getViewById = (id: string | null | undefined): ViewRegistration
+    | null => {
+      if (!id) return null;
+      return viewRegistry[id as ViewId] || null;
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 583

@@ -82,7 +82,7 @@ export const TopBar = React.memo(({
         </button>
 
         <button
-          onClick={() => viewManager.toggleSidePane('settings')}
+          onClick={() => viewManager.trigger('settings', 'iconClick')}
           className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
           title="Settings"
         >

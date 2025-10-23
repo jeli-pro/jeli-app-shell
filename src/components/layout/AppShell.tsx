@@ -8,7 +8,8 @@ import { SIDEBAR_STATES, BODY_STATES } from '@/lib/utils'
 import { useResizableSidebar, useResizableRightPane } from '@/hooks/useResizablePanes.hook'
 import { useSidebarAnimations, useBodyStateAnimations } from '@/hooks/useAppShellAnimations.hook'
 import { ViewModeSwitcher } from './ViewModeSwitcher';
-import { usePaneDnd } from '@/hooks/usePaneDnd.hook';
+import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+import type { ViewId } from '@/views/viewRegistry';
 
 interface AppShellProps {
   sidebar: ReactElement;
@@ -18,14 +19,6 @@ interface AppShellProps {
   commandPalette?: ReactElement;
   onOverlayClick?: () => void;
 }
-
-const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' | 'notifications' | 'dataDemo'> = {
-  dashboard: 'main',
-  settings: 'settings',
-  toaster: 'toaster',
-  notifications: 'notifications',
-  'data-demo': 'dataDemo',
-};
 
 // Helper hook to get the previous value of a prop or state
 function usePrevious<T>(value: T): T | undefined {
@@ -42,9 +35,7 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   const autoExpandSidebar = useAppShellStore(s => s.autoExpandSidebar);
   const hoveredPane = useAppShellStore(s => s.hoveredPane);
   const draggedPage = useAppShellStore(s => s.draggedPage);
-  const dragHoverTarget = useAppShellStore(s => s.dragHoverTarget);
   const bodyState = useAppShellStore(s => s.bodyState);
-  const sidePaneContent = useAppShellStore(s => s.sidePaneContent);
   const reducedMotion = useAppShellStore(s => s.reducedMotion);
   const isTopBarVisible = useAppShellStore(s => s.isTopBarVisible);
   const isDarkMode = useAppShellStore(s => s.isDarkMode);
@@ -62,51 +53,14 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
   const topBarContainerRef = useRef<HTMLDivElement>(null)
   const mainAreaRef = useRef<HTMLDivElement>(null)
 
-  const prevActivePage = usePrevious(activePage);
-  const prevSidePaneContent = usePrevious(sidePaneContent);
-
   const isSplitView = bodyState === BODY_STATES.SPLIT_VIEW;
-  const dndHandlers = usePaneDnd();
+  const viewManager = useAppViewManager();
 
   // Custom hooks for logic
   useResizableSidebar(sidebarRef, resizeHandleRef);
   useResizableRightPane(rightPaneRef);
   useSidebarAnimations(sidebarRef, resizeHandleRef);
   useBodyStateAnimations(appRef, mainContentRef, rightPaneRef, topBarContainerRef, mainAreaRef);
-  
-  // Animation for pane swapping
-  useLayoutEffect(() => {
-    if (reducedMotion || bodyState !== BODY_STATES.SPLIT_VIEW || !prevActivePage || !prevSidePaneContent) {
-      return;
-    }
-
-    const pageForPrevSidePane = Object.keys(pageToPaneMap).find(
-      key => pageToPaneMap[key as keyof typeof pageToPaneMap] === prevSidePaneContent
-    );
-
-    // Check if a swap occurred by comparing current state with previous state
-    if (activePage === pageForPrevSidePane && sidePaneContent === pageToPaneMap[prevActivePage as keyof typeof pageToPaneMap]) {
-      const mainEl = mainAreaRef.current;
-      const rightEl = rightPaneRef.current;
-
-      if (mainEl && rightEl) {
-        const mainWidth = mainEl.offsetWidth;
-        const rightWidth = rightEl.offsetWidth;
-
-        const tl = gsap.timeline();
-        
-        // Animate main content FROM where right pane was TO its new place
-        tl.from(mainEl, {
-          x: rightWidth, duration: 0.4, ease: 'power3.inOut'
-        });
-
-        // Animate right pane FROM where main content was TO its new place
-        tl.from(rightEl, {
-          x: -mainWidth, duration: 0.4, ease: 'power3.inOut'
-        }, 0); // Start at the same time
-      }
-    }
-  }, [activePage, sidePaneContent, bodyState, prevActivePage, prevSidePaneContent, reducedMotion]);
   
   const sidebarWithProps = React.cloneElement(sidebar, { 
     ref: sidebarRef,
@@ -210,48 +164,10 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                 )}
                 onClick={onOverlayClick}
               />
-              {/* Left drop overlay */}
-              <div
-                className={cn(
-                  "absolute inset-y-0 left-0 z-40 border-2 border-transparent transition-all",
-                  draggedPage
-                    ? cn("pointer-events-auto", isSplitView ? 'w-full' : 'w-1/2')
-                    : "pointer-events-none w-0",
-                  dragHoverTarget === 'left' && "bg-primary/10 border-primary"
-                )}
-                onDragOver={dndHandlers.handleDragOverLeft}
-                onDrop={dndHandlers.handleDropLeft}
-                onDragLeave={dndHandlers.handleDragLeave}
-              >
-                {draggedPage && dragHoverTarget === 'left' && (
-                  <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-primary-foreground/80 pointer-events-none">
-                    <span className="px-3 py-1 rounded-md bg-primary/70">{isSplitView ? 'Drop to Replace' : 'Drop to Left'}</span>
-                  </div>
-                )}
-              </div>
               {mainContentWithProps}
               {isSplitView && hoveredPane === 'left' && !draggedPage && (
                 <div className={cn("absolute right-4 z-50 transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
-                  <ViewModeSwitcher pane="main" />
-                </div>
-              )}
-              {/* Right drop overlay (over main area, ONLY when NOT in split view) */}
-              {!isSplitView && (
-                <div
-                  className={cn(
-                    "absolute inset-y-0 right-0 z-40 border-2 border-transparent",
-                    draggedPage ? "pointer-events-auto w-1/2" : "pointer-events-none",
-                    dragHoverTarget === 'right' && "bg-primary/10 border-primary"
-                  )}
-                  onDragOver={dndHandlers.handleDragOverRight}
-                  onDrop={dndHandlers.handleDropRight}
-                  onDragLeave={dndHandlers.handleDragLeave}
-                >
-                  {draggedPage && dragHoverTarget === 'right' && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">Drop to Right</span>
-                    </div>
-                  )}
+                  <ViewModeSwitcher pane="main" targetPage={viewManager.mainViewId as ViewId} />
                 </div>
               )}
             </div>
@@ -260,33 +176,11 @@ export function AppShell({ sidebar, topBar, mainContent, rightPane, commandPalet
                 className="relative"
                 onMouseEnter={() => { if (isSplitView && !draggedPage) setHoveredPane('right'); }}
                 onMouseLeave={() => { if (isSplitView && !draggedPage) setHoveredPane(null); }}
-                onDragOver={dndHandlers.handleDragOverRight}
               >
                 {rightPaneWithProps}
-                {draggedPage && (
-                  <div
-                    className={cn(
-                      'absolute inset-0 z-50 transition-all',
-                      dragHoverTarget === 'right'
-                        ? 'bg-primary/10 border-2 border-primary'
-                        : 'pointer-events-none'
-                    )}
-                    onDragLeave={dndHandlers.handleDragLeave}
-                    onDrop={dndHandlers.handleDropRight}
-                    onDragOver={(e) => e.preventDefault()}
-                  >
-                    {dragHoverTarget === 'right' && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <span className="px-3 py-1 rounded-md bg-primary/70 text-sm font-medium text-primary-foreground/80">
-                          Drop to Replace
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
                 {hoveredPane === 'right' && !draggedPage && (
                   <div className={cn("absolute right-4 z-[70] transition-all", isTopBarVisible ? 'top-24' : 'top-4')}>
-                    <ViewModeSwitcher pane="right" />
+                    <ViewModeSwitcher pane="right" targetPage={viewManager.rightPaneViewId as ViewId} />
                   </div>
                 )}
               </div>

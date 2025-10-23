@@ -50,7 +50,7 @@ const useResizableMessagingPanes = (
 };
 
 export default function MessagingPage() {
-  useParams<{ conversationId?: string }>();
+  useParams<{ conversationId?: string }>(); // Keep for route matching, but don't need the value here
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { listWidth, handleMouseDown, isResizing } = useResizableMessagingPanes(containerRef);

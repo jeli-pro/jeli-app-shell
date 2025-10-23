@@ -19,12 +19,11 @@ import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
 import { useDataDemoStore, useSelectedItem } from "./store/dataDemo.store";
 import { AddDataItemCta } from "@/features/dynamic-view/components/shared/AddDataItemCta";
 import { DataDetailContent } from "./components/DataDetailContent";
-
 import { dataDemoViewConfig } from "./DataDemo.config";
 import type { StatItem } from "@/features/dynamic-view/types";
 
 export default function DataDemoPage() {
-  const { pathItemId, onItemSelect } = useAppViewManager();
+  const viewManager = useAppViewManager();
   const {
     viewMode,
     groupBy,
@@ -42,7 +41,7 @@ export default function DataDemoPage() {
     setCalendarDate,
   } = useDataDemoParams();
 
-  const selectedItem = useSelectedItem(pathItemId);
+  const selectedItem = useSelectedItem(viewManager.itemId || undefined);
 
   const {
     items: allItems,
@@ -66,7 +65,6 @@ export default function DataDemoPage() {
 
   // Note: The `DynamicViewProvider` needs `GenericItem[]`.
   // Our store uses `GenericItem` so no cast is needed.
-
   // Calculate stats from data
   const totalItems = mockDataItems.length;
   const { showScrollToBottom, scrollToBottom, handleScroll } =
@@ -167,7 +165,6 @@ export default function DataDemoPage() {
     (node: Element | null) => {
       if (isLoading) return;
       if (observer.current) observer.current.disconnect();
-
       observer.current = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && hasMore) {
           setPage(page + 1);
@@ -178,7 +175,7 @@ export default function DataDemoPage() {
     [isLoading, hasMore, page, setPage],
   );
 
-  if (pathItemId && selectedItem) {
+  if (viewManager.mainViewId === 'dataItemDetail' && viewManager.itemId && selectedItem) {
     // Render detail view as the main content
     return <DataDetailContent item={selectedItem} />;
   }
@@ -209,7 +206,7 @@ export default function DataDemoPage() {
         onActiveGroupTabChange={setActiveGroupTab}
         onPageChange={setPage}
         onItemUpdate={updateItem}
-        onItemSelect={(item) => onItemSelect(item.id)}
+        onItemSelect={(item) => viewManager.trigger('dataItemDetail', 'itemClick', { itemId: item.id })}
         loaderRef={loaderRef}
         scrollContainerRef={scrollRef}
         statsData={stats}
