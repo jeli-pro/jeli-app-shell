@@ -1,0 +1,3373 @@
+uuid: 44bfb2f9-2c06-444a-9b4e-98b79261a86a
+projectId: jeli-app-shell
+createdAt: '2025-10-23T05:00:30.475Z'
+gitCommitMsg: >-
+  refactor(views): Implement declarative view management per spec
+
+  This commit refactors the entire view and layout management system to align
+  with the "Hyper-Explicit viewRegistry" architecture defined in
+  `docs/screen-view.spec.md`.
+
+  Key changes include: - The `viewRegistry` is now a comprehensive behavioral
+  specification, defining allowed layouts, render targets, contextual triggers,
+  and composite views. - The `useAppViewManager` hook is rewritten as a "dumb
+  executor" that interprets the `viewRegistry` and uses the URL as the single
+  source of truth for view state. - All UI components (`Sidebar`, `TopBar`,
+  `CommandPalette`, etc.) are updated to use the new context-aware
+  `viewManager.trigger()` API instead of hardcoded navigation logic. - The
+  "Messaging" page is now implemented as a `compositeView`, demonstrating the
+  power of the new declarative approach for complex layouts. - Obsolete hooks
+  (`usePaneDnd`, `usePageViewConfig`) have been removed. - Pane resizing UX is
+  improved by disabling animations during drag operations.
+
+  This new architecture makes view logic declarative, centralized, and
+  significantly easier to reason about and extend.
+promptSummary: >-
+  I need to refactor the entire view management system to comply with the
+  architectural spec provided in `docs/screen-view.spec.md`.
+reasoning:
+  - >-
+    Of course. The current view management is indeed brittle. To align with the
+    specification, I will execute a significant refactoring to make the
+    `viewRegistry` the declarative heart of your application's layout and
+    navigation logic.
+  - 'Here is my step-by-step plan:'
+  - >-
+    1.  **Enrich `viewRegistry`**: I will expand the `ViewRegistration` type and
+    update all view definitions to include the new behavioral properties
+    (`allowedBodyStates`, `triggerBehaviors`, `compositeView`, etc.), turning it
+    into the declarative specification from the document.
+  - >-
+    2.  **Re-architect `useAppViewManager`**: I will rewrite this hook to be a
+    "dumb executor." It will read the declarative rules from the new
+    `viewRegistry` and translate them into URL changes. The URL will become the
+    single source of truth for the application's view state.
+  - >-
+    3.  **Update Core Components**: I will refactor `App.tsx`,
+    `EnhancedSidebar`, `TopBar`, and `CommandPalette` to use the new
+    `useAppViewManager` API (`trigger`, `navigateTo`, `openPane`), removing all
+    hardcoded navigation logic.
+  - >-
+    4.  **Handle Data-Driven Views**: I will update the Data Demo page to use
+    `viewManager.trigger()` when an item is selected, allowing the
+    `viewRegistry` to correctly default to opening the details in a side pane.
+  - >-
+    5.  **Clean Up**: Finally, I will delete the now-obsolete
+    `usePaneDnd.hook.ts` and `usePageViewConfig.hook.ts` hooks and improve the
+    pane resizing experience by temporarily disabling animations during a drag.
+  - >-
+    This will result in a robust, declarative, and easily maintainable view
+    management system, just as the spec describes.
+  - '---'
+  - '### Step 1: Deleting Obsolete Hooks'
+  - >-
+    I'll start by removing the hooks that are being replaced by the new
+    declarative view manager.
+  - '### Step 2: Updating the App Shell Store'
+  - >-
+    The store's `sidePaneContent` needs to be updated to accept a `ViewId` from
+    the view registry, making it compatible with the new system.
+  - '### Step 3: Upgrading the View Registry'
+  - >-
+    This is the core of the refactor. I'm replacing the `viewRegistry` with the
+    new "hyper-explicit" version from the specification. It now contains all the
+    declarative rules for layouts, behaviors, and composite views.
+  - '### Step 4: Rewriting the App View Manager'
+  - >-
+    I am replacing the old `useAppViewManager` with a new version that acts as
+    the "dumb executor" of the `viewRegistry`'s rules. It derives all view state
+    from the URL and provides a clean API (`trigger`, `navigateTo`, etc.) for
+    components to request view changes.
+  - '### Step 5: Updating the Application Root (`App.tsx`)'
+  - >-
+    Here, I'll connect the new view manager to the main app layout.
+    `ComposedApp` will now use the hook to get the correct view IDs for the main
+    content and right pane, and it will sync the layout state (`bodyState`) to
+    the global store for animations.
+  - '### Step 6: Updating UI Components'
+  - >-
+    Now I'll update all components that trigger navigation or layout changes to
+    use the new `useAppViewManager` API.
+  - '#### `TopBar.tsx`'
+  - '#### `CommandPalette.tsx`'
+  - '#### `EnhancedSidebar.tsx`'
+  - '#### `DataDemo/index.tsx`'
+  - >-
+    This is a key change where selecting an item now uses the `trigger` API,
+    allowing the default behavior (`openPane`) to take effect.
+  - '#### `TaskList.tsx` (in Messaging)'
+  - '### Step 7: Improving Pane Resizing UX'
+  - >-
+    Finally, I'll add the enhancement to disable animations during pane resizing
+    to prevent visual glitches, creating a smoother user experience.
+  - >-
+    This comprehensive refactoring aligns the application's view management with
+    the "hyper-explicit" specification, resulting in a more robust, predictable,
+    and maintainable codebase.
+  - '---'
+operations:
+  - type: delete
+    path: src/hooks/usePaneDnd.hook.ts
+  - type: delete
+    path: src/hooks/usePageViewConfig.hook.ts
+  - type: write
+    path: src/store/appShell.store.ts
+    content: >+
+      --- src/store/appShell.store.ts
+
+      +++ src/store/appShell.store.ts
+
+      @@ -2,13 +2,13 @@
+       import { persist } from 'zustand/middleware';
+       import { type ReactElement } from 'react';
+       import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState } from '@/lib/utils';
+      +import type { ViewId } from '@/views/viewRegistry';
+       
+       export type ActivePage = 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging';
+       
+       // --- State and Action Types ---
+       
+       export interface AppShellState {
+         sidebarState: SidebarState;
+         bodyState: BodyState;
+      -  sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' |
+      'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+
+      +  sidePaneContent: ViewId | null;
+         sidebarWidth: number;
+         sidePaneWidth: number;
+         splitPaneWidth: number;
+      @@ -38,7 +38,7 @@
+           // Direct state setters
+           setSidebarState: (payload: SidebarState) => void;
+           setBodyState: (payload: BodyState) => void;
+      -    setSidePaneContent: (payload: AppShellState['sidePaneContent']) =>
+      void;
+
+      +    setSidePaneContent: (payload: ViewId | null) => void;
+           setSidebarWidth: (payload: number) => void;
+           setSidePaneWidth: (payload: number) => void;
+           setDefaultPaneWidths: () => void;
+      @@ -67,7 +67,7 @@
+       const defaultState: AppShellState = {
+         sidebarState: SIDEBAR_STATES.EXPANDED,
+         bodyState: BODY_STATES.NORMAL,
+      -  sidePaneContent: 'details',
+
+      +  sidePaneContent: null,
+         sidebarWidth: 280,
+         sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+         splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/views/viewRegistry.tsx
+    content: >-
+      import type { LucideIcon } from 'lucide-react';
+
+      import {
+        LayoutDashboard,
+        Settings,
+        Component,
+        Bell,
+        Database,
+        SlidersHorizontal,
+        FileText,
+        Inbox,
+      } from 'lucide-react';
+
+      import type { BodyState, SidebarState } from '@/lib/utils';
+
+      import { SIDEBAR_STATES } from '@/lib/utils';
+
+
+      // --- Lazy load components for better code splitting ---
+
+      import React from 'react';
+
+
+      // Correctly typed lazy imports
+
+      const DashboardContent = React.lazy(() =>
+      import('@/pages/Dashboard').then(module => ({ default:
+      module.DashboardContent })));
+
+      const SettingsPage = React.lazy(() =>
+      import('@/pages/Settings').then(module => ({ default: module.SettingsPage
+      })));
+
+      const ToasterDemo = React.lazy(() =>
+      import('@/pages/ToasterDemo').then(module => ({ default:
+      module.ToasterDemo })));
+
+      const NotificationsPage = React.lazy(() =>
+      import('@/pages/Notifications').then(module => ({ default:
+      module.NotificationsPage })));
+
+      const DataDemoPage = React.lazy(() => import('@/pages/DataDemo'));
+
+      const MessagingPage = React.lazy(() => import('@/pages/Messaging'));
+
+      const DataDetailContent = React.lazy(() =>
+      import('@/pages/DataDemo/components/DataDetailContent').then(module => ({
+      default: module.DataDetailContent })));
+
+      const MessagingContent = React.lazy(() =>
+      import('@/pages/Messaging/components/MessagingContent').then(module => ({
+      default: module.MessagingContent })));
+
+
+      export type ViewId =
+        | 'dashboard'
+        | 'settings'
+        | 'toaster'
+        | 'notifications'
+        | 'data-demo'
+        | 'messaging'
+        | 'dataItemDetail'
+        | 'messagingPage'
+        | 'messagingContextPanel';
+
+      export interface ViewRegistration {
+        id: ViewId;
+        component?: React.ComponentType<any>; // Component is optional for composite views
+        title: string;
+        icon: LucideIcon;
+        hasOwnScrolling?: boolean;
+
+        // New behavioral properties
+        isNavigable?: boolean; // Can it be navigated to via URL and appear in menus?
+        renderTarget?: ('main' | 'pane')[]; // Where can this view be rendered?
+        allowedBodyStates?: BodyState[]; // What layouts can this view exist in?
+        defaultBehavior?: 'navigate' | 'openPane' | 'openSplit'; // Default action when triggered without context
+        triggerBehaviors?: Record<string, 'navigate' | 'openPane' | 'openSplit'>; // Context-aware actions
+        compositeView?: { // For "app-within-an-app" layouts
+          main: ViewId;
+          right: ViewId;
+        };
+        onNavigate?: { // Side-effects on navigation
+          sidebar?: SidebarState;
+        };
+      }
+
+
+      const suspenseWrapper = (Component:
+      React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
+        <React.Suspense fallback={<div className="p-6">Loading...</div>}>
+          <Component {...props} />
+        </React.Suspense>
+      );
+
+
+      export const viewRegistry: Record<ViewId, ViewRegistration> = {
+        dashboard: {
+          id: 'dashboard',
+          component: suspenseWrapper(DashboardContent),
+          title: 'Dashboard',
+          icon: LayoutDashboard,
+          isNavigable: true,
+          renderTarget: ['main', 'pane'],
+          allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+          defaultBehavior: 'navigate',
+        },
+        settings: {
+          id: 'settings',
+          component: suspenseWrapper(SettingsPage),
+          title: 'Settings',
+          icon: Settings,
+          isNavigable: true,
+          renderTarget: ['main', 'pane'],
+          allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+          defaultBehavior: 'navigate',
+          triggerBehaviors: {
+            iconClick: 'openPane',
+          },
+        },
+        toaster: {
+          id: 'toaster',
+          component: suspenseWrapper(ToasterDemo),
+          title: 'Toaster Demo',
+          icon: Component,
+          isNavigable: true,
+          renderTarget: ['main', 'pane'],
+          allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+          defaultBehavior: 'navigate',
+        },
+        notifications: {
+          id: 'notifications',
+          component: suspenseWrapper(NotificationsPage),
+          title: 'Notifications',
+          icon: Bell,
+          isNavigable: true,
+          renderTarget: ['main', 'pane'],
+          allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+          defaultBehavior: 'navigate',
+          triggerBehaviors: {
+            navClick: 'openPane',
+          },
+        },
+        'data-demo': {
+          id: 'data-demo',
+          component: suspenseWrapper(DataDemoPage),
+          title: 'Data Showcase',
+          icon: Database,
+          isNavigable: true,
+          renderTarget: ['main'],
+          allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+          defaultBehavior: 'navigate',
+        },
+        messaging: {
+          id: 'messaging',
+          isNavigable: true,
+          title: 'Messaging',
+          icon: Inbox,
+          renderTarget: [], // It doesn't render a component itself
+          allowedBodyStates: ['split_view', 'fullscreen'],
+          defaultBehavior: 'navigate', // Navigating to /messaging is the trigger for the composite view
+          compositeView: {
+            main: 'messagingPage',
+            right: 'messagingContextPanel',
+          },
+          onNavigate: { sidebar: SIDEBAR_STATES.COLLAPSED },
+        },
+        messagingPage: {
+          id: 'messagingPage',
+          component: suspenseWrapper(MessagingPage),
+          title: 'Inbox',
+          icon: Inbox, // icon is required, even if not shown
+          isNavigable: false,
+          renderTarget: ['main'],
+          allowedBodyStates: ['split_view', 'fullscreen'],
+          hasOwnScrolling: true,
+        },
+        messagingContextPanel: {
+          id: 'messagingContextPanel',
+          component: suspenseWrapper(MessagingContent),
+          title: 'Task Details',
+          icon: SlidersHorizontal, // icon is required
+          isNavigable: false,
+          renderTarget: ['pane'],
+          allowedBodyStates: ['side_pane', 'split_view', 'fullscreen'],
+        },
+        dataItemDetail: {
+          id: 'dataItemDetail',
+          component: suspenseWrapper(DataDetailContent),
+          title: 'Item Details',
+          icon: FileText,
+          isNavigable: false, // Not in main navigation, but can be a page via URL
+          renderTarget: ['main', 'pane'],
+          allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+          defaultBehavior: 'openPane', // Default action when triggered by onItemSelect
+          hasOwnScrolling: true,
+        },
+      };
+
+
+      export const getViewById = (id: string | null | undefined):
+      ViewRegistration | null => {
+        if (!id) return null;
+        return viewRegistry[id as ViewId] || null;
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/hooks/useAppViewManager.hook.ts
+    content: >-
+      import { useMemo, useCallback } from 'react';
+
+      import { useSearchParams, useNavigate, useLocation, useParams } from
+      'react-router-dom';
+
+      import { useAppShellStore } from '@/store/appShell.store';
+
+      import type { TaskView } from '@/pages/Messaging/types';
+
+      import { BODY_STATES, BodyState } from '@/lib/utils';
+
+      import { getViewById, type ViewId, type ViewRegistration } from
+      '@/views/viewRegistry';
+
+
+      /**
+       * A centralized hook to manage and synchronize all URL-based view states.
+       * This is the single source of truth for view modes, side panes, split views,
+       * and page-specific parameters. It acts as an executor for the declarative
+       * rules defined in the `viewRegistry`.
+       */
+      export function useAppViewManager() {
+        const [searchParams, setSearchParams] = useSearchParams();
+        const navigate = useNavigate();
+        const location = useLocation();
+        const params = useParams<{ itemId?: string; conversationId?: string }>();
+
+        const { setSidebarState } = useAppShellStore.getState();
+
+        // --- DERIVED STATE FROM URL & VIEW REGISTRY ---
+
+        const { mainViewId, rightPaneViewId, bodyState } = useMemo(() => {
+          const path = location.pathname.split('/')[1] || 'dashboard';
+          const viewFromPath = getViewById(path);
+
+          const sidePaneParam = searchParams.get('sidePane');
+          const viewParam = searchParams.get('view');
+          const rightParam = searchParams.get('right');
+          const itemIdParam = searchParams.get('itemId');
+
+          let derivedMainViewId: ViewId | null = (path as ViewId) || 'dashboard';
+          let derivedRightPaneViewId: ViewId | null = null;
+          let derivedBodyState: BodyState = BODY_STATES.NORMAL;
+
+          // 1. Check for composite views first, as they define the entire layout.
+          if (viewFromPath?.compositeView) {
+            derivedMainViewId = viewFromPath.compositeView.main;
+            derivedRightPaneViewId = viewFromPath.compositeView.right;
+            derivedBodyState = BODY_STATES.SPLIT_VIEW;
+          }
+          // 2. Check for standard layouts (side pane or split view)
+          else if (sidePaneParam) {
+            derivedRightPaneViewId = sidePaneParam as ViewId;
+            derivedBodyState = BODY_STATES.SIDE_PANE;
+          } else if (viewParam === 'split' && rightParam) {
+            derivedRightPaneViewId = rightParam as ViewId;
+            derivedBodyState = BODY_STATES.SPLIT_VIEW;
+          }
+
+          // 3. Handle special cases like item details, which can override the pane content.
+          if (derivedMainViewId === 'data-demo' && params.itemId) {
+            derivedMainViewId = 'dataItemDetail';
+          } else if (itemIdParam) {
+            derivedRightPaneViewId = 'dataItemDetail';
+            // If there's an itemId, it implies a pane is open.
+            if (derivedBodyState !== BODY_STATES.SPLIT_VIEW) {
+                derivedBodyState = BODY_STATES.SIDE_PANE;
+            }
+          }
+
+          return {
+            mainViewId: derivedMainViewId,
+            rightPaneViewId: derivedRightPaneViewId,
+            bodyState: derivedBodyState
+          };
+        }, [location.pathname, searchParams, params.itemId]);
+
+        const messagingView = searchParams.get('messagingView') as TaskView | null;
+        const currentActivePage = (location.pathname.split('/')[1] || 'dashboard') as ViewId;
+
+        // --- PRIVATE ACTION EXECUTORS ---
+
+        const getPathForView = useCallback((viewId: ViewId | null, viewParams: typeof params): string => {
+          if (!viewId) return '/dashboard';
+          if (viewId === 'dataItemDetail' && viewParams.itemId) {
+              return `/data-demo/${viewParams.itemId}`;
+          }
+          if ((viewId === 'messagingPage' || viewId === 'messagingContextPanel') && viewParams.conversationId) {
+            return `/messaging/${viewParams.conversationId}`;
+          }
+          if (viewId === 'messagingPage' || viewId === 'messagingContextPanel') {
+            return '/messaging';
+          }
+          return `/${viewId}`;
+        }, []);
+
+        const _executeNavigate = useCallback((view: ViewRegistration, payload?: any) => {
+          if (view.onNavigate?.sidebar) {
+            setSidebarState(view.onNavigate.sidebar);
+          }
+
+          let path = `/${view.id}`;
+          if (view.id === 'dataItemDetail' && payload?.itemId) {
+              path = `/data-demo/${payload.itemId}`;
+          }
+
+          navigate(path);
+        }, [navigate, setSidebarState]);
+
+        const _executeOpenPane = useCallback((view: ViewRegistration, payload?: any) => {
+          if (!view.renderTarget?.includes('pane')) {
+            console.warn(`View "${view.id}" cannot be rendered in a pane.`);
+            return;
+          }
+
+          const mainView = getViewById(mainViewId);
+          if (mainView && !mainView.allowedBodyStates?.includes('side_pane')) {
+              console.warn(`Cannot open side pane: Main view "${mainView.id}" does not allow the "side_pane" layout.`);
+              return;
+          }
+
+          setSearchParams(prev => {
+              prev.delete('view');
+              prev.delete('right');
+              if (view.id === 'dataItemDetail' && payload?.itemId) {
+                  prev.set('itemId', payload.itemId);
+                  prev.delete('sidePane');
+              } else {
+                  prev.set('sidePane', view.id);
+                  prev.delete('itemId');
+              }
+              return prev;
+          }, { replace: true });
+
+        }, [setSearchParams, mainViewId]);
+
+        const _executeOpenSplit = useCallback((view: ViewRegistration, payload?: any) => {
+          if (view.compositeView) {
+            _executeNavigate(view, payload);
+            return;
+          }
+
+          if (!view.renderTarget?.includes('pane')) {
+            console.warn(`View "${view.id}" cannot be rendered in a split view's right pane.`);
+            return;
+          }
+
+          const mainView = getViewById(mainViewId);
+          if (mainView && !mainView.allowedBodyStates?.includes('split_view')) {
+              console.warn(`Cannot open split view: Main view "${mainView.id}" does not allow the "split_view" layout.`);
+              return;
+          }
+
+          setSearchParams(prev => {
+              prev.set('view', 'split');
+              prev.delete('sidePane');
+              if (view.id === 'dataItemDetail' && payload?.itemId) {
+                  prev.set('itemId', payload.itemId);
+                  prev.delete('right');
+              } else {
+                  prev.set('right', view.id);
+                  prev.delete('itemId');
+              }
+              return prev;
+          }, { replace: true });
+        }, [setSearchParams, _executeNavigate, mainViewId]);
+
+        // --- PUBLIC API ---
+
+        const trigger = useCallback((viewId: ViewId, source?: string, payload?: any) => {
+          const view = getViewById(viewId);
+          if (!view) {
+            console.error(`View with id "${viewId}" not found in registry.`);
+            return;
+          }
+
+          const behavior = (source && view.triggerBehaviors?.[source]) || view.defaultBehavior || 'navigate';
+
+          switch (behavior) {
+            case 'navigate':
+              _executeNavigate(view, payload);
+              break;
+            case 'openPane':
+              _executeOpenPane(view, payload);
+              break;
+            case 'openSplit':
+              _executeOpenSplit(view, payload);
+              break;
+            default:
+              console.warn(`Unknown behavior "${behavior}" for view "${viewId}".`);
+              _executeNavigate(view, payload);
+          }
+        }, [_executeNavigate, _executeOpenPane, _executeOpenSplit]);
+
+        const navigateTo = useCallback((page: ViewId, navParams?: Record<string, string | null | undefined>) => {
+          let path = `/${page}`;
+          if (page === 'dataItemDetail' && navParams?.itemId) {
+              path = `/data-demo/${navParams.itemId}`;
+          } else if (page === 'dataItemDetail') {
+            console.error("navigateTo('dataItemDetail') called without an itemId. Use trigger() instead or provide an itemId.");
+            path = '/data-demo';
+          }
+
+          const newSearchParams = new URLSearchParams(searchParams);
+          // Clear old view params
+          newSearchParams.delete('sidePane');
+          newSearchParams.delete('view');
+          newSearchParams.delete('right');
+          newSearchParams.delete('itemId');
+
+          if (navParams) {
+            for (const [key, value] of Object.entries(navParams)) {
+              if (value === null || value === undefined) {
+                newSearchParams.delete(key);
+              } else {
+                newSearchParams.set(key, value);
+              }
+            }
+          }
+
+          const view = getViewById(page);
+          if (view?.onNavigate?.sidebar) {
+            setSidebarState(view.onNavigate.sidebar);
+          }
+
+          navigate({ pathname: path, search: newSearchParams.toString() });
+        }, [navigate, searchParams, setSidebarState]);
+
+        const openPane = useCallback((viewId: ViewId, payload?: any) => {
+          trigger(viewId, undefined, payload);
+        }, [trigger]);
+
+        const closeSidePane = useCallback(() => {
+          setSearchParams(prev => {
+              prev.delete('sidePane');
+              prev.delete('itemId');
+              // If we were in a split view, this action should close it and revert to normal.
+              if (prev.get('view') === 'split') {
+                prev.delete('view');
+                prev.delete('right');
+              }
+              return prev;
+          }, { replace: true });
+        }, [setSearchParams]);
+
+        const toggleSidePane = useCallback((viewId: ViewId, payload?: any) => {
+          if (rightPaneViewId === viewId && bodyState === BODY_STATES.SIDE_PANE) {
+              closeSidePane();
+          } else {
+              trigger(viewId, 'openPane', payload);
+          }
+        }, [rightPaneViewId, bodyState, closeSidePane, trigger]);
+
+        const setNormalView = useCallback(() => {
+          const path = getPathForView(mainViewId, params);
+          navigate(path, { replace: true });
+        }, [mainViewId, params, navigate, getPathForView]);
+
+        const toggleSplitView = useCallback((rightViewId: ViewId = 'settings') => {
+          if (bodyState === BODY_STATES.SPLIT_VIEW) {
+            setNormalView();
+          } else {
+            trigger(rightViewId, undefined, { behavior: 'openSplit'});
+          }
+        }, [bodyState, setNormalView, trigger]);
+
+        const switchSplitPanes = useCallback(() => {
+          if (bodyState !== BODY_STATES.SPLIT_VIEW || !mainViewId || !rightPaneViewId) return;
+
+          const newMainView = getViewById(rightPaneViewId);
+          const newRightViewId = mainViewId;
+
+          if (newMainView?.isNavigable && newMainView.allowedBodyStates?.includes('split_view')) {
+            navigate(`/${rightPaneViewId}?view=split&right=${newRightViewId}`, { replace: true });
+          } else {
+            console.warn("Cannot switch panes: new main view is not navigable or does not allow split view.", { newMainViewId: rightPaneViewId, mainViewId });
+          }
+        }, [bodyState, mainViewId, rightPaneViewId, navigate]);
+
+        const closeSplitPane = useCallback((pane: 'main' | 'right') => {
+          if (bodyState !== BODY_STATES.SPLIT_VIEW || !mainViewId) {
+            setNormalView();
+            return;
+          }
+          if (pane === 'right') {
+            const path = getPathForView(mainViewId as ViewId, params);
+            navigate(path, { replace: true });
+          } else if (rightPaneViewId) {
+            const rightView = getViewById(rightPaneViewId);
+            if (rightView?.isNavigable) navigate(`/${rightPaneViewId}`, { replace: true });
+            else navigate('/dashboard', { replace: true });
+          } else setNormalView();
+        }, [bodyState, mainViewId, rightPaneViewId, navigate, setNormalView, getPathForView, params]);
+
+        const setMessagingView = (view: TaskView) => {
+          setSearchParams(prev => {
+              prev.set('messagingView', view);
+              return prev;
+          }, { replace: true });
+        };
+
+        const itemId = params.itemId || searchParams.get('itemId');
+
+        return useMemo(() => ({
+          // State
+          mainViewId,
+          rightPaneViewId,
+          bodyState,
+          itemId,
+          conversationId: params.conversationId,
+          messagingView,
+          currentActivePage,
+
+          // Actions
+          trigger,
+          navigateTo,
+          openPane,
+          closeSidePane,
+          toggleSidePane,
+          setNormalView,
+          toggleSplitView,
+          switchSplitPanes,
+          closeSplitPane,
+          setMessagingView,
+        }), [
+          mainViewId, rightPaneViewId, bodyState, itemId, params.conversationId, messagingView, currentActivePage,
+          trigger, navigateTo, openPane, closeSidePane, toggleSidePane, setNormalView, toggleSplitView, switchSplitPanes, closeSplitPane, setMessagingView,
+        ]);
+      }
+    patchStrategy: replace
+  - type: write
+    path: src/App.tsx
+    content: >+
+      --- src/App.tsx
+
+      +++ src/App.tsx
+
+      @@ -275,12 +275,12 @@
+         // This allows descendant components (like AppShell) to react to layout changes
+         // without having to drill props down. The loop is prevented by using selective
+         // subscriptions in other hooks.
+         useEffect(() => {
+           setBodyState(viewManager.bodyState);
+      -    // The view manager now provides the definitive ID for the right
+      pane.
+
+      -    // We cast it for the store, which uses a string union. This might be
+      an area for future refactoring.
+
+      -    setSidePaneContent(viewManager.rightPaneViewId as any);
+
+      +    setSidePaneContent(viewManager.rightPaneViewId);
+         }, [viewManager.bodyState, viewManager.rightPaneViewId, setBodyState, setSidePaneContent]);
+       
+         // The view manager is now the single source of truth for which views to render.
+         const { mainViewId, rightPaneViewId } = viewManager;
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/TopBar.tsx
+    content: |+
+      --- src/components/layout/TopBar.tsx
+      +++ src/components/layout/TopBar.tsx
+      @@ -62,7 +62,7 @@
+               </button>
+       
+               <button
+      -          onClick={() => viewManager.trigger('settings', 'iconClick')}
+      +          onClick={() => viewManager.trigger('settings', 'iconClick')}
+                 className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                 title="Settings"
+               >
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/global/CommandPalette.tsx
+    content: >+
+      --- src/components/global/CommandPalette.tsx
+
+      +++ src/components/global/CommandPalette.tsx
+
+      @@ -47,7 +47,7 @@
+                   <span>Toggle Fullscreen</span>
+                   <CommandShortcut>⌘F</CommandShortcut>
+                 </CommandItem>
+      -          <CommandItem onSelect={() => runCommand(() =>
+      viewManager.openPane('settings'))}>
+
+      +          <CommandItem onSelect={() => runCommand(() =>
+      viewManager.trigger('settings', 'openPane'))}>
+                   <PanelRight className="mr-2 h-4 w-4" />
+                   <span>Open Settings in Side Pane</span>
+                   <CommandShortcut>⌥S</CommandShortcut>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/components/layout/EnhancedSidebar.tsx
+    content: >+
+      --- src/components/layout/EnhancedSidebar.tsx
+
+      +++ src/components/layout/EnhancedSidebar.tsx
+
+      @@ -219,7 +219,7 @@
+             // For context-aware actions like 'notifications' from a sidebar nav link,
+             // we use trigger() with a source. For all others, a simple trigger
+             // will execute the defaultBehavior from the viewRegistry.
+      -      const source = page === 'notifications' ? 'navClick' : undefined;
+
+      +      const source = page === 'notifications' ? 'navClick' : (page ===
+      'settings' ? 'navClick' : undefined);
+             viewManager.trigger(page as ViewId, source);
+           }
+         };
+      @@ -282,21 +282,21 @@
+               label="All Open"
+               isSubItem
+               page="messaging"
+      -        isActive={currentActivePage === 'messaging' && (messagingView ===
+      'all_open' || !messagingView)}
+
+      +        isActive={currentActivePage === 'messaging' && messagingView ===
+      'all_open'}
+               onClick={() => navigateTo('messaging', { messagingView: 'all_open' })}
+             />
+             <AppMenuItem
+               icon={UserX}
+               label="Unassigned"
+               isSubItem
+               page="messaging"
+      -        isActive={currentActivePage === 'messaging' && messagingView ===
+      'unassigned'}
+
+      +        isActive={currentActivePage === 'messaging' && messagingView ===
+      'unassigned'}
+               onClick={() => navigateTo('messaging', { messagingView: 'unassigned' })}
+             />
+             <AppMenuItem
+               icon={CheckCircle2}
+               label="Done"
+               isSubItem
+               page="messaging"
+      -        isActive={currentActivePage === 'messaging' && messagingView ===
+      'done'}
+
+      +        isActive={currentActivePage === 'messaging' && messagingView ===
+      'done'}
+               onClick={() => navigateTo('messaging', { messagingView: 'done' })}
+             />
+           </AppMenuItem>
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/index.tsx
+    content: >+
+      --- src/pages/DataDemo/index.tsx
+
+      +++ src/pages/DataDemo/index.tsx
+
+      @@ -193,7 +193,7 @@
+               onGroupByChange={setGroupBy}
+               onActiveGroupTabChange={setActiveGroupTab}
+               onPageChange={setPage}
+      -        onItemUpdate={updateItem}
+
+      -        onItemSelect={(item) => viewManager.trigger('dataItemDetail',
+      'itemClick', { itemId: item.id })}
+
+      +        onItemUpdate={updateItem}
+
+      +        onItemSelect={(item) => viewManager.trigger('dataItemDetail',
+      undefined, { itemId: item.id })}
+               loaderRef={loaderRef}
+               scrollContainerRef={scrollRef}
+               statsData={stats}
+
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/Messaging/components/TaskList.tsx
+    content: |
+      --- src/pages/Messaging/components/TaskList.tsx
+      +++ src/pages/Messaging/components/TaskList.tsx
+      @@ -48,13 +48,13 @@
+           getFilteredTasks,
+           setSearchTerm,
+           activeFilters,
+      -    setActiveTaskView,
+           searchTerm,
+          } = useMessagingStore();
+          const { messagingView, setMessagingView } = useAppViewManager();
+          const taskCounts = useMessagingTaskCounts();
+       
+         useEffect(() => {
+      +    const { setActiveTaskView } = useMessagingStore.getState();
+           setActiveTaskView(messagingView || 'all_open');
+         }, [messagingView, setActiveTaskView]);
+       
+    patchStrategy: standard-diff
+  - type: write
+    path: src/hooks/useResizablePanes.hook.ts
+    content: >+
+      --- src/hooks/useResizablePanes.hook.ts
+
+      +++ src/hooks/useResizablePanes.hook.ts
+
+      @@ -48,8 +48,34 @@
+       ) {
+         const isResizingRightPane = useAppShellStore(s => s.isResizingRightPane);
+         const bodyState = useAppShellStore(s => s.bodyState);
+      -  const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane,
+      setReducedMotion } = useAppShellStore.getState();
+
+      +  const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane,
+      setReducedMotion } = useAppShellStore.getState();
+         const finalWidthRef = useRef<number | null>(null);
+      +  const originalReducedMotionRef = useRef<boolean | null>(null);
+
+      +
+
+      +  // This effect temporarily disables animations during resizing to
+      prevent the
+
+      +  // pane's enter/exit animation from firing incorrectly.
+
+      +  useEffect(() => {
+
+      +    if (isResizingRightPane) {
+
+      +      // When resizing starts, store the original setting and disable
+      animations.
+
+      +      if (originalReducedMotionRef.current === null) {
+
+      +        originalReducedMotionRef.current =
+      useAppShellStore.getState().reducedMotion;
+
+      +        setReducedMotion(true);
+
+      +      }
+
+      +    } else {
+
+      +      // When resizing ends, restore the original setting after a brief
+      delay.
+
+      +      // This ensures the final width is rendered before animations are
+      re-enabled.
+
+      +      if (originalReducedMotionRef.current !== null) {
+
+      +        // Use requestAnimationFrame to ensure we re-enable animations
+      *after* the browser
+
+      +        // has painted the new, non-animated pane width. This is more
+      reliable than setTimeout(0).
+
+      +        requestAnimationFrame(() => {
+
+      +          setReducedMotion(originalReducedMotionRef.current!);
+
+      +          originalReducedMotionRef.current = null;
+
+      +        });
+
+      +      }
+
+      +    }
+
+      +  }, [isResizingRightPane, setReducedMotion]);
+       
+         // This effect temporarily disables animations during resizing to prevent the
+         // pane's enter/exit animation from firing incorrectly.
+      @@ -58,21 +84,6 @@
+             // When resizing starts, store the original setting and disable animations.
+             if (originalReducedMotionRef.current === null) {
+               originalReducedMotionRef.current = useAppShellStore.getState().reducedMotion;
+      -        setReducedMotion(true);
+
+      -      }
+
+      -    } else {
+
+      -      // When resizing ends, restore the original setting after a brief
+      delay.
+
+      -      // This ensures the final width is rendered before animations are
+      re-enabled.
+
+      -      if (originalReducedMotionRef.current !== null) {
+
+      -        // Use requestAnimationFrame to ensure we re-enable animations
+      *after* the browser
+
+      -        // has painted the new, non-animated pane width. This is more
+      reliable than setTimeout(0).
+
+      -        requestAnimationFrame(() => {
+
+      -          setReducedMotion(originalReducedMotionRef.current!);
+
+      -          originalReducedMotionRef.current = null;
+
+      -        });
+
+      -      }
+
+      -    }
+
+      -  }, [isResizingRightPane, setReducedMotion]);
+       
+         useEffect(() => {
+           const handleMouseMove = (e: MouseEvent) => {
+
+    patchStrategy: standard-diff
+snapshot:
+  src/hooks/useAppViewManager.hook.ts: >-
+    import { useMemo, useCallback } from 'react';
+
+    import { useSearchParams, useNavigate, useLocation, useParams } from
+    'react-router-dom';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import type { TaskView } from '@/pages/Messaging/types';
+
+    import { BODY_STATES, BodyState } from '@/lib/utils';
+
+    import { getViewById, type ViewId, type ViewRegistration } from
+    '@/views/viewRegistry';
+
+
+    /**
+     * A centralized hook to manage and synchronize all URL-based view states.
+     * This is the single source of truth for view modes, side panes, split views,
+     * and page-specific parameters. It acts as an executor for the declarative
+     * rules defined in the `viewRegistry`.
+     */
+    export function useAppViewManager() {
+      const [searchParams, setSearchParams] = useSearchParams();
+      const navigate = useNavigate();
+      const location = useLocation();
+      const params = useParams<{ itemId?: string; conversationId?: string }>();
+
+      const { setSidebarState } = useAppShellStore.getState();
+
+      // --- DERIVED STATE FROM URL & VIEW REGISTRY ---
+
+      const { mainViewId, rightPaneViewId, bodyState } = useMemo(() => {
+        const path = location.pathname.split('/')[1] || 'dashboard';
+        const viewFromPath = getViewById(path);
+        
+        const sidePaneParam = searchParams.get('sidePane');
+        const viewParam = searchParams.get('view');
+        const rightParam = searchParams.get('right');
+        const itemIdParam = searchParams.get('itemId');
+
+        let derivedMainViewId: ViewId | null = (path as ViewId) || 'dashboard';
+        let derivedRightPaneViewId: ViewId | null = null;
+        let derivedBodyState: BodyState = BODY_STATES.NORMAL;
+
+        if (viewFromPath?.compositeView) {
+          derivedMainViewId = viewFromPath.compositeView.main;
+          derivedRightPaneViewId = viewFromPath.compositeView.right;
+          derivedBodyState = BODY_STATES.SPLIT_VIEW;
+        } else if (sidePaneParam) {
+          derivedRightPaneViewId = sidePaneParam as ViewId;
+          derivedBodyState = BODY_STATES.SIDE_PANE;
+        } else if (viewParam === 'split' && rightParam) {
+          derivedRightPaneViewId = rightParam as ViewId;
+          derivedBodyState = BODY_STATES.SPLIT_VIEW;
+        }
+
+        // Handle item detail views specially
+        if (derivedMainViewId === 'data-demo' && params.itemId) {
+          derivedMainViewId = 'dataItemDetail';
+        } else if (itemIdParam) {
+          derivedRightPaneViewId = 'dataItemDetail';
+          // If there's an itemId, it could be a side pane or part of a split
+          if (derivedBodyState !== BODY_STATES.SPLIT_VIEW) {
+              derivedBodyState = BODY_STATES.SIDE_PANE;
+          }
+        }
+
+        return { 
+          mainViewId: derivedMainViewId, 
+          rightPaneViewId: derivedRightPaneViewId, 
+          bodyState: derivedBodyState
+        };
+      }, [location.pathname, searchParams, params.itemId, params.conversationId]);
+
+      const messagingView = searchParams.get('messagingView') as TaskView | null;
+      const currentActivePage = (location.pathname.split('/')[1] || 'dashboard') as ViewId;
+
+      // --- PRIVATE ACTION EXECUTORS ---
+
+      const getPathForView = useCallback((viewId: ViewId | null, viewParams: typeof params): string => {
+        if (!viewId) return '/dashboard'; // Fallback to dashboard
+        if (viewId === 'dataItemDetail' && viewParams.itemId) {
+            return `/data-demo/${viewParams.itemId}`;
+        }
+        // When dealing with a composite view, the "page" is the parent route
+        if ((viewId === 'messagingPage' || viewId === 'messagingContextPanel') && viewParams.conversationId) {
+          return `/messaging/${viewParams.conversationId}`;
+        }
+        if (viewId === 'messagingPage' || viewId === 'messagingContextPanel') {
+          return '/messaging';
+        }
+        return `/${viewId}`;
+      }, []);
+
+      const _executeNavigate = useCallback((view: ViewRegistration, payload?: any) => {
+        if (view.onNavigate?.sidebar) {
+          setSidebarState(view.onNavigate.sidebar);
+        }
+        
+        let path = `/${view.id}`;
+        if (view.id === 'dataItemDetail' && payload?.itemId) {
+            path = `/data-demo/${payload.itemId}`;
+        }
+
+        navigate(path);
+      }, [navigate, setSidebarState]);
+
+      const _executeOpenPane = useCallback((view: ViewRegistration, payload?: any) => {
+        if (!view.renderTarget?.includes('pane')) {
+          console.warn(`View "${view.id}" cannot be rendered in a pane.`);
+          return;
+        }
+        
+        const mainView = getViewById(mainViewId);
+        if (mainView && !mainView.allowedBodyStates?.includes('side_pane')) {
+            console.warn(`Cannot open side pane: Main view "${mainView.id}" does not allow the "side_pane" layout.`);
+            return;
+        }
+        
+        setSearchParams(prev => {
+            prev.delete('view');
+            prev.delete('right');
+            if (view.id === 'dataItemDetail' && payload?.itemId) {
+                prev.set('itemId', payload.itemId);
+                prev.delete('sidePane');
+            } else {
+                prev.set('sidePane', view.id);
+                prev.delete('itemId');
+            }
+            return prev;
+        }, { replace: true });
+
+      }, [setSearchParams, mainViewId]);
+
+      const _executeOpenSplit = useCallback((view: ViewRegistration, payload?: any) => {
+        // A composite view is triggered by navigating to its main route
+        if (view.compositeView) {
+          _executeNavigate(view, payload);
+          return;
+        }
+        
+        if (!view.renderTarget?.includes('pane')) {
+          console.warn(`View "${view.id}" cannot be rendered in a split view's right pane.`);
+          return;
+        }
+        
+        const mainView = getViewById(mainViewId);
+        if (mainView && !mainView.allowedBodyStates?.includes('split_view')) {
+            console.warn(`Cannot open split view: Main view "${mainView.id}" does not allow the "split_view" layout.`);
+            return;
+        }
+        
+        setSearchParams(prev => {
+            prev.set('view', 'split');
+            prev.delete('sidePane');
+            if (view.id === 'dataItemDetail' && payload?.itemId) {
+                prev.set('itemId', payload.itemId);
+                prev.delete('right');
+            } else {
+                prev.set('right', view.id);
+                prev.delete('itemId');
+            }
+            return prev;
+        }, { replace: true });
+      }, [setSearchParams, _executeNavigate, mainViewId]);
+
+      // --- PUBLIC API ---
+
+      const trigger = useCallback((viewId: ViewId, source?: string, payload?: any) => {
+        const view = getViewById(viewId);
+        if (!view) {
+          console.error(`View with id "${viewId}" not found in registry.`);
+          return;
+        }
+        
+        const behavior = (source && view.triggerBehaviors?.[source]) || view.defaultBehavior || 'navigate';
+        
+        // TODO: Add check for allowedBodyStates
+        
+        switch (behavior) {
+          case 'navigate':
+            _executeNavigate(view, payload);
+            break;
+          case 'openPane':
+            _executeOpenPane(view, payload);
+            break;
+          case 'openSplit':
+            _executeOpenSplit(view, payload);
+            break;
+          default:
+            console.warn(`Unknown behavior "${behavior}" for view "${viewId}".`);
+            _executeNavigate(view, payload);
+        }
+      }, [_executeNavigate, _executeOpenPane, _executeOpenSplit]);
+      
+      const navigateTo = useCallback((page: ViewId, navParams?: Record<string, string | null | undefined>) => {
+        // This is a simplified navigate, for complex behaviors, use trigger.
+        let path = `/${page}`;
+        if (page === 'dataItemDetail' && navParams?.itemId) {
+            path = `/data-demo/${navParams.itemId}`;
+        } else if (page === 'dataItemDetail') {
+          console.error("navigateTo('dataItemDetail') called without an itemId. This is not supported. Falling back to '/data-demo'.");
+          path = '/data-demo';
+        }
+        
+        const newSearchParams = new URLSearchParams(searchParams);
+        if (navParams) {
+          for (const [key, value] of Object.entries(navParams)) {
+            if (value === null || value === undefined) {
+              newSearchParams.delete(key);
+            } else {
+              newSearchParams.set(key, value);
+            }
+          }
+        }
+        
+        const view = getViewById(page);
+        if (view?.onNavigate?.sidebar) {
+          setSidebarState(view.onNavigate.sidebar);
+        }
+
+        navigate({ pathname: path, search: newSearchParams.toString() });
+      }, [navigate, searchParams, setSidebarState]);
+      
+      const openPane = useCallback((viewId: ViewId, payload?: any) => {
+        const view = getViewById(viewId);
+        if (view) {
+          _executeOpenPane(view, payload);
+        }
+      }, [_executeOpenPane]);
+
+      const closeSidePane = useCallback(() => {
+        setSearchParams(prev => {
+            prev.delete('sidePane');
+            prev.delete('itemId');
+            // if we were in a split view, revert to normal by clearing view and right
+            if (prev.get('view') === 'split') {
+              prev.delete('view');
+              prev.delete('right');
+            }
+            return prev;
+        }, { replace: true });
+      }, [setSearchParams]);
+
+      const toggleSidePane = useCallback((viewId: ViewId, payload?: any) => {
+        if (rightPaneViewId === viewId && bodyState === BODY_STATES.SIDE_PANE) {
+            closeSidePane();
+        } else {
+            openPane(viewId, payload);
+        }
+      }, [rightPaneViewId, bodyState, closeSidePane, openPane]);
+
+      const setNormalView = useCallback(() => {
+        // We want to navigate to the path of the main content view, clearing search params.
+        const path = getPathForView(mainViewId, params);
+        navigate(path, { replace: true });
+      }, [mainViewId, params, navigate, getPathForView]);
+
+      const toggleSplitView = useCallback((rightViewId: ViewId = 'settings') => {
+        if (bodyState === BODY_STATES.SPLIT_VIEW) {
+          setNormalView();
+        } else {
+          trigger(rightViewId, 'openSplit');
+        }
+      }, [bodyState, setNormalView, trigger]);
+
+      const switchSplitPanes = useCallback(() => {
+        if (bodyState !== BODY_STATES.SPLIT_VIEW || !mainViewId || !rightPaneViewId) return;
+
+        const newMainView = getViewById(rightPaneViewId);
+        const newRightViewId = mainViewId;
+
+        // Check if the new main view is navigable and the new layout is allowed
+        if (newMainView?.isNavigable && newMainView.allowedBodyStates?.includes('split_view')) {
+          navigate(`/${rightPaneViewId}?view=split&right=${newRightViewId}`, { replace: true });
+        } else {
+          console.warn("Cannot switch panes: new main view is not navigable or does not allow split view.", { newMainViewId: rightPaneViewId, mainViewId });
+        }
+      }, [bodyState, mainViewId, rightPaneViewId, navigate]);
+
+      const closeSplitPane = useCallback((pane: 'main' | 'right') => {
+        if (bodyState !== BODY_STATES.SPLIT_VIEW || !mainViewId) {
+          setNormalView();
+          return;
+        }
+        if (pane === 'right') {
+          const path = getPathForView(mainViewId as ViewId, params);
+          navigate(path, { replace: true });
+        } else if (rightPaneViewId) {
+          const rightView = getViewById(rightPaneViewId);
+          if (rightView?.isNavigable) navigate(`/${rightPaneViewId}`, { replace: true });
+          else navigate('/dashboard', { replace: true });
+        } else setNormalView();
+      }, [bodyState, mainViewId, rightPaneViewId, navigate, setNormalView, getPathForView, params]);
+
+      const setMessagingView = (view: TaskView) => {
+        setSearchParams(prev => {
+            prev.set('messagingView', view);
+            return prev;
+        }, { replace: true });
+      };
+
+      const itemId = params.itemId || searchParams.get('itemId');
+      
+      return useMemo(() => ({
+        // State
+        mainViewId,
+        rightPaneViewId,
+        bodyState,
+        itemId,
+        conversationId: params.conversationId,
+        messagingView,
+        currentActivePage,
+
+        // Actions
+        trigger,
+        navigateTo,
+        openPane,
+        closeSidePane,
+        toggleSidePane,
+        setNormalView,
+        toggleSplitView,
+        switchSplitPanes,
+        closeSplitPane,
+        setMessagingView,
+      }), [
+        mainViewId, rightPaneViewId, bodyState, itemId, params.conversationId, messagingView, currentActivePage,
+        trigger, navigateTo, openPane, closeSidePane, toggleSidePane, setNormalView, toggleSplitView, switchSplitPanes, closeSplitPane, setMessagingView,
+      ]);
+    }
+  src/hooks/usePageViewConfig.hook.ts: |-
+    import { useEffect } from 'react';
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    interface PageViewConfig {
+        sidePaneWidth?: number;
+        splitPaneWidth?: number;
+    }
+
+    /**
+     * A hook for a page component to declaratively set its desired pane widths.
+     * It sets the widths when config changes and resets them to the application defaults on unmount.
+     * @param {PageViewConfig} config - The desired widths for side pane and split view.
+     */
+    export function usePageViewConfig(config: PageViewConfig) {
+        const { setSidePaneWidth, setSplitPaneWidth, resetPaneWidths } = useAppShellStore.getState();
+        const { sidePaneWidth, splitPaneWidth } = config;
+
+        useEffect(() => {
+            if (sidePaneWidth !== undefined) {
+                setSidePaneWidth(sidePaneWidth);
+            }
+            if (splitPaneWidth !== undefined) {
+                setSplitPaneWidth(splitPaneWidth);
+            }
+
+            // Return a cleanup function to reset widths when the component unmounts
+            return () => {
+                resetPaneWidths();
+            };
+        }, [sidePaneWidth, splitPaneWidth, setSidePaneWidth, setSplitPaneWidth, resetPaneWidths]);
+    }
+  src/store/appShell.store.ts: >-
+    import { create } from 'zustand';
+
+    import { persist } from 'zustand/middleware';
+
+    import { type ReactElement } from 'react';
+
+    import { SIDEBAR_STATES, BODY_STATES, type SidebarState, type BodyState }
+    from '@/lib/utils';
+
+
+    export type ActivePage = 'dashboard' | 'settings' | 'toaster' |
+    'notifications' | 'data-demo' | 'messaging';
+
+
+    // --- State and Action Types ---
+
+
+    export interface AppShellState {
+      sidebarState: SidebarState;
+      bodyState: BodyState;
+      sidePaneContent: 'details' | 'settings' | 'main' | 'toaster' | 'notifications' | 'dataDemo' | 'dataItem' | 'messaging';
+      sidebarWidth: number;
+      sidePaneWidth: number;
+      splitPaneWidth: number;
+      defaultSidePaneWidth: number;
+      defaultSplitPaneWidth: number;
+      defaultWidthsSet: boolean;
+      previousBodyState: BodyState;
+      fullscreenTarget: 'main' | 'right' | null;
+      isResizing: boolean;
+      isResizingRightPane: boolean;
+      isTopBarVisible: boolean;
+      isTopBarHovered: boolean;
+      autoExpandSidebar: boolean;
+      reducedMotion: boolean;
+      compactMode: boolean;
+      primaryColor: string;
+      isCommandPaletteOpen: boolean;
+      isDarkMode: boolean;
+      appName?: string;
+      appLogo?: ReactElement;
+      draggedPage: 'dashboard' | 'settings' | 'toaster' | 'notifications' | 'data-demo' | 'messaging' | null;
+      dragHoverTarget: 'left' | 'right' | null;
+      hoveredPane: 'left' | 'right' | null;
+    }
+
+
+    export interface AppShellActions {
+        // Initialization
+        init: (config: { appName?: string; appLogo?: ReactElement; defaultSplitPaneWidth?: number }) => void;
+        
+        // Direct state setters
+        setSidebarState: (payload: SidebarState) => void;
+        setBodyState: (payload: BodyState) => void;
+        setSidePaneContent: (payload: AppShellState['sidePaneContent']) => void;
+        setSidebarWidth: (payload: number) => void;
+        setSidePaneWidth: (payload: number) => void;
+        setDefaultPaneWidths: () => void;
+        resetPaneWidths: () => void;
+        setSplitPaneWidth: (payload: number) => void;
+        setIsResizing: (payload: boolean) => void;
+        setFullscreenTarget: (payload: 'main' | 'right' | null) => void;
+        setIsResizingRightPane: (payload: boolean) => void;
+        setTopBarVisible: (payload: boolean) => void;
+        setAutoExpandSidebar: (payload: boolean) => void;
+        setReducedMotion: (payload: boolean) => void;
+        setCompactMode: (payload: boolean) => void;
+        setPrimaryColor: (payload: string) => void;
+        setDraggedPage: (payload: AppShellState['draggedPage']) => void;
+        setCommandPaletteOpen: (open: boolean) => void;
+        toggleDarkMode: () => void;
+        setDragHoverTarget: (payload: 'left' | 'right' | null) => void;
+        setTopBarHovered: (isHovered: boolean) => void;
+        setHoveredPane: (payload: 'left' | 'right' | null) => void;
+        
+        // Composite actions
+        toggleSidebar: () => void;
+        hideSidebar: () => void;
+        showSidebar: () => void;
+        peekSidebar: () => void;
+        toggleFullscreen: (target?: 'main' | 'right' | null) => void;
+        resetToDefaults: () => void;
+    }
+
+
+    const defaultState: AppShellState = {
+      sidebarState: SIDEBAR_STATES.EXPANDED,
+      bodyState: BODY_STATES.NORMAL,
+      sidePaneContent: 'details',
+      sidebarWidth: 280,
+      sidePaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.6)) : 400,
+      splitPaneWidth: typeof window !== 'undefined' ? Math.max(300, Math.round(window.innerWidth * 0.35)) : 400,
+      defaultSidePaneWidth: 400,
+      defaultSplitPaneWidth: 400,
+      defaultWidthsSet: false,
+      previousBodyState: BODY_STATES.NORMAL,
+      fullscreenTarget: null,
+      isResizing: false,
+      isResizingRightPane: false,
+      isTopBarVisible: true,
+      isTopBarHovered: false,
+      autoExpandSidebar: true,
+      reducedMotion: false,
+      compactMode: false,
+      primaryColor: '220 84% 60%',
+      isCommandPaletteOpen: false,
+      isDarkMode: false,
+      appName: 'Jeli App',
+      appLogo: undefined,
+      draggedPage: null,
+      dragHoverTarget: null,
+      hoveredPane: null,
+    };
+
+
+
+    export const useAppShellStore = create<AppShellState & AppShellActions>()(
+      persist(
+        (set, get) => ({
+          ...defaultState,
+
+          init: ({ appName, appLogo, defaultSplitPaneWidth }) => set(state => ({
+            ...state,
+            ...(appName && { appName }),
+            ...(appLogo && { appLogo }),
+            ...(defaultSplitPaneWidth && { splitPaneWidth: defaultSplitPaneWidth }),
+          })),
+          
+          setSidebarState: (payload) => set({ sidebarState: payload }),
+          setBodyState: (payload) => {
+            // If we're leaving fullscreen, reset the target and previous state
+            if (get().bodyState === BODY_STATES.FULLSCREEN && payload !== BODY_STATES.FULLSCREEN) {
+              set({ bodyState: payload, fullscreenTarget: null, previousBodyState: BODY_STATES.NORMAL });
+            } else {
+              set({ bodyState: payload });
+            }
+          },
+          setSidePaneContent: (payload) => set({ sidePaneContent: payload }),
+          setSidebarWidth: (payload) => set({ sidebarWidth: Math.max(200, Math.min(500, payload)) }),
+          setSidePaneWidth: (payload) => set({ sidePaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+          setDefaultPaneWidths: () => {
+            if (get().defaultWidthsSet) return;
+            set(state => ({
+                defaultSidePaneWidth: state.sidePaneWidth,
+                defaultSplitPaneWidth: state.splitPaneWidth,
+                defaultWidthsSet: true,
+            }));
+          },
+          resetPaneWidths: () => set(state => ({
+            sidePaneWidth: state.defaultSidePaneWidth,
+            splitPaneWidth: state.defaultSplitPaneWidth,
+          })),
+          setSplitPaneWidth: (payload) => set({ splitPaneWidth: Math.max(300, Math.min(window.innerWidth * 0.8, payload)) }),
+          setIsResizing: (payload) => set({ isResizing: payload }),
+          setFullscreenTarget: (payload) => set({ fullscreenTarget: payload }),
+          setIsResizingRightPane: (payload) => set({ isResizingRightPane: payload }),
+          setTopBarVisible: (payload) => set({ isTopBarVisible: payload }),
+          setAutoExpandSidebar: (payload) => set({ autoExpandSidebar: payload }),
+          setReducedMotion: (payload) => set({ reducedMotion: payload }),
+          setCompactMode: (payload) => set({ compactMode: payload }),
+          setPrimaryColor: (payload) => {
+            if (typeof document !== 'undefined') {
+                document.documentElement.style.setProperty('--primary-hsl', payload);
+            }
+            set({ primaryColor: payload });
+          },
+          setDraggedPage: (payload) => set({ draggedPage: payload }),
+          setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+          toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+          setDragHoverTarget: (payload) => set({ dragHoverTarget: payload }),
+          setTopBarHovered: (isHovered) => set({ isTopBarHovered: isHovered }),
+          setHoveredPane: (payload) => set({ hoveredPane: payload }),
+          
+          toggleSidebar: () => {
+            const current = get().sidebarState;
+            if (current === SIDEBAR_STATES.HIDDEN) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+            else if (current === SIDEBAR_STATES.COLLAPSED) set({ sidebarState: SIDEBAR_STATES.EXPANDED });
+            else if (current === SIDEBAR_STATES.EXPANDED) set({ sidebarState: SIDEBAR_STATES.COLLAPSED });
+          },
+          hideSidebar: () => set({ sidebarState: SIDEBAR_STATES.HIDDEN }),
+          showSidebar: () => set({ sidebarState: SIDEBAR_STATES.EXPANDED }),
+          peekSidebar: () => set({ sidebarState: SIDEBAR_STATES.PEEK }),
+          
+          toggleFullscreen: (target = null) => {
+            const { bodyState, previousBodyState } = get();
+            if (bodyState === BODY_STATES.FULLSCREEN) {
+              set({ 
+                bodyState: previousBodyState || BODY_STATES.NORMAL,
+                fullscreenTarget: null,
+                previousBodyState: BODY_STATES.NORMAL,
+              });
+            } else {
+              set({ 
+                previousBodyState: bodyState, 
+                bodyState: BODY_STATES.FULLSCREEN, 
+                fullscreenTarget: target 
+              });
+            }
+          },
+          
+          resetToDefaults: () => {
+            // Preserve props passed to provider and session defaults
+            set(state => {
+              const currentPrimaryColor = defaultState.primaryColor;
+              if (typeof document !== 'undefined') {
+                document.documentElement.style.setProperty('--primary-hsl', currentPrimaryColor);
+              }
+              return {
+                ...defaultState,
+                primaryColor: currentPrimaryColor,
+                appName: state.appName,
+                appLogo: state.appLogo,
+                defaultSidePaneWidth: state.defaultSidePaneWidth,
+                defaultSplitPaneWidth: state.defaultSplitPaneWidth,
+                defaultWidthsSet: state.defaultWidthsSet,
+                // Also reset current widths to the defaults
+                sidePaneWidth: state.defaultSidePaneWidth,
+                splitPaneWidth: state.defaultSplitPaneWidth,
+              };
+            });
+          },
+        }),
+        {
+          name: 'app-shell-storage',
+          partialize: (state) => ({
+            isDarkMode: state.isDarkMode,
+            sidebarState: state.sidebarState,
+            sidebarWidth: state.sidebarWidth,
+            sidePaneWidth: state.sidePaneWidth,
+            splitPaneWidth: state.splitPaneWidth,
+            autoExpandSidebar: state.autoExpandSidebar,
+            reducedMotion: state.reducedMotion,
+            compactMode: state.compactMode,
+            primaryColor: state.primaryColor,
+          }),
+        }
+      )
+    );
+
+
+    // Add a selector for the derived rightPaneWidth
+
+    export const useRightPaneWidth = () => useAppShellStore(state => 
+        state.bodyState === BODY_STATES.SPLIT_VIEW ? state.splitPaneWidth : state.sidePaneWidth
+    );
+  src/views/viewRegistry.tsx: >-
+    import type { LucideIcon } from 'lucide-react';
+
+    import {
+      LayoutDashboard,
+      Settings,
+      Component,
+      Bell,
+      Database,
+      SlidersHorizontal,
+      FileText,
+      Inbox,
+    } from 'lucide-react';
+
+    import type { BodyState, SidebarState } from '@/lib/utils';
+
+    import { SIDEBAR_STATES } from '@/lib/utils';
+
+
+    // --- Lazy load components for better code splitting ---
+
+    import React from 'react';
+
+
+    // Correctly typed lazy imports
+
+    const DashboardContent = React.lazy(() =>
+    import('@/pages/Dashboard').then(module => ({ default:
+    module.DashboardContent })));
+
+    const SettingsPage = React.lazy(() => import('@/pages/Settings').then(module
+    => ({ default: module.SettingsPage })));
+
+    const ToasterDemo = React.lazy(() =>
+    import('@/pages/ToasterDemo').then(module => ({ default: module.ToasterDemo
+    })));
+
+    const NotificationsPage = React.lazy(() =>
+    import('@/pages/Notifications').then(module => ({ default:
+    module.NotificationsPage })));
+
+    const DataDemoPage = React.lazy(() => import('@/pages/DataDemo'));
+
+    const MessagingPage = React.lazy(() => import('@/pages/Messaging'));
+
+    const DataDetailContent = React.lazy(() =>
+    import('@/pages/DataDemo/components/DataDetailContent').then(module => ({
+    default: module.DataDetailContent })));
+
+    const MessagingContent = React.lazy(() =>
+    import('@/pages/Messaging/components/MessagingContent').then(module => ({
+    default: module.MessagingContent })));
+
+
+    export type ViewId = 
+      | 'dashboard'
+      | 'settings'
+      | 'toaster'
+      | 'notifications'
+      | 'data-demo'
+      | 'messaging'
+      | 'dataItemDetail'
+      | 'messagingPage'
+      | 'messagingContextPanel';
+
+    export interface ViewRegistration {
+      id: ViewId;
+      component?: React.ComponentType<any>; // Component is optional for composite views
+      title: string;
+      icon: LucideIcon;
+      hasOwnScrolling?: boolean;
+      
+      // New behavioral properties
+      isNavigable?: boolean; // Can it be navigated to via URL and appear in menus?
+      renderTarget?: ('main' | 'pane')[]; // Where can this view be rendered?
+      allowedBodyStates?: BodyState[]; // What layouts can this view exist in?
+      defaultBehavior?: 'navigate' | 'openPane' | 'openSplit'; // Default action when triggered without context
+      triggerBehaviors?: Record<string, 'navigate' | 'openPane' | 'openSplit'>; // Context-aware actions
+      compositeView?: { // For "app-within-an-app" layouts
+        main: ViewId;
+        right: ViewId;
+      };
+      onNavigate?: { // Side-effects on navigation
+        sidebar?: SidebarState;
+      };
+    }
+
+
+    const suspenseWrapper = (Component:
+    React.LazyExoticComponent<React.ComponentType<any>>) => (props: any) => (
+      <React.Suspense fallback={<div className="p-6">Loading...</div>}>
+        <Component {...props} />
+      </React.Suspense>
+    );
+
+
+    export const viewRegistry: Record<ViewId, ViewRegistration> = {
+      dashboard: {
+        id: 'dashboard',
+        component: suspenseWrapper(DashboardContent),
+        title: 'Dashboard',
+        icon: LayoutDashboard,
+        isNavigable: true,
+        renderTarget: ['main', 'pane'],
+        allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+        defaultBehavior: 'navigate',
+      },
+      settings: {
+        id: 'settings',
+        component: suspenseWrapper(SettingsPage),
+        title: 'Settings',
+        icon: Settings,
+        isNavigable: true,
+        renderTarget: ['main', 'pane'],
+        allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+        defaultBehavior: 'navigate',
+        triggerBehaviors: {
+          iconClick: 'openPane',
+        },
+      },
+      toaster: {
+        id: 'toaster',
+        component: suspenseWrapper(ToasterDemo),
+        title: 'Toaster Demo',
+        icon: Component,
+        isNavigable: true,
+        renderTarget: ['main', 'pane'],
+        allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+        defaultBehavior: 'navigate',
+      },
+      notifications: {
+        id: 'notifications',
+        component: suspenseWrapper(NotificationsPage),
+        title: 'Notifications',
+        icon: Bell,
+        isNavigable: true,
+        renderTarget: ['main', 'pane'],
+        allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+        defaultBehavior: 'navigate',
+        triggerBehaviors: {
+          navClick: 'openPane',
+        },
+      },
+      'data-demo': {
+        id: 'data-demo',
+        component: suspenseWrapper(DataDemoPage),
+        title: 'Data Showcase',
+        icon: Database,
+        isNavigable: true,
+        renderTarget: ['main'],
+        allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+        defaultBehavior: 'navigate',
+      },
+      messaging: {
+        id: 'messaging',
+        isNavigable: true,
+        title: 'Messaging',
+        icon: Inbox,
+        renderTarget: [], // It doesn't render a component itself
+        allowedBodyStates: ['split_view', 'fullscreen'],
+        defaultBehavior: 'navigate',
+        compositeView: {
+          main: 'messagingPage',
+          right: 'messagingContextPanel',
+        },
+        onNavigate: { sidebar: SIDEBAR_STATES.COLLAPSED },
+      },
+      messagingPage: {
+        id: 'messagingPage',
+        component: suspenseWrapper(MessagingPage),
+        title: 'Inbox',
+        icon: Inbox, // icon is required, even if not shown
+        isNavigable: false,
+        renderTarget: ['main'],
+        allowedBodyStates: ['split_view', 'fullscreen'],
+        hasOwnScrolling: true,
+      },
+      messagingContextPanel: {
+        id: 'messagingContextPanel',
+        component: suspenseWrapper(MessagingContent),
+        title: 'Task Details',
+        icon: SlidersHorizontal, // icon is required
+        isNavigable: false,
+        renderTarget: ['pane'],
+        allowedBodyStates: ['side_pane', 'split_view', 'fullscreen'],
+      },
+      dataItemDetail: {
+        id: 'dataItemDetail',
+        component: suspenseWrapper(DataDetailContent),
+        title: 'Item Details',
+        icon: FileText,
+        isNavigable: false,
+        renderTarget: ['main', 'pane'],
+        allowedBodyStates: ['normal', 'side_pane', 'split_view', 'fullscreen'],
+        defaultBehavior: 'openPane',
+        hasOwnScrolling: true,
+      },
+    };
+
+
+    export const getViewById = (id: string | null | undefined): ViewRegistration
+    | null => {
+      if (!id) return null;
+      return viewRegistry[id as ViewId] || null;
+    }
+  src/hooks/usePaneDnd.hook.ts: >-
+    import { useCallback } from 'react';
+
+    import { useLocation, useNavigate } from 'react-router-dom';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { BODY_STATES } from '@/lib/utils';
+
+
+    const pageToPaneMap: Record<string, 'main' | 'settings' | 'toaster' |
+    'notifications' | 'dataDemo' | 'messaging'> = {
+      dashboard: 'main',
+      settings: 'settings',
+      toaster: 'toaster',
+      notifications: 'notifications',
+      'data-demo': 'dataDemo',
+      messaging: 'messaging',
+    };
+
+
+    export function usePaneDnd() {
+      const {
+        draggedPage,
+        dragHoverTarget,
+        bodyState,
+        sidePaneContent,
+      } = useAppShellStore(state => ({
+        draggedPage: state.draggedPage,
+        dragHoverTarget: state.dragHoverTarget,
+        bodyState: state.bodyState,
+        sidePaneContent: state.sidePaneContent,
+      }));
+      const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState();
+      const navigate = useNavigate();
+      const location = useLocation();
+      const activePage = location.pathname.split('/')[1] || 'dashboard';
+
+      const handleDragOverLeft = useCallback((e: React.DragEvent) => {
+        if (!draggedPage) return;
+        e.preventDefault();
+        if (dragHoverTarget !== 'left') {
+          setDragHoverTarget('left');
+        }
+      }, [draggedPage, dragHoverTarget, setDragHoverTarget]);
+
+      const handleDropLeft = useCallback(() => {
+        if (!draggedPage) return;
+
+        const paneContentOfDraggedPage = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+        if (paneContentOfDraggedPage === sidePaneContent && (bodyState === BODY_STATES.SIDE_PANE || bodyState === BODY_STATES.SPLIT_VIEW)) {
+          navigate(`/${draggedPage}`, { replace: true });
+        } 
+        else if (bodyState === BODY_STATES.NORMAL && draggedPage !== activePage) {
+            const originalActivePagePaneContent = pageToPaneMap[activePage as keyof typeof pageToPaneMap];
+            if (originalActivePagePaneContent) {
+                navigate(`/${draggedPage}?view=split&right=${originalActivePagePaneContent}`, { replace: true });
+            } else {
+                navigate(`/${draggedPage}`, { replace: true });
+            }
+        } else {
+          if (bodyState === BODY_STATES.SPLIT_VIEW) {
+            const rightPane = location.search.split('right=')[1];
+            if (rightPane) {
+              navigate(`/${draggedPage}?view=split&right=${rightPane}`, { replace: true });
+              return;
+            }
+          }
+          navigate(`/${draggedPage}`, { replace: true });
+        }
+        
+        setDraggedPage(null);
+        setDragHoverTarget(null);
+      }, [draggedPage, activePage, bodyState, sidePaneContent, navigate, location.search, setDraggedPage, setDragHoverTarget]);
+
+      const handleDragOverRight = useCallback((e: React.DragEvent) => {
+        if (!draggedPage) return;
+        e.preventDefault();
+        if (dragHoverTarget !== 'right') {
+          setDragHoverTarget('right');
+        }
+      }, [draggedPage, dragHoverTarget, setDragHoverTarget]);
+
+      const handleDropRight = useCallback(() => {
+        if (!draggedPage) return;
+        const pane = pageToPaneMap[draggedPage as keyof typeof pageToPaneMap];
+        if (pane) {
+          let mainPage = activePage;
+          if (draggedPage === activePage) {
+            mainPage = 'dashboard';
+          }
+          navigate(`/${mainPage}?view=split&right=${pane}`, { replace: true });
+        }
+        setDraggedPage(null);
+        setDragHoverTarget(null);
+      }, [draggedPage, activePage, navigate, setDraggedPage, setDragHoverTarget]);
+
+      const handleDragLeave = useCallback(() => {
+          setDragHoverTarget(null);
+      }, [setDragHoverTarget]);
+
+      return {
+        handleDragOverLeft,
+        handleDropLeft,
+        handleDragOverRight,
+        handleDropRight,
+        handleDragLeave,
+      };
+    }
+  src/App.tsx: >-
+    import React, { useEffect } from "react";
+
+    import {
+      createBrowserRouter,
+      RouterProvider,
+      Outlet,
+      Navigate,
+      useNavigate, // used in LoginPageWrapper
+      useLocation,
+      useParams,
+    } from "react-router-dom";
+
+
+    import { AppShell } from "./components/layout/AppShell";
+
+    import { AppShellProvider } from "./providers/AppShellProvider";
+
+    import { useAppShellStore } from "./store/appShell.store";
+
+    import { useAuthStore } from "./store/authStore";
+
+    import "./index.css";
+
+
+    // Import library components
+
+    import { EnhancedSidebar } from "./components/layout/EnhancedSidebar";
+
+    import { MainContent } from "./components/layout/MainContent";
+
+    import { RightPane } from "./components/layout/RightPane";
+
+    import { TopBar } from "./components/layout/TopBar";
+
+    import { CommandPalette } from "./components/global/CommandPalette";
+
+    import { ToasterProvider } from "./components/ui/toast";
+
+    import { Input } from "./components/ui/input";
+
+    import { Button } from "./components/ui/button";
+
+
+    import { LoginPage } from "./components/auth/LoginPage";
+
+    import { type ViewId } from "./views/viewRegistry";
+
+
+    // --- Icons ---
+
+    import {
+      Search,
+      Filter,
+      Plus,
+      ChevronRight,
+      Rocket,
+    } from "lucide-react";
+
+
+    // --- Utils & Hooks ---
+
+    import { cn } from "./lib/utils";
+
+    import { useAppViewManager } from "./hooks/useAppViewManager.hook";
+
+    import { useDataDemoParams } from
+    "./pages/DataDemo/hooks/useDataDemoParams.hook";
+
+
+    // Checks for authentication and redirects to login if needed
+
+    function ProtectedRoute() {
+      const { isAuthenticated } = useAuthStore();
+      const location = useLocation();
+      if (!isAuthenticated) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+      }
+      return <ComposedApp />; // ComposedApp is the layout for all protected routes
+    }
+
+
+    // A root component to apply global styles and effects
+
+    function Root() {
+      const isDarkMode = useAppShellStore((state) => state.isDarkMode);
+
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDarkMode);
+      }, [isDarkMode]);
+
+      return <Outlet />;
+    }
+
+
+    // Breadcrumbs for the Top Bar
+
+    function AppBreadcrumbs() {
+      const { currentActivePage } = useAppViewManager();
+      const activePageName = currentActivePage.replace('-', ' ');
+
+      return (
+        <div className="hidden md:flex items-center gap-2 text-sm">
+          <a
+            href="#"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Home
+          </a>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          <span className="font-medium text-foreground capitalize">
+            {activePageName}
+          </span>
+        </div>
+      );
+    }
+
+
+    // Specific controls for DataDemo page
+
+    function DataDemoTopBarControls() {
+      const { filters, setFilters } = useDataDemoParams();
+
+      return (
+        <div className="flex items-center gap-2">
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search items..."
+              className="pl-9 bg-card border-none"
+              value={filters.searchTerm}
+              onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+            />
+          </div>
+          <Button variant="outline">
+            <Filter className="w-4 h-4 mr-2" />
+            Filter
+          </Button>
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            New Item
+          </Button>
+        </div>
+      );
+    }
+
+    // Page-specific controls for the Top Bar
+
+    function TopBarPageControls() {
+      const { currentActivePage } = useAppViewManager();
+      const [searchTerm, setSearchTerm] = React.useState("");
+      const [isSearchFocused, setIsSearchFocused] = React.useState(false);
+
+      if (currentActivePage === "dashboard") {
+        return (
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <div
+              className={cn(
+                "relative transition-all duration-300 ease-in-out",
+                isSearchFocused ? "flex-1 max-w-lg" : "w-auto",
+              )}
+            >
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search dashboard..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                className="pl-9 pr-4 py-2 h-10 border-none rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ease-in-out w-full"
+              />
+            </div>
+            <Button variant="ghost" size="icon" className="flex-shrink-0">
+              <Filter className="w-5 h-5" />
+            </Button>
+            <Button className="flex-shrink-0">
+              <Plus className="w-5 h-5 mr-0 sm:mr-2" />
+              <span className={cn(isSearchFocused ? "hidden sm:inline" : "inline")}>
+                New Project
+              </span>
+            </Button>
+          </div>
+        );
+      }
+
+      if (currentActivePage === "data-demo") {
+        return <DataDemoTopBarControls />;
+      }
+
+      return null;
+    }
+
+
+    // The main App component that composes the shell
+
+    function ComposedApp() {
+      const viewManager = useAppViewManager();
+      const { setBodyState, setSidePaneContent } = useAppShellStore.getState(); // Non-reactive state setters
+
+      // Sync URL-derived state to the global Zustand store.
+      // This allows descendant components (like AppShell) to react to layout changes
+      // without having to drill props down. The loop is prevented by using selective
+      // subscriptions in other hooks.
+      useEffect(() => {
+        setBodyState(viewManager.bodyState);
+        // The view manager now provides the definitive ID for the right pane.
+        // We cast it for the store, which uses a string union. This might be an area for future refactoring.
+        setSidePaneContent(viewManager.rightPaneViewId as any);
+      }, [viewManager.bodyState, viewManager.rightPaneViewId, setBodyState, setSidePaneContent]);
+
+      // The view manager is now the single source of truth for which views to render.
+      const { mainViewId, rightPaneViewId } = viewManager;
+
+      return (
+        <AppShellProvider
+          appName="Jeli App"
+          appLogo={
+            <div className="p-2 bg-primary/20 rounded-lg">
+              <Rocket className="w-5 h-5 text-primary" />
+            </div>
+          }
+        >
+          <AppShell
+            sidebar={<EnhancedSidebar />}
+            onOverlayClick={viewManager.closeSidePane}
+            topBar={
+              <TopBar breadcrumbs={<AppBreadcrumbs />} pageControls={<TopBarPageControls />} />
+            }
+            mainContent={<MainContent viewId={mainViewId} />}
+            rightPane={<RightPane viewId={rightPaneViewId} />}
+          />
+        </AppShellProvider>
+      );
+    }
+
+
+    const router = createBrowserRouter([
+        {
+          element: <Root />,
+          children: [
+            {
+              path: "/login",
+              element: <LoginPage />,
+            },
+            {
+              path: "/",
+              element: <ProtectedRoute />,
+              children: [
+                // The ComposedApp layout will render the correct view based on the path
+                // so these elements can be null. The paths are still needed for matching.
+                { index: true, element: <Navigate to="/dashboard" replace /> },
+                { path: "dashboard", element: null },
+                { path: "settings", element: null },
+                { path: "toaster", element: null },
+                { path: "notifications", element: null },
+                { path: "data-demo", element: null },
+                { path: "data-demo/:itemId", element: null },
+                { path: "messaging", element: null },
+                { path: "messaging/:conversationId", element: null },
+              ],
+            },
+          ],
+        },
+      ]);
+
+    function App() {
+      return (
+        <ToasterProvider>
+          <RouterProvider router={router} />
+        </ToasterProvider>
+      );
+    }
+
+
+    export default App;
+  src/components/layout/TopBar.tsx: |-
+    import React from 'react';
+    import {
+      Moon, 
+      Sun,
+      Settings,
+      Command,
+      Zap,
+    } from 'lucide-react'
+    import { cn } from '@/lib/utils'
+    import { BODY_STATES } from '@/lib/utils'
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook'
+    import { UserDropdown } from './UserDropdown'
+    import { ViewModeSwitcher } from './ViewModeSwitcher'
+    import { useAppShellStore } from '@/store/appShell.store'
+
+    interface TopBarProps {
+      breadcrumbs?: React.ReactNode
+      pageControls?: React.ReactNode
+    }
+
+    export const TopBar = React.memo(({
+      breadcrumbs,
+      pageControls,
+    }: TopBarProps) => {
+      const bodyState = useAppShellStore(s => s.bodyState)
+      const isDarkMode = useAppShellStore(s => s.isDarkMode);
+      const { 
+        setCommandPaletteOpen,
+        toggleDarkMode,
+      } = useAppShellStore.getState();
+      const viewManager = useAppViewManager();
+
+      return (
+        <div className={cn(
+          "h-20 bg-background border-b border-border flex items-center justify-between px-6 z-50 gap-4"
+        )}>
+          {/* Left Section - Sidebar Controls & Breadcrumbs */}
+          <div className="flex items-center gap-4">
+            {breadcrumbs}
+          </div>
+
+          {/* Right Section - page controls, and global controls */}
+          <div className="flex items-center gap-3">
+            {pageControls}
+
+            {/* Separator */}
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-3">
+
+              <button
+                onClick={() => setCommandPaletteOpen(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+                title="Command Palette (Ctrl+K)"
+              >
+                <Command className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+
+            <button
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Quick Actions"
+            >
+              <Zap className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            </button>
+
+            {bodyState !== BODY_STATES.SPLIT_VIEW && <ViewModeSwitcher />}
+
+            <div className="w-px h-6 bg-border mx-2" />
+
+            {/* Theme and Settings */}
+            <button
+              onClick={toggleDarkMode}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Toggle Dark Mode"
+            >
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Moon className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
+
+            <button
+              onClick={() => viewManager.trigger('settings', 'iconClick')}
+              className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-accent transition-colors group"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+            </button>
+            <UserDropdown />
+            </div>
+          </div>
+        </div>
+      )
+    });
+  src/pages/DataDemo/index.tsx: >
+    import { useRef, useEffect, useCallback } from "react";
+
+    import {
+      Layers,
+      AlertTriangle,
+      PlayCircle,
+      TrendingUp,
+      CheckCircle,
+      Clock,
+      Archive,
+      PlusCircle,
+    } from "lucide-react";
+
+    import { DynamicView } from "@/features/dynamic-view/DynamicView";
+
+    import { PageLayout } from "@/components/shared/PageLayout";
+
+    import { useScrollToBottom } from "@/hooks/useScrollToBottom.hook";
+
+    import { ScrollToBottomButton } from
+    "@/components/shared/ScrollToBottomButton";
+
+    import { mockDataItems } from "./data/mockData";
+
+    import { useDataDemoParams } from "./hooks/useDataDemoParams.hook";
+
+    import { useAppViewManager } from "@/hooks/useAppViewManager.hook";
+
+    import { useDataDemoStore, useSelectedItem } from "./store/dataDemo.store";
+
+    import { AddDataItemCta } from
+    "@/features/dynamic-view/components/shared/AddDataItemCta";
+
+    import { DataDetailContent } from "./components/DataDetailContent";
+
+    import { dataDemoViewConfig } from "./DataDemo.config";
+
+    import type { StatItem } from "@/features/dynamic-view/types";
+
+
+    export default function DataDemoPage() {
+      const viewManager = useAppViewManager();
+      const {
+        viewMode,
+        groupBy,
+        activeGroupTab,
+        setGroupBy,
+        setSort,
+        setActiveGroupTab,
+        page,
+        filters,
+        sortConfig,
+        setPage,
+        setFilters,
+        setViewMode,
+        calendarDate,
+        setCalendarDate,
+      } = useDataDemoParams();
+
+      const selectedItem = useSelectedItem(viewManager.itemId || undefined);
+
+      const {
+        items: allItems,
+        hasMore,
+        isLoading,
+        isInitialLoading,
+        totalItemCount,
+        loadData,
+        updateItem,
+      } = useDataDemoStore((state) => ({
+        items: state.items,
+        hasMore: state.hasMore,
+        isLoading: state.isLoading,
+        isInitialLoading: state.isInitialLoading,
+        totalItemCount: state.totalItemCount,
+        loadData: state.loadData,
+        updateItem: state.updateItem,
+      }));
+
+      const scrollRef = useRef<HTMLDivElement>(null);
+
+      // Note: The `DynamicViewProvider` needs `GenericItem[]`.
+      // Our store uses `GenericItem` so no cast is needed.
+      // Calculate stats from data
+      const totalItems = mockDataItems.length;
+      const { showScrollToBottom, scrollToBottom, handleScroll } =
+        useScrollToBottom(scrollRef);
+
+      const activeItems = mockDataItems.filter(
+        (item) => item.status === "active",
+      ).length;
+      const highPriorityItems = mockDataItems.filter(
+        (item) => item.priority === "high" || item.priority === "critical",
+      ).length;
+      const avgCompletion =
+        totalItems > 0
+          ? Math.round(
+              mockDataItems.reduce(
+                (acc, item) => acc + item.metrics.completion,
+                0,
+              ) / totalItems,
+            )
+          : 0;
+
+      const stats: StatItem[] = [
+        {
+          title: "Total Projects",
+          value: totalItems.toString(),
+          icon: <Layers className="w-5 h-5" />,
+          change: "+5.2% this month",
+          trend: "up" as const,
+          chartData: [120, 125, 122, 130, 135, 138, 142],
+        },
+        {
+          title: "Active Projects",
+          value: activeItems.toString(),
+          icon: <PlayCircle className="w-5 h-5" />,
+          change: "+2 this week",
+          trend: "up" as const,
+          chartData: [45, 50, 48, 55, 53, 60, 58],
+        },
+        {
+          title: "High Priority",
+          value: highPriorityItems.toString(),
+          icon: <AlertTriangle className="w-5 h-5" />,
+          change: "-1 from last week",
+          trend: "down" as const,
+          chartData: [25, 26, 28, 27, 26, 24, 23],
+        },
+        {
+          title: "Avg. Completion",
+          value: `${avgCompletion}%`,
+          icon: <TrendingUp className="w-5 h-5" />,
+          change: "+3.2%",
+          trend: "up" as const,
+          chartData: [65, 68, 70, 69, 72, 75, 78],
+        },
+        {
+          title: "Completion Rate",
+          value: "88%",
+          icon: <CheckCircle className="w-5 h-5" />,
+          change: "+1.5% this month",
+          trend: "up" as const,
+          chartData: [80, 82, 81, 84, 85, 87, 88],
+        },
+        {
+          title: "Overdue Items",
+          value: "8",
+          icon: <Clock className="w-5 h-5" />,
+          change: "-3 this week",
+          trend: "down" as const,
+        },
+        {
+          title: "New This Week",
+          value: "12",
+          icon: <PlusCircle className="w-5 h-5" />,
+          change: "+2 from last week",
+          trend: "up" as const,
+        },
+        {
+          title: "Archived Projects",
+          value: "153",
+          icon: <Archive className="w-5 h-5" />,
+          change: "+20 this month",
+          trend: "up" as const,
+        },
+      ];
+
+      useEffect(() => {
+        loadData({
+          page,
+          groupBy,
+          filters,
+          sortConfig,
+          isFullLoad: viewMode === "calendar" || viewMode === "kanban",
+        });
+      }, [page, groupBy, filters, sortConfig, loadData, viewMode]);
+
+      const observer = useRef<IntersectionObserver>();
+      const loaderRef = useCallback(
+        (node: Element | null) => {
+          if (isLoading) return;
+          if (observer.current) observer.current.disconnect();
+          observer.current = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMore) {
+              setPage(page + 1);
+            }
+          });
+          if (node) observer.current.observe(node);
+        },
+        [isLoading, hasMore, page, setPage],
+      );
+
+      if (viewManager.mainViewId === 'dataItemDetail' && viewManager.itemId && selectedItem) {
+        // Render detail view as the main content
+        return <DataDetailContent item={selectedItem} />;
+      }
+
+      return (
+        <PageLayout scrollRef={scrollRef} onScroll={handleScroll}>
+          <DynamicView
+            viewConfig={dataDemoViewConfig}
+            items={allItems}
+            isLoading={isLoading}
+            isInitialLoading={isInitialLoading}
+            totalItemCount={totalItemCount}
+            hasMore={hasMore}
+            // Controlled state
+            viewMode={viewMode}
+            filters={filters}
+            sortConfig={sortConfig}
+            groupBy={groupBy}
+            activeGroupTab={activeGroupTab}
+            page={page}
+            // Callbacks
+            calendarDate={calendarDate}
+            onCalendarDateChange={setCalendarDate}
+            onViewModeChange={setViewMode}
+            onFiltersChange={setFilters}
+            onSortChange={setSort}
+            onGroupByChange={setGroupBy}
+            onActiveGroupTabChange={setActiveGroupTab}
+            onPageChange={setPage}
+            onItemUpdate={updateItem}
+            onItemSelect={(item) => viewManager.trigger('dataItemDetail', 'itemClick', { itemId: item.id })}
+            loaderRef={loaderRef}
+            scrollContainerRef={scrollRef}
+            statsData={stats}
+            // Custom Renderers
+            renderCta={(viewMode, ctaProps) => (
+              <AddDataItemCta viewMode={viewMode} colSpan={ctaProps.colSpan} />
+            )}
+          />
+
+          <ScrollToBottomButton
+            isVisible={showScrollToBottom}
+            onClick={scrollToBottom}
+          />
+        </PageLayout>
+      );
+    }
+  src/components/global/CommandPalette.tsx: >-
+    import {
+      CommandDialog,
+      CommandEmpty,
+      CommandGroup,
+      CommandInput,
+      CommandItem,
+      CommandList,
+      CommandSeparator,
+      CommandShortcut,
+    } from '@/components/ui/command';
+
+    import { useCommandPaletteToggle } from
+    '@/hooks/useCommandPaletteToggle.hook'
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+    import { useAppShellStore } from '@/store/appShell.store';
+
+    import { Home, Settings, Moon, Sun, Monitor, Smartphone, PanelRight,
+    Maximize, Component, Bell } from 'lucide-react'
+
+
+    export function CommandPalette() {
+      const { setCompactMode, toggleFullscreen, setCommandPaletteOpen, toggleDarkMode } = useAppShellStore.getState();
+      const isCommandPaletteOpen = useAppShellStore(s => s.isCommandPaletteOpen);
+      const isDarkMode = useAppShellStore(s => s.isDarkMode);
+      const viewManager = useAppViewManager();
+      useCommandPaletteToggle()
+      
+      const runCommand = (command: () => void) => {
+        setCommandPaletteOpen(false);
+        command()
+      }
+
+      return (
+        <CommandDialog open={isCommandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
+          <CommandInput placeholder="Type a command or search..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup heading="Navigation">
+              <CommandItem onSelect={() => runCommand(() => viewManager.navigateTo('dashboard'))}>
+                <Home className="mr-2 h-4 w-4" />
+                <span>Go to Dashboard</span>
+                <CommandShortcut>G D</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => viewManager.navigateTo('settings'))}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Go to Settings</span>
+                <CommandShortcut>G S</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => viewManager.navigateTo('toaster'))}>
+                <Component className="mr-2 h-4 w-4" />
+                <span>Go to Toaster Demo</span>
+                <CommandShortcut>G T</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => viewManager.navigateTo('notifications'))}>
+                <Bell className="mr-2 h-4 w-4" />
+                <span>Go to Notifications</span>
+                <CommandShortcut>G N</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Actions">
+              <CommandItem onSelect={() => runCommand(toggleDarkMode)}>
+                {isDarkMode ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                <span>Toggle Theme</span>
+                <CommandShortcut>⌘T</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(toggleFullscreen)}>
+                <Maximize className="mr-2 h-4 w-4" />
+                <span>Toggle Fullscreen</span>
+                <CommandShortcut>⌘F</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => viewManager.openPane('settings'))}>
+                <PanelRight className="mr-2 h-4 w-4" />
+                <span>Open Settings in Side Pane</span>
+                <CommandShortcut>⌥S</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup heading="Preferences">
+              <CommandItem onSelect={() => runCommand(() => setCompactMode(true))}>
+                <Smartphone className="mr-2 h-4 w-4" />
+                <span>Enable Compact Mode</span>
+                <CommandShortcut>⌘C</CommandShortcut>
+              </CommandItem>
+              <CommandItem onSelect={() => runCommand(() => setCompactMode(false))}>
+                <Monitor className="mr-2 h-4 w-4" />
+                <span>Disable Compact Mode</span>
+                <CommandShortcut>⇧⌘C</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </CommandDialog>
+      )
+    }
+  src/components/layout/EnhancedSidebar.tsx: >-
+    import React from 'react';
+
+    import {
+      Home,
+      Settings,
+      HelpCircle,
+      Component,
+      Rocket,
+      MoreHorizontal,
+      Bell,
+      Search,
+      FileText,
+      Star,
+      Trash2,
+      FolderOpen,
+      Mail,
+      Bookmark,
+      Download,
+      User,
+      Plus,
+      Database,
+      PanelLeftClose,
+      Inbox,
+      UserX,
+      CheckCircle2,
+    } from 'lucide-react';
+
+    import { useAppShellStore, type ActivePage } from '@/store/appShell.store';
+
+    import {
+      Workspaces,
+      WorkspaceTrigger,
+      WorkspaceContent,
+      type Workspace,
+    } from './WorkspaceSwitcher';
+
+    import {
+      DropdownMenu,
+      DropdownMenuContent,
+      DropdownMenuItem,
+      DropdownMenuTrigger,
+    } from '@/components/ui/dropdown-menu';
+
+    import {
+      Sidebar,
+      SidebarContent,
+      SidebarHeader,
+      SidebarTitle,
+      SidebarBody,
+      SidebarFooter,
+      SidebarSection,
+      SidebarMenuItem,
+      SidebarMenuButton,
+      SidebarMenuAction,
+      SidebarLabel,
+      SidebarBadge,
+      SidebarTooltip,
+      SidebarIcon,
+      useSidebar,
+    } from './Sidebar';
+
+    import { ViewModeSwitcher } from './ViewModeSwitcher';
+
+    import { cn } from '@/lib/utils';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+    import type { ViewId } from '@/views/viewRegistry';
+
+
+    interface MyWorkspace extends Workspace {
+      logo: string;
+      plan: string;
+    }
+
+
+    const mockWorkspaces: MyWorkspace[] = [
+      { id: 'ws1', name: 'Acme Inc.', logo: 'https://avatar.vercel.sh/acme.png', plan: 'Pro' },
+      { id: 'ws2', name: 'Monsters Inc.', logo: 'https://avatar.vercel.sh/monsters.png', plan: 'Free' },
+      { id: 'ws3', name: 'Stark Industries', logo: 'https://avatar.vercel.sh/stark.png', plan: 'Enterprise' },
+    ];
+
+
+    const SidebarWorkspaceTrigger = () => {
+      const { isCollapsed, compactMode } = useSidebar();
+
+      return (
+        <WorkspaceTrigger
+          collapsed={isCollapsed}
+          className={cn(
+            'rounded-xl transition-colors hover:bg-accent/50 w-full',
+            isCollapsed ? 'p-2' : 'p-3 bg-accent/50',
+          )}
+          avatarClassName={cn(compactMode ? 'h-8 w-8' : 'h-10 w-10')}
+        />
+      );
+    };
+
+
+    const SidebarToggleButton = () => {
+      const { isCollapsed } = useSidebar();
+      const { toggleSidebar } = useAppShellStore.getState();
+
+      if (isCollapsed) return null;
+
+      return (
+        <button
+          onClick={toggleSidebar}
+          className="ml-auto h-9 w-9 flex items-center justify-center rounded-lg hover:bg-accent transition-colors"
+          title="Collapse Sidebar"
+        >
+          <PanelLeftClose className="w-5 h-5" />
+        </button>
+      );
+    };
+
+
+    interface SidebarProps {
+      onMouseEnter?: () => void;
+      onMouseLeave?: () => void;
+    }
+
+
+    export const EnhancedSidebar = React.memo(React.forwardRef<HTMLDivElement,
+    SidebarProps>(
+      ({ onMouseEnter, onMouseLeave }, ref) => {
+        const sidebarWidth = useAppShellStore(s => s.sidebarWidth);
+        const compactMode = useAppShellStore(s => s.compactMode);
+        const appName = useAppShellStore(s => s.appName);
+        const appLogo = useAppShellStore(s => s.appLogo);
+        const [selectedWorkspace, setSelectedWorkspace] = React.useState(mockWorkspaces[0]);
+        return (
+          <Sidebar
+            ref={ref}
+            style={{ width: sidebarWidth }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+          >
+            <SidebarContent>
+              <SidebarHeader>
+                {appLogo || (
+                  <div className="p-2 bg-primary/20 rounded-lg">
+                    <Rocket className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <SidebarTitle>{appName}</SidebarTitle>
+                <SidebarToggleButton />
+              </SidebarHeader>
+
+              <SidebarBody>
+                <SidebarSection title="Main">
+                  <AppMenuItem icon={Home} label="Dashboard" page="dashboard" />
+                  <AppMenuItem icon={Database} label="Data Demo" page="data-demo"  />
+                  <MessagingSidebarItems />
+                  <AppMenuItem icon={Search} label="Search" />
+                  <AppMenuItem icon={Bell} label="Notifications" badge={3} page="notifications" />
+                </SidebarSection>
+                
+                <SidebarSection title="Workspace" collapsible defaultExpanded>
+                  <AppMenuItem icon={FileText} label="Documents" hasActions>
+                    <AppMenuItem icon={FileText} label="Recent" isSubItem />
+                    <AppMenuItem icon={Star} label="Starred" isSubItem />
+                    <AppMenuItem icon={Trash2} label="Trash" isSubItem />
+                  </AppMenuItem>
+                  <AppMenuItem icon={FolderOpen} label="Projects" hasActions />
+                  <AppMenuItem icon={Mail} label="Messages" badge={12} />
+                </SidebarSection>
+                
+                <SidebarSection title="Personal" collapsible>
+                  <AppMenuItem icon={Bookmark} label="Bookmarks" />
+                  <AppMenuItem icon={Star} label="Favorites" />
+                  <AppMenuItem icon={Download} label="Downloads" />
+                </SidebarSection>
+
+                <SidebarSection title="Components" collapsible defaultExpanded>
+                  <AppMenuItem icon={Component} label="Toaster" page="toaster" />
+                </SidebarSection>
+              </SidebarBody>
+
+              <SidebarFooter>
+                <SidebarSection>
+                  <AppMenuItem icon={User} label="Profile" />
+                  <AppMenuItem icon={Settings} label="Settings" page="settings" />
+                  <AppMenuItem icon={HelpCircle} label="Help" />
+                </SidebarSection>
+
+                <div className={cn(compactMode ? 'mt-4' : 'mt-6')}>
+                  <Workspaces
+                    workspaces={mockWorkspaces}
+                    selectedWorkspaceId={selectedWorkspace.id}
+                    onWorkspaceChange={(ws) => setSelectedWorkspace(ws as MyWorkspace)}
+                  >
+                    <SidebarWorkspaceTrigger />
+                    <WorkspaceContent>
+                      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground focus:outline-none">
+                        <Plus className="h-4 w-4" />
+                        <span>Create Workspace</span>
+                      </button>
+                    </WorkspaceContent>
+                  </Workspaces>
+                </div>
+              </SidebarFooter>
+            </SidebarContent>
+          </Sidebar>
+        );
+      },
+    ));
+
+    EnhancedSidebar.displayName = 'EnhancedSidebar';
+
+
+
+    // Example of a reusable menu item component built with the new Sidebar
+    primitives
+
+    interface AppMenuItemProps {
+      icon: React.ElementType;
+      label: string;
+      badge?: number;
+      hasActions?: boolean;
+      children?: React.ReactNode;
+      isSubItem?: boolean;
+      page?: ActivePage;
+      onClick?: () => void;
+      isActive?: boolean;
+    }
+
+
+    const AppMenuItem: React.FC<AppMenuItemProps> = ({ icon: Icon, label, badge,
+    hasActions, children, isSubItem = false, page, onClick, isActive:
+    isActiveProp }) => {
+      const compactMode = useAppShellStore(state => state.compactMode);
+      const { setDraggedPage, setDragHoverTarget } = useAppShellStore.getState()
+      const { isCollapsed } = useSidebar();
+      const viewManager = useAppViewManager();
+
+      const calculatedIsActive =
+        (page && viewManager.mainViewId === page) ||
+        (page && viewManager.rightPaneViewId === page);
+
+      const isActive = isActiveProp ?? calculatedIsActive;
+
+      const handleClick = () => {
+        if (onClick) {
+          onClick();
+          return;
+        }
+        if (page) {
+          // For context-aware actions like 'notifications' from a sidebar nav link,
+          // we use trigger() with a source. For all others, a simple trigger
+          // will execute the defaultBehavior from the viewRegistry.
+          const source = page === 'notifications' ? 'navClick' : undefined;
+          viewManager.trigger(page as ViewId, source);
+        }
+      };
+
+      return (
+        <div className={isSubItem ? (compactMode ? 'ml-4' : 'ml-6') : ''}>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleClick}
+              isActive={isActive}
+              draggable={!!page}
+              onDragStart={(_e) => {
+                if (page) {
+                  // set dragged page in AppShell store
+                  setDraggedPage(page);
+                }
+              }}
+              onDragEnd={() => {
+                setDraggedPage(null);
+                setDragHoverTarget(null);
+              }}
+            >
+              <SidebarIcon>
+                <Icon className={isSubItem ? "w-3 h-3" : "w-4 h-4"}/>
+              </SidebarIcon>
+              <SidebarLabel>{label}</SidebarLabel>
+              {badge && <SidebarBadge>{badge}</SidebarBadge>}
+              <SidebarTooltip label={label} badge={badge} />
+            </SidebarMenuButton>
+
+            {page && !isCollapsed && ( // Always render switcher if there's a page
+              <div className={cn(
+                "absolute top-1/2 -translate-y-1/2 z-10",
+                "opacity-0 group-hover/item:opacity-100 group-focus-within/item:opacity-100",
+                "transition-opacity pointer-events-none group-hover/item:pointer-events-auto",
+                // If there are actions, move left to make space for the action button
+                hasActions ? "right-10" : "right-2"
+              )}>
+                <ViewModeSwitcher targetPage={page} />
+              </div>
+            )}
+
+            {hasActions && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start">
+                  <DropdownMenuItem>
+                    <span>Edit {label}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <span>Delete {label}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </SidebarMenuItem>
+          {!isCollapsed && children && (
+            <div className="space-y-1 mt-1">{children}</div>
+          )}
+        </div>
+      );
+    };
+
+
+    const MessagingSidebarItems = () => {
+      const { currentActivePage, messagingView, navigateTo } = useAppViewManager();
+      const totalUnread = 7; // Mock data, could come from a store
+
+      return (
+        <AppMenuItem
+          icon={Mail}
+          label="Messaging"
+          badge={totalUnread}
+          page="messaging"
+          isActive={currentActivePage === 'messaging'}
+          onClick={() => navigateTo('messaging', { messagingView: 'all_open' })}
+        >
+          <AppMenuItem
+            icon={Inbox}
+            label="All Open"
+            isSubItem
+            page="messaging"
+            isActive={currentActivePage === 'messaging' && (messagingView === 'all_open' || !messagingView)}
+            onClick={() => navigateTo('messaging', { messagingView: 'all_open' })}
+          />
+          <AppMenuItem
+            icon={UserX}
+            label="Unassigned"
+            isSubItem
+            page="messaging"
+            isActive={currentActivePage === 'messaging' && messagingView === 'unassigned'}
+            onClick={() => navigateTo('messaging', { messagingView: 'unassigned' })}
+          />
+          <AppMenuItem
+            icon={CheckCircle2}
+            label="Done"
+            isSubItem
+            page="messaging"
+            isActive={currentActivePage === 'messaging' && messagingView === 'done'}
+            onClick={() => navigateTo('messaging', { messagingView: 'done' })}
+          />
+        </AppMenuItem>
+      );
+    };
+  src/pages/Messaging/components/TaskList.tsx: >-
+    import { useEffect, useMemo } from 'react';
+
+    import { Search, SlidersHorizontal, Check, Inbox, Clock, Zap, Shield, Eye }
+    from 'lucide-react';
+
+    import { Link, useParams } from 'react-router-dom';
+
+    import { useMessagingStore } from '../store/messaging.store';
+
+    import { Button } from '@/components/ui/button';
+
+    import { Input } from '@/components/ui/input';
+
+    import { Avatar, AvatarFallback, AvatarImage } from
+    '@/components/ui/avatar';
+
+    import { Badge } from '@/components/ui/badge';
+
+    import { Popover, PopoverContent, PopoverTrigger } from
+    '@/components/ui/popover';
+
+    import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem,
+    CommandList, CommandSeparator } from '@/components/ui/command';
+
+    import { cn, formatDistanceToNowShort } from '@/lib/utils';
+
+    import { AnimatedTabs } from '@/components/ui/animated-tabs';
+
+    import type { TaskStatus, TaskPriority, TaskView } from '../types';
+
+    import { useAppViewManager } from '@/hooks/useAppViewManager.hook';
+
+    import { useMessagingTaskCounts } from '../store/messaging.store';
+
+
+    // Local helpers for styling based on task properties
+
+    const getStatusIcon = (status: TaskStatus) => {
+        switch(status) {
+            case 'open': return <Inbox className="w-3 h-3 text-blue-500" />;
+            case 'in-progress': return <Zap className="w-3 h-3 text-yellow-500" />;
+            case 'done': return <Shield className="w-3 h-3 text-green-500" />;
+            case 'snoozed': return <Clock className="w-3 h-3 text-gray-500" />;
+        }
+    };
+
+
+    const getPriorityIcon = (priority: TaskPriority) => {
+        switch(priority) {
+            case 'high': return <div className="w-2 h-2 rounded-full bg-red-500" />;
+            case 'medium': return <div className="w-2 h-2 rounded-full bg-yellow-500" />;
+            case 'low': return <div className="w-2 h-2 rounded-full bg-green-500" />;
+            default: return <div className="w-2 h-2 rounded-full bg-gray-400" />;
+        }
+    };
+
+
+    const statusOptions: { value: TaskStatus; label: string }[] = [
+        { value: 'open', label: 'Open' }, { value: 'in-progress', label: 'In Progress' }, { value: 'done', label: 'Done' }, { value: 'snoozed', label: 'Snoozed' }
+    ];
+
+    const priorityOptions: { value: TaskPriority; label: string }[] = [
+        { value: 'high', label: 'High' }, { value: 'medium', label: 'Medium' }, { value: 'low', label: 'Low' }, { value: 'none', label: 'None' }
+    ];
+
+
+    const TABS_CONFIG: { id: TaskView, label: string }[] = [
+      { id: 'all_open', label: 'Open' },
+      { id: 'unassigned', label: 'Unassigned' },
+      { id: 'me', label: 'Me' },
+      { id: 'done', label: 'Done' }
+    ];
+
+
+    export const TaskList = () => {
+      const { conversationId } = useParams<{ conversationId: string }>(); // This will be taskId later
+      const { 
+        getFilteredTasks,
+        setSearchTerm,
+        activeFilters,
+        setActiveTaskView,
+        searchTerm,
+       } = useMessagingStore();
+       const { messagingView, setMessagingView } = useAppViewManager();
+       const taskCounts = useMessagingTaskCounts();
+
+      useEffect(() => {
+        setActiveTaskView(messagingView || 'all_open');
+      }, [messagingView, setActiveTaskView]);
+
+      const filteredTasks = getFilteredTasks();
+      const activeFilterCount = Object.values(activeFilters).reduce((count, filterArray) => count + filterArray.length, 0);
+
+      const TABS = useMemo(() => 
+        TABS_CONFIG.map(tab => ({
+          ...tab,
+          count: taskCounts[tab.id as keyof typeof taskCounts]
+        })), 
+        [taskCounts]
+      );
+
+      return (
+        <div className="h-full flex flex-col bg-background/80">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b bg-background/80 p-4 space-y-4">
+            <h2 className="text-xl font-bold tracking-tight">Inbox</h2>
+            <div className="flex gap-2">
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Search tasks..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-10 border-dashed gap-2">
+                            <SlidersHorizontal className="w-4 h-4" />
+                            Filters
+                            {activeFilterCount > 0 && <Badge variant="secondary" className="rounded-sm px-1 font-normal">{activeFilterCount}</Badge>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[240px] p-0" align="end">
+                        <FilterCommand />
+                    </PopoverContent>
+                </Popover>
+            </div>
+          </div>
+          <AnimatedTabs
+            tabs={TABS}
+            activeTab={messagingView || 'all_open'}
+            onTabChange={(tabId) => setMessagingView(tabId as TaskView)}
+            size="sm"
+            className="px-4"
+          />
+
+          {/* Task List */}
+          <div className="flex-1 overflow-y-auto">
+            <nav className="p-2 space-y-1">
+              {filteredTasks.map(task => {
+                const currentUserId = 'user-1';
+                const isHandledByOther = task.activeHandlerId && task.activeHandlerId !== currentUserId;
+
+                return (
+                  <Link
+                    to={`/messaging/${task.id}`}
+                    key={task.id}
+                    className={cn(
+                      "block p-3 rounded-lg text-left transition-all duration-200 hover:bg-accent/50",
+                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 outline-none",
+                      conversationId === task.id && "bg-accent"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-9 w-9 mt-1">
+                        <AvatarImage src={task.contact.avatar} alt={task.contact.name} />
+                        <AvatarFallback>{task.contact.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 overflow-hidden">
+                          <p className="text-sm font-semibold truncate pr-2">
+                            {task.contact.name} <span className="text-muted-foreground font-normal">&middot; {task.contact.company}</span>
+                          </p>
+                          <p className="text-sm truncate text-foreground mt-1">{task.title}</p>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-1.5" title={task.status}>
+                                  {getStatusIcon(task.status)}
+                                  <span className="capitalize">{task.status.replace('-', ' ')}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5" title={task.priority}>
+                                  {getPriorityIcon(task.priority)}
+                                  <span className="capitalize">{task.priority}</span>
+                              </div>
+                              {task.assignee && (
+                                  <div className="flex items-center gap-1.5" title={`Assigned to ${task.assignee.name}`}>
+                                      <Avatar className="h-4 w-4"><AvatarImage src={task.assignee.avatar} /></Avatar>
+                                  </div>
+                              )}
+                              {isHandledByOther && <span title="Being handled by another user"><Eye className="w-3.5 h-3.5" /></span>}
+                          </div>
+                      </div>
+                      <div className="flex flex-col items-end space-y-1.5 flex-shrink-0">
+                        <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDistanceToNowShort(new Date(task.lastActivity.timestamp))}</p>
+                        {task.unreadCount > 0 ? (
+                            <Badge className="bg-primary h-5 w-5 p-0 flex items-center justify-center">{task.unreadCount}</Badge>
+                        ) : <div className="h-5 w-5" /> /* Spacer to maintain alignment */ }
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
+            </nav>
+          </div>
+        </div>
+      );
+    };
+
+
+    // Filter component for popover
+
+    function FilterCommand() {
+        const { activeFilters, setFilters, assignees, getAvailableTags } = useMessagingStore();
+        const availableTags = getAvailableTags();
+
+        const handleSelect = (type: 'status' | 'priority' | 'assigneeId' | 'tags', value: string) => {
+            const current = new Set(activeFilters[type]);
+            current.has(value) ? current.delete(value) : current.add(value);
+            setFilters({ [type]: Array.from(current) });
+        };
+
+        const hasActiveFilters = Object.values(activeFilters).some(arr => arr.length > 0);
+
+        return (
+            <Command>
+                <CommandInput placeholder="Filter by..." />
+                <CommandList>
+                    <CommandEmpty>No results found.</CommandEmpty>
+                    <CommandGroup heading="Status">
+                        {statusOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('status', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.status.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Priority">
+                        {priorityOptions.map(o => (
+                            <CommandItem key={o.value} onSelect={() => handleSelect('priority', o.value)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.priority.includes(o.value) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{o.label}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Assignee">
+                        {assignees.map(a => (
+                            <CommandItem key={a.id} onSelect={() => handleSelect('assigneeId', a.id)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.assigneeId.includes(a.id) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <Avatar className="h-5 w-5 mr-2"><AvatarImage src={a.avatar} /><AvatarFallback>{a.name.charAt(0)}</AvatarFallback></Avatar>
+                                <span>{a.name}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                    <CommandSeparator />
+                    <CommandGroup heading="Tags">
+                        {availableTags.map(t => (
+                            <CommandItem key={t} onSelect={() => handleSelect('tags', t)}>
+                                <div className={cn('mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary', activeFilters.tags.includes(t) ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible')}><Check className="h-4 w-4" /></div>
+                                <span>{t}</span>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+
+                    {hasActiveFilters && (
+                        <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                                <CommandItem onSelect={() => setFilters({ status: [], priority: [], assigneeId: [], tags: [], channels: [] })} className="justify-center text-center text-sm">Clear all filters</CommandItem>
+                            </CommandGroup>
+                        </>
+                    )}
+                </CommandList>
+            </Command>
+        );
+    }
+  src/hooks/useResizablePanes.hook.ts: |-
+    import { useEffect, useRef } from 'react';
+    import { gsap } from 'gsap';
+    import { useAppShellStore } from '@/store/appShell.store';
+    import { BODY_STATES } from '@/lib/utils';
+
+    export function useResizableSidebar(
+      sidebarRef: React.RefObject<HTMLDivElement>,
+      resizeHandleRef: React.RefObject<HTMLDivElement>
+    ) {
+      const isResizing = useAppShellStore(s => s.isResizing);
+      const { setSidebarWidth, setIsResizing } = useAppShellStore.getState();
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizing) return;
+
+          const newWidth = Math.max(200, Math.min(500, e.clientX));
+          setSidebarWidth(newWidth);
+
+          if (sidebarRef.current) {
+            gsap.set(sidebarRef.current, { width: newWidth });
+          }
+          if (resizeHandleRef.current) {
+            gsap.set(resizeHandleRef.current, { left: newWidth });
+          }
+        };
+
+        const handleMouseUp = () => {
+          setIsResizing(false);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+
+        if (isResizing) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+        };
+      }, [isResizing, setSidebarWidth, setIsResizing, sidebarRef, resizeHandleRef]);
+    }
+
+    export function useResizableRightPane(
+      rightPaneRef: React.RefObject<HTMLDivElement>
+    ) {
+      const isResizingRightPane = useAppShellStore(s => s.isResizingRightPane);
+      const bodyState = useAppShellStore(s => s.bodyState);
+      const { setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane, setReducedMotion } = useAppShellStore.getState();
+      const finalWidthRef = useRef<number | null>(null);
+      const originalReducedMotionRef = useRef<boolean | null>(null);
+
+      // This effect temporarily disables animations during resizing to prevent the
+      // pane's enter/exit animation from firing incorrectly.
+      useEffect(() => {
+        if (isResizingRightPane) {
+          // When resizing starts, store the original setting and disable animations.
+          if (originalReducedMotionRef.current === null) {
+            originalReducedMotionRef.current = useAppShellStore.getState().reducedMotion;
+            setReducedMotion(true);
+          }
+        } else {
+          // When resizing ends, restore the original setting after a brief delay.
+          // This ensures the final width is rendered before animations are re-enabled.
+          if (originalReducedMotionRef.current !== null) {
+            // Use requestAnimationFrame to ensure we re-enable animations *after* the browser
+            // has painted the new, non-animated pane width. This is more reliable than setTimeout(0).
+            requestAnimationFrame(() => {
+              setReducedMotion(originalReducedMotionRef.current!);
+              originalReducedMotionRef.current = null;
+            });
+          }
+        }
+      }, [isResizingRightPane, setReducedMotion]);
+
+      useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+          if (!isResizingRightPane) return;
+
+          const newWidth = window.innerWidth - e.clientX;
+          finalWidthRef.current = newWidth;
+          if (rightPaneRef.current) {
+            gsap.set(rightPaneRef.current, { width: newWidth });
+          }
+        };
+
+        const handleMouseUp = () => {
+          if (finalWidthRef.current !== null) {
+            if (bodyState === BODY_STATES.SPLIT_VIEW) {
+              setSplitPaneWidth(finalWidthRef.current);
+            } else {
+              setSidePaneWidth(finalWidthRef.current);
+            }
+            finalWidthRef.current = null;
+          }
+          setIsResizingRightPane(false);
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        };
+
+        if (isResizingRightPane) {
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+          document.addEventListener('mousemove', handleMouseMove);
+          document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+          document.body.style.cursor = '';
+        };
+      }, [isResizingRightPane, setSplitPaneWidth, setSidePaneWidth, setIsResizingRightPane, bodyState, rightPaneRef]);
+    }
+approved: false
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: undone
+id: 594

@@ -71,9 +71,9 @@ export function DetailPanel<TFieldId extends string, TItem extends GenericItem>(
             <h1 className="text-2xl font-bold mb-1 leading-tight truncate">
               <EditableField item={item} fieldId={header.titleField} />
             </h1>
-            <p className="text-muted-foreground truncate">
+            <div className="text-muted-foreground truncate">
               <EditableField item={item} fieldId={header.descriptionField} />
-            </p>
+            </div>
           </div>
         </div>
 

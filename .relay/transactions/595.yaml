@@ -1,0 +1,406 @@
+uuid: 4f128d5d-c68e-4f18-a6d1-4470d069b76c
+projectId: jeli-app-shell
+createdAt: '2025-10-23T05:02:40.271Z'
+gitCommitMsg: >-
+  fix(DetailPanel): Correct invalid DOM nesting for description field
+
+  Resolves the `validateDOMNesting` warning by changing the wrapping element for
+  the description field in `DetailPanel.tsx` from a `<p>` to a `<div>`. The
+  previous `<p>` tag caused an invalid HTML structure when the child
+  `EditableField` component rendered a `<div>`.
+
+  This commit also removes the now-redundant `useLayoutEffect` workaround from
+  `DataDetailContent.tsx`, providing a cleaner and more direct fix for the
+  issue.
+promptSummary: >-
+  The user is still seeing the 'validateDOMNesting' warning after the previous
+  attempt to fix it. The fix needs to be applied at the source of the issue.
+reasoning:
+  - >-
+    My apologies, it appears my previous attempt to patch the DOM after
+    rendering was ineffective. The `validateDOMNesting` warning persists because
+    the root cause of the invalid HTML structure lies within the `DetailPanel`
+    component itself.
+  - >-
+    The error stack trace clearly shows that `EditableField` is rendering a
+    `<div>` inside a `<p>` tag within `DetailPanel`. Upon closer inspection of
+    `DetailPanel.tsx`, I've identified the exact line: the item's description is
+    being wrapped in a `<p>` tag. When `EditableField` renders the description
+    as a block element, this creates the invalid nesting.
+  - >-
+    The correct solution is to address the problem at its source. I will modify
+    `DetailPanel.tsx` to use a `<div>` instead of a `<p>` for the description
+    wrapper. This is semantically correct and will resolve the warning.
+  - >-
+    Concurrently, I will remove the workaround I previously added to
+    `DataDetailContent.tsx`. Since we are now fixing the root cause, that
+    `useLayoutEffect` hook is no longer necessary and should be removed to clean
+    up the code.
+  - First, I'll fix the root cause in `DetailPanel.tsx`.
+  - Now, I'll remove the unnecessary workaround from `DataDetailContent.tsx`.
+operations:
+  - type: write
+    path: src/features/dynamic-view/components/shared/DetailPanel.tsx
+    content: |
+      --- src/features/dynamic-view/components/shared/DetailPanel.tsx
+      +++ src/features/dynamic-view/components/shared/DetailPanel.tsx
+      @@ -74,9 +74,9 @@
+                   <h1 className="text-2xl font-bold mb-1 leading-tight truncate">
+                     <EditableField item={item} fieldId={header.titleField} />
+                   </h1>
+      -            <p className="text-muted-foreground truncate">
+      +            <div className="text-muted-foreground truncate">
+                     <EditableField item={item} fieldId={header.descriptionField} />
+      -            </p>
+      +            </div>
+                 </div>
+               </div>
+       
+    patchStrategy: standard-diff
+  - type: write
+    path: src/pages/DataDemo/components/DataDetailContent.tsx
+    content: >+
+      --- src/pages/DataDemo/components/DataDetailContent.tsx
+
+      +++ src/pages/DataDemo/components/DataDetailContent.tsx
+
+      @@ -3,38 +3,12 @@
+       import { DynamicViewProvider } from '@/features/dynamic-view/DynamicViewContext';
+       import { DetailPanel } from '@/features/dynamic-view/components/shared/DetailPanel';
+       import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+       import type { DataDemoItem } from '@/pages/DataDemo/data/DataDemoItem';
+       import { useDataDemoStore } from '../store/dataDemo.store';
+      -import { useRef, useLayoutEffect } from 'react';
+       
+       interface DataDetailContentProps {
+         item: DataDemoItem;
+       }
+       
+       export function DataDetailContent({ item }: DataDetailContentProps) {
+         const { updateItem } = useDataDemoStore();
+      -  const containerRef = useRef<HTMLDivElement>(null);
+
+      -
+
+      -  // HACK: This is a temporary workaround to fix a DOM nesting warning
+      (`div` inside `p`)
+
+      -  // originating from the `DetailPanel` component, which is not available
+      for direct editing.
+
+      -  // The correct solution is to modify `DetailPanel.tsx` to use `div`
+      instead of `p` as a container for its fields.
+
+      -  useLayoutEffect(() => {
+
+      -    if (!containerRef.current) return;
+
+      -
+
+      -    // Find all <p> tags that have a <div> as a descendant
+
+      -    const paragraphs =
+      Array.from(containerRef.current.getElementsByTagName('p'));
+
+      -
+
+      -    for (const p of paragraphs) {
+
+      -      if (p.querySelector('div')) {
+
+      -        const wrapperDiv = document.createElement('div');
+
+      -        // Copy classes from the <p> to the new <div>
+
+      -        wrapperDiv.className = p.className;
+
+      -        // Move all children from <p> to the new <div>
+
+      -        while (p.firstChild) {
+
+      -          wrapperDiv.appendChild(p.firstChild);
+
+      -        }
+
+      -        // Replace the <p> with the new <div>
+
+      -        p.parentNode?.replaceChild(wrapperDiv, p);
+
+      -      }
+
+      -    }
+
+      -  }, [item]); // Rerun when the item changes
+       
+         return (
+           <DynamicViewProvider
+      @@ -56,7 +30,7 @@
+             onItemSelect={() => {}}
+             onItemUpdate={updateItem}
+           >
+      -      <div ref={containerRef} className="h-full flex flex-col bg-card">
+
+      +      <div className="h-full flex flex-col bg-card">
+               <DetailPanel item={item} config={dataDemoViewConfig.detailView} />
+               {/* Application-specific actions can be composed here */}
+               <div className="p-6 border-t border-border/50 bg-card/30 flex-shrink-0">
+
+    patchStrategy: standard-diff
+snapshot:
+  src/pages/DataDemo/components/DataDetailContent.tsx: >-
+    import { ExternalLink, Share } from 'lucide-react';
+
+    import { Button } from '@/components/ui/button';
+
+    import { DynamicViewProvider } from
+    '@/features/dynamic-view/DynamicViewContext';
+
+    import { DetailPanel } from
+    '@/features/dynamic-view/components/shared/DetailPanel';
+
+    import { dataDemoViewConfig } from '@/pages/DataDemo/DataDemo.config';
+
+    import type { DataDemoItem } from '@/pages/DataDemo/data/DataDemoItem';
+
+    import { useDataDemoStore } from '../store/dataDemo.store';
+
+    import { useRef, useLayoutEffect } from 'react';
+
+
+    interface DataDetailContentProps {
+      item: DataDemoItem;
+    }
+
+
+    export function DataDetailContent({ item }: DataDetailContentProps) {
+      const { updateItem } = useDataDemoStore();
+      const containerRef = useRef<HTMLDivElement>(null);
+
+      // HACK: This is a temporary workaround to fix a DOM nesting warning (`div` inside `p`)
+      // originating from the `DetailPanel` component, which is not available for direct editing.
+      // The correct solution is to modify `DetailPanel.tsx` to use `div` instead of `p` as a container for its fields.
+      useLayoutEffect(() => {
+        if (!containerRef.current) return;
+
+        // Find all <p> tags that have a <div> as a descendant
+        const paragraphs = Array.from(containerRef.current.getElementsByTagName('p'));
+
+        for (const p of paragraphs) {
+          if (p.querySelector('div')) {
+            const wrapperDiv = document.createElement('div');
+            // Copy classes from the <p> to the new <div>
+            wrapperDiv.className = p.className;
+            // Move all children from <p> to the new <div>
+            while (p.firstChild) {
+              wrapperDiv.appendChild(p.firstChild);
+            }
+            // Replace the <p> with the new <div>
+            p.parentNode?.replaceChild(wrapperDiv, p);
+          }
+        }
+      }, [item]); // Rerun when the item changes
+
+      return (
+        <DynamicViewProvider
+          viewConfig={dataDemoViewConfig}
+          items={[]} // Not needed for detail view, but provider requires it
+          isLoading={false}
+          isInitialLoading={false}
+          totalItemCount={0}
+          hasMore={false}
+          viewMode="list" // Doesn't matter which, but required
+          filters={{ searchTerm: "" }}
+          sortConfig={null}
+          groupBy="none"
+          activeGroupTab=""
+          page={1}
+          onViewModeChange={() => {}}
+          onFiltersChange={() => {}}
+          onSortChange={() => {}}
+          onGroupByChange={() => {}}
+          onActiveGroupTabChange={() => {}}
+          onPageChange={() => {}}
+          onItemSelect={() => {}}
+          onItemUpdate={updateItem}
+        >
+          <div ref={containerRef} className="h-full flex flex-col bg-card">
+            <DetailPanel item={item} config={dataDemoViewConfig.detailView} />
+            {/* Application-specific actions can be composed here */}
+            <div className="p-6 border-t border-border/50 bg-card/30 flex-shrink-0">
+              <div className="flex gap-3">
+                <Button className="flex-1" size="sm">
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Open Project
+                </Button>
+                <Button variant="outline" size="sm">
+                  <Share className="w-4 h-4 mr-2" />
+                  Share
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DynamicViewProvider>
+      );
+    }
+  src/features/dynamic-view/components/shared/DetailPanel.tsx: >-
+    import React, { useRef, useState, useMemo } from 'react'
+
+    import {
+      DndContext,
+      closestCenter,
+      type DragEndEvent,
+    } from '@dnd-kit/core';
+
+    import {
+      arrayMove,
+      SortableContext,
+      verticalListSortingStrategy,
+    } from '@dnd-kit/sortable';
+
+    import {
+      Clock, 
+      Tag,
+      User,
+      BarChart3,
+    } from 'lucide-react'
+
+    import type { GenericItem, DetailViewConfig } from '../../types'
+
+    import { useStaggeredAnimation } from
+    '@/hooks/useStaggeredAnimation.motion.hook';
+
+    import { EditableField } from './EditableField'
+
+    import { DraggableSection } from './DraggableSection'
+
+    import { getNestedValue } from '@/lib/utils'
+
+    import { useDynamicView } from '../../DynamicViewContext'
+
+
+    interface DetailPanelProps<TFieldId extends string, TItem extends
+    GenericItem> {
+      item: TItem;
+      config: DetailViewConfig<TFieldId>;
+    }
+
+
+    const SECTION_ICONS: Record<string, React.ElementType> = {
+      "Assigned to": User,
+      "Engagement Metrics": BarChart3,
+      "Tags": Tag,
+      "Timeline": Clock,
+    };
+
+
+    export function DetailPanel<TFieldId extends string, TItem extends
+    GenericItem>({ item, config }: DetailPanelProps<TFieldId, TItem>) {
+      const contentRef = useRef<HTMLDivElement>(null)
+      useStaggeredAnimation(contentRef, [item]);
+      
+      const { getFieldDef } = useDynamicView<TFieldId, TItem>();
+      const { header, body } = config;
+      const [sections, setSections] = useState([...body.sections]);
+
+      const sectionIds = useMemo(() => sections.map(s => s.title), [sections]);
+
+      const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (active.id !== over?.id) {
+          setSections((currentSections) => {
+            const oldIndex = sectionIds.indexOf(active.id as string);
+            const newIndex = sectionIds.indexOf(over!.id as string);
+            return arrayMove(currentSections, oldIndex, newIndex);
+          });
+        }
+      };
+
+      if (!item) {
+        return null
+      }
+      
+      return (
+        <div ref={contentRef} className="flex-1 flex flex-col min-h-0">
+          {/* Header */}
+          <div className="p-6 border-b border-border/50 bg-gradient-to-r from-card/50 to-card/30 backdrop-blur-sm">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0">
+                 <EditableField item={item} fieldId={header.thumbnailField} />
+              </div>
+              <div className="flex-1 min-w-0 break-words">
+                <h1 className="text-2xl font-bold mb-1 leading-tight truncate">
+                  <EditableField item={item} fieldId={header.titleField} />
+                </h1>
+                <p className="text-muted-foreground truncate">
+                  <EditableField item={item} fieldId={header.descriptionField} />
+                </p>
+              </div>
+            </div>
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              {header.badgeFields.map((fieldId: TFieldId) => (
+                <EditableField key={fieldId} item={item} fieldId={fieldId} />
+              ))}
+            </div>
+
+            {/* Progress */}
+            <EditableField item={item} fieldId={header.progressField} options={{ showPercentage: true }} />
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6 space-y-6">
+              <DndContext
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={sectionIds}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {sections.map((section) => {
+                    const IconComponent = SECTION_ICONS[section.title];
+                    const hasContent = section.fields.some((fieldId: TFieldId) => {
+                      const value = getNestedValue(item, fieldId as string);
+                      return value !== null && typeof value !== 'undefined';
+                    });
+
+                    if (!hasContent) return null;
+
+                    return (
+                      <DraggableSection key={section.title} id={section.title} >
+                        <div className="p-4 bg-card/30 rounded-2xl border border-border/30">
+                          <div className="flex items-center gap-1 mb-3">
+                            {IconComponent && <IconComponent className="w-4 h-4 text-muted-foreground" />}
+                            <h3 className="font-semibold text-sm">{section.title}</h3>
+                          </div>
+                          <div className="space-y-3">
+                            {section.fields.map((fieldId: TFieldId) => {
+                              const fieldDef = getFieldDef(fieldId);
+                              return (
+                                <div key={fieldId} className="flex items-start gap-4 text-sm">
+                                  <div className="w-1/3 text-muted-foreground pt-1.5 shrink-0">{fieldDef?.label}</div>
+                                  <div className="w-2/3 grow min-w-0 break-words"><EditableField item={item} fieldId={fieldId} /></div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </DraggableSection>
+                    );
+                  })}
+                </SortableContext>
+              </DndContext>
+            </div>
+          </div>
+        </div>
+      )
+    }
+approved: true
+linesAdded: null
+linesRemoved: null
+linesDifference: null
+gitCommittedAt: null
+status: committed
+id: 595
